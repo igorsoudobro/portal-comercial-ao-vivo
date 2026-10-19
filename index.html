@@ -940,19 +940,32 @@ function dre(rows){
   let contrato=0;
   Object.keys(liqCn).forEach(cn=>{ contrato+=liqCn[cn]*contratoPct(cn); });
   const fatLiq=fat+dev;
-  const lucroBruto=fatLiq-cmv;
+  /* RECEITA LIQUIDA = faturamento liquido MENOS imposto (19/10/2026, decisao do
+     Igor: "a margem bruta e descontando os impostos").
+
+     O imposto saiu daqui de cima e por isso NAO pode mais ser subtraido no
+     lucroFin - se ficasse nos dois lugares o painel tiraria imposto duas vezes
+     e o lucro final cairia ~20% sem ninguem ver de onde. Os valores de
+     lucroFin, lucro e rentabilidade seguem EXATAMENTE os mesmos de antes; o que
+     muda sao lucroBruto e margem, que agora nascem da receita ja liquida. */
+  const recLiq=fatLiq-imp;
+  const lucroBruto=recLiq-cmv;
   /* LUCRO FIN. = tudo MENOS a bonificacao (25/09/2026, pedido do Igor).
      A diferenca entre `rentFin` e `rent` e, em pontos percentuais, exatamente o
      que a bonificacao custa - que e a pergunta que ele faz toda semana. Fica
      aqui e nao na tela para as duas abas lerem o mesmo numero. */
-  const lucroFin=lucroBruto-imp-fr-com-contrato;
+  const lucroFin=lucroBruto-fr-com-contrato;   // o imposto ja saiu na recLiq
   const lucro=lucroFin-boni;                        // bonificação é o último impacto antes do lucro final
   const nfs=ped.size;
   // cmvBruto = CMV das vendas; cmvDev = o CMV que a devolução DEVOLVE (negativo,
   // porque a mercadoria volta ao estoque e o custo é revertido). cmvBruto+cmvDev
   // = cmv, que é o que a linha única mostrava antes - nenhum número mudou, só
   // ficou visível de onde vem. Medido no ano: 8.182.718 − 259.359 = 7.923.359.
-  return {fat,dev,fatLiq,cmv,cmvBruto,cmvDev,lucroBruto,margem:fatLiq?lucroBruto/fatLiq:0,
+  /* margem bruta sobre a RECEITA LIQUIDA, nao sobre o faturamento. Rentabilidade
+     e rentabilidade fin. continuam sobre o faturamento liquido - sao a leitura
+     "quanto sobra de tudo que faturei" e ninguem pediu para mexer nelas. */
+  return {fat,dev,fatLiq,recLiq,cmv,cmvBruto,cmvDev,lucroBruto,
+    margem:recLiq?lucroBruto/recLiq:0,
     imp,fr,com,boni,contrato,lucro,rent:fatLiq?lucro/fatLiq:0,
     lucroFin,rentFin:fatLiq?lucroFin/fatLiq:0,q,nfs,ticket:nfs?fatLiq/nfs:0};
 }
@@ -988,7 +1001,7 @@ function vResumo(){
   // farol: vendedor vê só bolinha; admin vê número
   const verNum=verNumeroRent();
   const rentKpi=`<div class="kpi"><div class="lab">Rentabilidade</div><div class="val">${verNum?pct(d.rent):farol(d.rent,false)}</div><div class="sub">margem final</div></div>`;
-  const margKpi=`<div class="kpi"><div class="lab">Margem bruta</div><div class="val">${verNum?pct(d.margem):farol(d.margem,false)}</div><div class="sub">antes de despesas</div></div>`;
+  const margKpi=`<div class="kpi"><div class="lab">Margem bruta</div><div class="val">${verNum?pct(d.margem):farol(d.margem,false)}</div><div class="sub">já sem imposto, antes das despesas</div></div>`;
   const admExtra = SESSION.isAdmin ? `<div class="kpi sens"><div class="lab">Lucro final ${SENS}</div><div class="val">${brl(d.lucro)}</div><div class="sub">Rentab. ${pct(d.rent)}</div></div>` : '';
   let kpis=`<div class="kpirow">
     <div class="kpi accent"><div class="lab">Faturamento líquido</div><div class="val">${brl(d.fatLiq)}</div><div class="sub">${mesesAtivos().length} mês(es)</div></div>
@@ -1146,10 +1159,16 @@ function barTable(items,total){
 
 const DRE_ROWS_PUB=[['Faturamento','fat','brl'],['Devoluções','dev','brl'],['Faturamento líquido','fatLiq','brl','b'],
   ['Ticket médio','ticket','brl'],['Nº de notas','nfs','n']];
+/* IMPOSTOS SUBIU (19/10/2026). Ele ficava depois de Lucro bruto e Margem bruta;
+   agora que a margem desconta imposto, deixa-lo ali embaixo quebraria a regra
+   escrita no comentario abaixo - o leitor dividiria o Lucro bruto pelo
+   Faturamento liquido da tela e acharia 65% onde a linha diz 57%. Subindo ele e
+   nomeando a Receita liquida, a coluna volta a fechar lida de cima para baixo. */
 const DRE_ROWS_FULL=[['Faturamento','fat','brl'],['Devoluções','dev','brl'],['Faturamento líquido','fatLiq','brl','b'],
+  ['Impostos','imp','brl','s'],['Receita líquida','recLiq','brl','b'],
   ['CMV bruto','cmvBruto','brl','s'],['CMV devolvido','cmvDev','brl','s'],
   ['CMV líquido','cmv','brl','s'],['Lucro bruto','lucroBruto','brl','b'],['Margem bruta','margem','pct','s'],
-  ['Impostos','imp','brl','s'],['Frete','fr','brl'],['Comissão','com','brl'],
+  ['Frete','fr','brl'],['Comissão','com','brl'],
   /* Contratos fica só no DRE_ROWS_FULL, de propósito: o vendedor já não vê
      Impostos, Frete, Comissão nem Lucro final, e contrato é da mesma natureza.
 
@@ -2814,10 +2833,15 @@ function calcCompute(){
      parte no final"). Por isso a margem bruta nao se mexe e a RENTABILIDADE
      sim - que e o numero que decide se o pedido e aprovado. */
   const investimento=Math.max(0, calcNum(((typeof el==='function'&&el('calcInvest'))||{}).value));
-  const lucroBruto=liq-cmvT;
-  const lucro=lucroBruto-imp-fr-comissaoVal-investimento;
+  /* A Calculadora segue a MESMA definicao de margem bruta do Resumo e do DRE
+     (19/10/2026). Nao e detalhe: e o mesmo rotulo na mesma ferramenta, e duas
+     contas diferentes atras dele fariam alguem simular um pedido a 65% aqui e
+     ver 57% no painel depois de faturar. */
+  const recLiq=liq-imp;
+  const lucroBruto=recLiq-cmvT;
+  const lucro=lucroBruto-fr-comissaoVal-investimento;   // imposto ja saiu
   const rent=liq?lucro/liq:0;
-  return {uf,tab,ignorados,impPct,frPct,itens,boni,brindes,bruto,liq,cmvItens,cmvBoni,cmvBrinde,cmvT,imp,fr,comissaoVal,investimento,lucroBruto,lucro,rent};
+  return {uf,tab,ignorados,impPct,frPct,itens,boni,brindes,bruto,liq,recLiq,cmvItens,cmvBoni,cmvBrinde,cmvT,imp,fr,comissaoVal,investimento,lucroBruto,lucro,rent};
 }
 
 function renderCalcResumo(){
@@ -2836,7 +2860,7 @@ function renderCalcResumo(){
   resumo.innerHTML=`<div class="kpirow" style="margin-bottom:14px">
     <div class="kpi accent"><div class="lab">Valor líquido</div><div class="val">${brl2(c.liq)}</div><div class="sub">bruto ${brl2(c.bruto)}${descGeral?` · desc. geral ${pct(descGeral)}`:''}</div></div>
     <div class="kpi sens"><div class="lab">CMV total ${SENS}</div><div class="val" style="font-size:20px">${brl2(c.cmvT)}</div><div class="sub">itens ${brl2(c.cmvItens)}${c.cmvBoni?` · bonif ${brl2(c.cmvBoni)}`:''}${c.cmvBrinde?` · brinde ${brl2(c.cmvBrinde)}`:''}</div></div>
-    <div class="kpi sens"><div class="lab">Margem bruta ${SENS}</div><div class="val" style="font-size:20px">${pct(c.liq?c.lucroBruto/c.liq:0)}</div><div class="sub">${brl2(c.lucroBruto)}</div></div>
+    <div class="kpi sens"><div class="lab">Margem bruta ${SENS}</div><div class="val" style="font-size:20px">${pct(c.recLiq?c.lucroBruto/c.recLiq:0)}</div><div class="sub">${brl2(c.lucroBruto)}</div></div>
     <div class="kpi"><div class="lab">Imp+Frete+Comissão</div><div class="val" style="font-size:20px">${brl2(c.imp+c.fr+c.comissaoVal)}</div><div class="sub">imp ${brl2(c.imp)} · frete ${brl2(c.fr)}${c.comissaoVal?` · com ${brl2(c.comissaoVal)}`:''}</div></div>
     <div class="kpi ${c.rent>=0.15?'pos':c.rent<0?'sens':''}"><div class="lab">Rentabilidade</div><div class="val">${pct(c.rent)}</div><div class="sub">${brl2(c.lucro)}</div></div>
     ${pesoT.kg>0||pesoT.semPeso.length?`<div class="kpi ${pesoT.semPeso.length?'sens':''}"><div class="lab">Peso do pedido</div><div class="val" style="font-size:20px">${kgFmt(pesoT.kg)}</div><div class="sub">${pesoT.semPeso.length?`${pesoT.semPeso.length} item(ns) sem peso cadastrado`:'bruto, com bonificação e brinde'}</div></div>`:''}
@@ -3790,10 +3814,11 @@ function ajustarKpisResumo(){
        some. Sem planilha de metas devolve [] e o Resumo fica como sempre foi. */
     ...(typeof metasResumoItens === 'function' ? metasResumoItens() : []),
     {lab: 'Margem bruta', val: verNum ? pct(d.margem) : farol(d.margem, false),
-     cls: '', sub: verNum ? brl(d.lucroBruto) : 'antes das despesas',
-     dica: 'Margem bruta = (faturamento líquido − CMV) ÷ faturamento líquido. ' +
-           'Só o custo da mercadoria entra aqui: imposto, frete, comissão e ' +
-           'bonificação ficam de fora.'},
+     cls: '', sub: verNum ? brl(d.lucroBruto) : 'já sem imposto',
+     dica: 'Margem bruta = (faturamento líquido − impostos − CMV) ÷ ' +
+           '(faturamento líquido − impostos). O imposto sai da base porque ' +
+           'nunca foi nosso. Frete, comissão, contrato e bonificação ficam de ' +
+           'fora — eles entram depois, na rentabilidade.'},
     {lab: 'Frete', val: brl(d.fr), cls: '', sens: true,
      sub: d.fatLiq ? pct(d.fr / d.fatLiq) + ' do líquido' : '—',
      dica: 'Frete das notas de venda e devolução do período.'},
