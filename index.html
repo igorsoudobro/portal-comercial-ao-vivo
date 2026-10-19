@@ -14357,7 +14357,7 @@ function faixaHtml(d, corte){
          dois números e abre um chamado. */
       '<br><span style="opacity:.8">' +
       (corte.quem ? corte.quem + ' · ' : 'comercial PJ, sem o site · ') +
-      'direto do OMIE, inclui hoje — os cartões abaixo vão até ontem' +
+      'direto do OMIE, inclui hoje — os cartões abaixo também' +
       '</span></div>' + faixaDetalhe(dre) + faixaAviso(d) + '</div>';
 }
 
@@ -14598,16 +14598,59 @@ async function aovivoMesclar(){
   }
 }
 
-/* Entra depois do carregamento normal. Substituir a funcao global e o mesmo
+/* As duas trocas, numa funcao so, chamada por dois caminhos.
+
+   A TRAVA E CONTRA SOBREPOSICAO, NAO CONTRA REPETICAO - e a diferenca custou
+   um bug no teste de 19/10/2026. Na primeira versao ela guardava "ja rodou" e
+   nunca mais deixava rodar; so que o _loadData RECONSTROI o ROWS a partir do
+   FATO da macro, entao toda recarga de dados (botao de reler, troca de conta)
+   desfazia a troca e o painel voltava para o numero da macro calado. Agora a
+   promessa em andamento e que bloqueia; terminada, pode rodar de novo. */
+let AOVIVO_RODANDO = null, AOVIVO_JA_RODOU = false;
+function aovivoAplicar(){
+  if(AOVIVO_RODANDO) return AOVIVO_RODANDO;
+  AOVIVO_RODANDO = (async () => {
+    try{
+      await anoSubstituirBase();   /* a base: 2026 ate ontem, pelo espelho */
+      await aovivoMesclar();       /* e por cima, o dia de hoje */
+    }finally{
+      AOVIVO_RODANDO = null;
+      AOVIVO_JA_RODOU = true;
+    }
+  })();
+  return AOVIVO_RODANDO;
+}
+
+/* CAMINHO 1 - o gancho no carregamento. Substituir a funcao global e o mesmo
    padrao que o resto do arquivo usa para estender sem reescrever. */
 (function(){
   const original = window._loadData;
   window._loadData = async function(){
     const r = await original.apply(this, arguments);
-    await anoSubstituirBase();   /* a base: 2026 ate ontem, pelo espelho */
-    await aovivoMesclar();       /* e por cima, o dia de hoje */
+    await aovivoAplicar();
     return r;
   };
+})();
+
+/* CAMINHO 2 - o vigia, e ele existe por um motivo concreto.
+   Em 19/10/2026 o Portal novo publicado mostrou os cartoes com o numero da
+   macro e NENHUM aviso na tela - nem o de sucesso, nem o de falha. Como toda
+   saida de anoSubstituirBase escreve em ANO_INFO, "nenhum aviso" so pode
+   significar uma coisa: o gancho acima nao disparou. Depender de um unico
+   ponto de entrada que eu nao controlo foi o erro; agora, se os dados ficarem
+   prontos e o bloco ainda nao tiver rodado, o vigia roda e remonta a tela.
+   Ele para sozinho no primeiro sucesso e desiste depois de 2 minutos. */
+(function(){
+  let n = 0;
+  const vigia = setInterval(async () => {
+    if(++n > 120){ clearInterval(vigia); return; }
+    if(typeof DATA_READY === 'undefined' || !DATA_READY) return;
+    if(AOVIVO_JA_RODOU || AOVIVO_RODANDO){ clearInterval(vigia); return; }
+    clearInterval(vigia);
+    console.log('ao vivo: o gancho do carregamento nao disparou; aplicando aqui');
+    await aovivoAplicar();
+    try{ if(typeof refresh === 'function') refresh(); }catch(e){}
+  }, 1000);
 })();
 
 /* Marca visual: ninguem pode confundir as duas versoes. */
@@ -14620,7 +14663,11 @@ async function aovivoMesclar(){
           '<span style="margin-left:9px;font-size:11px;font-weight:800;' +
           'letter-spacing:.06em;background:#D64550;color:#fff;padding:2px 7px;' +
           'border-radius:5px;vertical-align:middle">AO VIVO</span>');
-      if(!document.getElementById('aovivoNota') && (AOVIVO_INFO || ANO_INFO)){
+      /* A tarja aparece SEMPRE e se reescreve a cada passada.
+         Antes ela so aparecia depois que o bloco rodava - entao, no dia em que
+         o bloco nao rodou, a tela nao disse nada e o numero da macro passou por
+         numero ao vivo. Silencio e o pior estado possivel aqui. */
+      {
         const v = document.getElementById('v-resumo');
         if(v){
           const hhmm = (dt) => dt.toLocaleTimeString('pt-BR',
@@ -14628,23 +14675,35 @@ async function aovivoMesclar(){
           /* Duas frases, e as duas importam: de onde vem a BASE e se o dia de
              hoje entrou. Quem le precisa saber qual das duas falhou quando um
              numero parecer estranho. */
-          const base = (ANO_INFO && ANO_INFO.ligado)
-            ? ('A base de vendas vem do banco do OMIE — ' +
-               ANO_INFO.linhas.toLocaleString('pt-BR') + ' linhas, geradas em ' +
-               ANO_INFO.hora.toLocaleDateString('pt-BR') + ' às ' +
-               hhmm(ANO_INFO.hora) + ', sem passar pela macro.')
-            : ('A base de vendas ainda é a da macro: ' +
-               ((ANO_INFO && ANO_INFO.motivo) || 'arquivo do ano não carregou') + '.');
-          const hoje = (AOVIVO_INFO && AOVIVO_INFO.ligado)
-            ? (' Hoje já está incluído — ' + AOVIVO_INFO.linhas +
-               ' linha(s), lidas às ' + hhmm(AOVIVO_INFO.hora) + '.')
-            : (' Hoje ainda não entrou: ' +
-               ((AOVIVO_INFO && AOVIVO_INFO.motivo) || '') + '.');
-          v.insertAdjacentHTML('afterbegin',
-            '<div id="aovivoNota" class="note" style="margin-bottom:12px">' +
-            '<b>Versão de teste.</b> ' + base + hoje + ' Frete e imposto do dia ' +
-            'são estimativa; o fechamento oficial continua no Portal de produção.' +
-            '</div>');
+          let texto;
+          if(!AOVIVO_JA_RODOU && !AOVIVO_RODANDO){
+            texto = 'O bloco ao vivo ainda não rodou — os números abaixo são ' +
+                    'os da macro. Se isto não mudar em alguns segundos, ' +
+                    'recarregue com Ctrl+Shift+R.';
+          }else{
+            const base = (ANO_INFO && ANO_INFO.ligado)
+              ? ('A base de vendas vem do banco do OMIE — ' +
+                 ANO_INFO.linhas.toLocaleString('pt-BR') + ' linhas, geradas em ' +
+                 ANO_INFO.hora.toLocaleDateString('pt-BR') + ' às ' +
+                 hhmm(ANO_INFO.hora) + ', sem passar pela macro.')
+              : ('A base de vendas ainda é a da macro: ' +
+                 ((ANO_INFO && ANO_INFO.motivo) || 'carregando') + '.');
+            const hoje = (AOVIVO_INFO && AOVIVO_INFO.ligado)
+              ? (' Hoje já está incluído — ' + AOVIVO_INFO.linhas +
+                 ' linha(s), lidas às ' + hhmm(AOVIVO_INFO.hora) + '.')
+              : (' Hoje ainda não entrou: ' +
+                 ((AOVIVO_INFO && AOVIVO_INFO.motivo) || 'carregando') + '.');
+            texto = base + hoje + ' Frete e imposto do dia são estimativa; o ' +
+                    'fechamento oficial continua no Portal de produção.';
+          }
+          const html = '<b>Versão de teste.</b> ' + texto;
+          let nota = document.getElementById('aovivoNota');
+          if(!nota){
+            v.insertAdjacentHTML('afterbegin',
+              '<div id="aovivoNota" class="note" style="margin-bottom:12px"></div>');
+            nota = document.getElementById('aovivoNota');
+          }
+          if(nota && nota.innerHTML !== html) nota.innerHTML = html;
         }
       }
     }catch(e){}
