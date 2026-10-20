@@ -572,6 +572,23 @@ table.geo-tbl tbody tr:hover > td{background:#F8FAFE}
       </div>
     </div>
     <div class="fgroup" id="mesGroup"><label>Mês</label><select id="mesSel"></select></div>
+    <!-- DIA DENTRO DO MÊS (20/10/2026, pedido do Igor: "que nem as degustações").
+         Só aparece com a visão "Mês". Nasce sempre do dia 1 ao dia de hoje — e,
+         em mês já fechado, do dia 1 ao último dia dele. -->
+    <div class="fgroup" id="diaGroup">
+      <label>Dia</label>
+      <input id="diaDe" type="date" class="inp">
+      <label>até</label>
+      <input id="diaAte" type="date" class="inp">
+      <!-- "padrão" e não "mês todo": no mês corrente o padrão vai do dia 1 até
+           HOJE, que não é o mês todo. O título diz o que ele faz. -->
+      <button id="diaReset" type="button" class="inp"
+              style="cursor:pointer;background:var(--card);font-weight:700;
+                     color:var(--sky);padding:8px 12px"
+              title="volta para o dia 1 até hoje">padrão</button>
+    </div>
+    <div id="diaAviso" class="hint" style="display:none;flex-basis:100%;
+         margin-top:2px;color:#9A6B00"></div>
     <div class="fgroup" id="periodoGroup" style="display:none">
       <label>De</label><select id="mesDe"></select>
       <label>Até</label><select id="mesAte"></select>
@@ -838,7 +855,7 @@ function veLucroFinal(){ return SESSION.veLucroFinal!==false; }
 function el(id){return document.getElementById(id);}
 
 /* ---------- filtro atual ---------- */
-let FILTER={period:'mes', mes:null, de:null, ate:null, vend:'(todos)', mod:'(todos)', reg:'(todos)', uf:'(todos)', canal:'(todos)'};
+let FILTER={period:'mes', mes:null, de:null, ate:null, diaDe:null, diaAte:null, vend:'(todos)', mod:'(todos)', reg:'(todos)', uf:'(todos)', canal:'(todos)'};
 
 function mesesAtivos(){
   if(FILTER.period==='mes')return [FILTER.mes];
@@ -849,7 +866,81 @@ function mesesAtivos(){
   return MESES.slice(Math.min(i1,i2),Math.max(i1,i2)+1);
 }
 
-// linhas visíveis conforme sessão + filtros
+/* ---------- DIA DENTRO DO MÊS (20/10/2026) ----------
+   O filtro nasce do dia 1 ao dia de hoje, como o Igor pediu. Em mês fechado,
+   "hoje" não existe lá dentro, então o fim é o último dia do próprio mês.
+
+   Só vale na visão "Mês": em "Período" e "Ano todo" o recorte é por mês e um
+   intervalo de dias no meio disso não quer dizer nada. */
+function diaLimites(mes){
+  const i = MESES_ORD.indexOf(mes);
+  if(i < 0) return null;
+  const hoje = new Date();
+  const dois = (n) => String(n).padStart(2, '0');
+  /* O ANO VEM DO DADO, não do relógio. O Portal não guarda o ano em lugar
+     nenhum, e chutar o do computador quebraria na virada: em 02/01 o filtro de
+     "Dezembro" apontaria para dezembro do ano novo e não acharia linha nenhuma.
+     D.Dia são datas ISO; basta achar uma do mês pedido. */
+  const alvo = '-' + dois(i + 1) + '-';
+  const umaData = (D && Array.isArray(D.Dia))
+    ? D.Dia.find(x => x && x.indexOf(alvo) === 4) : null;
+  const ano = umaData ? Number(umaData.slice(0, 4)) : hoje.getFullYear();
+  const ultimo = new Date(ano, i + 1, 0).getDate();        // dia 0 do mês seguinte
+  const primeiro = ano + '-' + dois(i + 1) + '-01';
+  const hojeISO = hoje.toLocaleDateString('sv');            // YYYY-MM-DD local
+  const fimMes = ano + '-' + dois(i + 1) + '-' + dois(ultimo);
+  /* o menor entre hoje e o fim do mês: no mês corrente dá hoje, no mês passado
+     dá o último dia dele, e num mês futuro dá o fim do mês (não há linha lá) */
+  return {de: primeiro, ate: (hojeISO < fimMes ? hojeISO : fimMes), fimMes: fimMes};
+}
+
+function diaPadrao(){
+  const lim = diaLimites(FILTER.mes);
+  if(!lim) return;
+  FILTER.diaDe = lim.de;
+  FILTER.diaAte = lim.ate;
+  const a = el('diaDe'), b = el('diaAte');
+  if(a){ a.min = lim.de; a.max = lim.fimMes; a.value = lim.de; }
+  if(b){ b.min = lim.de; b.max = lim.fimMes; b.value = lim.ate; }
+}
+
+/* true quando o recorte de dia está valendo de verdade */
+function diaAtivo(){
+  return FILTER.period === 'mes' && !!(FILTER.diaDe && FILTER.diaAte);
+}
+
+/* O AVISO DAS LINHAS QUE O DIA NÃO RECORTA.
+   Enquanto o recorte é o padrão (dia 1 até hoje) ninguém precisa saber de nada:
+   o total é o do mês. Quando ele é estreitado, as linhas sem dia e as datadas
+   em outro mês continuam entrando — e em outubro/2026 isso é -R$ 9.003 de
+   devolução aparecendo num recorte de um dia só. Melhor dizer na tela do que
+   deixar alguém somar os dias e não fechar com o mês. */
+function diaMostrarAviso(){
+  const box = el('diaAviso');
+  if(!box) return;
+  const lim = diaAtivo() ? diaLimites(FILTER.mes) : null;
+  const estreitou = lim && (FILTER.diaDe !== lim.de || FILTER.diaAte !== lim.ate);
+  if(!estreitou){ box.style.display = 'none'; box.textContent = ''; return; }
+  const pref = String(FILTER.diaDe).slice(0, 7);
+  const ms = new Set(mesesAtivos());
+  let n = 0, v = 0;
+  ROWS.forEach(r => {
+    if(!ms.has(r.m)) return;
+    if(r.d && r.d.slice(0, 7) === pref) return;     // esta é recortada
+    if(r.tipo === 0 || r.tipo === 1){ n++; v += r.fat; }
+  });
+  if(!n){ box.style.display = 'none'; box.textContent = ''; return; }
+  box.style.display = '';
+  box.textContent = 'Neste recorte entram ' + n + ' linha(s) de ' +
+    (v < 0 ? 'devolução' : 'venda') + ' sem dia próprio do mês (' + brl(v) +
+    ') — o V8 data a devolução pelo dia da venda de origem. Por isso somar os ' +
+    'dias não fecha com o mês.';
+}
+
+/* ATENCAO: esta funcao e CODIGO MORTO. Ela e substituida mais abaixo por
+   `window.linhas = function(){...}`, a versao com filtro multiplo - e e aquela
+   que roda. Fica aqui so porque remove-la mexeria em ordem de declaracao sem
+   necessidade. Nao edite esta: edite a de baixo. */
 function linhas(){
   const ms=new Set(mesesAtivos());
   return ROWS.filter(r=>{
@@ -2940,7 +3031,7 @@ function showView(){
   el('v-'+CURRENT).classList.add('on');
   const v=VIEWS.find(x=>x.id===CURRENT); if(v)v.fn();
 }
-function refresh(){ showView(); }
+function refresh(){ try{ diaMostrarAviso(); }catch(e){} showView(); }
 
 /* ============ FILTROS ============ */
 function buildFilters(){
@@ -2957,11 +3048,35 @@ function buildFilters(){
     b.classList.add('on'); FILTER.period=b.dataset.p;
     el('mesGroup').style.display=FILTER.period==='mes'?'':'none';
     el('periodoGroup').style.display=FILTER.period==='periodo'?'':'none';
+    el('diaGroup').style.display=FILTER.period==='mes'?'':'none';
     refresh();
   }));
-  el('mesSel').addEventListener('change',e=>{FILTER.mes=e.target.value;refresh();});
+  /* TROCAR DE MÊS REARMA O DIA. Sem isto, escolher Setembro depois de ter
+     recortado 01 a 05 de outubro deixaria o recorte velho valendo num mês onde
+     ele não quer dizer nada - e a tela mostraria "Setembro" com números de
+     cinco dias de outubro. */
+  el('mesSel').addEventListener('change',e=>{
+    FILTER.mes=e.target.value; diaPadrao(); refresh();});
   el('mesDe').addEventListener('change',e=>{FILTER.de=e.target.value;refresh();});
   el('mesAte').addEventListener('change',e=>{FILTER.ate=e.target.value;refresh();});
+
+  // ---- dia dentro do mês
+  diaPadrao();
+  el('diaGroup').style.display=FILTER.period==='mes'?'':'none';
+  const mudouDia=(qual)=>(e)=>{
+    const v=e.target.value;
+    if(!v){ diaPadrao(); refresh(); return; }   // campo limpo volta ao padrão
+    FILTER[qual]=v;
+    // de > até não é erro do usuário, é ordem trocada: inverte e segue
+    if(FILTER.diaDe>FILTER.diaAte){
+      const t=FILTER.diaDe; FILTER.diaDe=FILTER.diaAte; FILTER.diaAte=t;
+      el('diaDe').value=FILTER.diaDe; el('diaAte').value=FILTER.diaAte;
+    }
+    refresh();
+  };
+  el('diaDe').addEventListener('change',mudouDia('diaDe'));
+  el('diaAte').addEventListener('change',mudouDia('diaAte'));
+  el('diaReset').addEventListener('click',()=>{ diaPadrao(); refresh(); });
 
   /* A BARRA E DE QUEM PODE FILTRAR, NAO SO DO ADMIN (24/09/2026).
 
@@ -3059,7 +3174,7 @@ function doLogout(){
      discordando um dia. */
   ['admVendGroup','admModGroup','admRegGroup','admUfGroup','admCanalGroup']
     .forEach(g=>el(g).style.display='none');
-  FILTER={period:'mes',mes:null,de:null,ate:null,vend:'(todos)',mod:'(todos)',reg:'(todos)',uf:'(todos)',canal:'(todos)'};
+  FILTER={period:'mes',mes:null,de:null,ate:null,diaDe:null,diaAte:null,vend:'(todos)',mod:'(todos)',reg:'(todos)',uf:'(todos)',canal:'(todos)'};
   RANK_SORT={key:'fat',dir:-1};
   CART_SORT={key:'ytd',dir:-1}; CART_VEND='(todos)'; CART_PAGE=0; CART_BUSCA='';
   CART_QG={v:null,b:null};   // o quadro gerencial volta fechado ao trocar de user
@@ -3499,11 +3614,34 @@ window.buildFilters = function(){
   return r;
 };
 
+/* ESTA e a `linhas()` que vale - ela SUBSTITUI a definida la em cima, e foi
+   onde o filtro de dia precisou entrar. Em 20/10/2026 eu coloquei o recorte de
+   dia so na primeira e passei dez minutos sem entender por que ele nao filtrava
+   nada: a de cima e codigo morto desde que o filtro multiplo nasceu. Se um dia
+   mexer no recorte, mexa AQUI. */
 window.linhas = function(){
   const ms = new Set(mesesAtivos());
   const filtra = podeFiltrar();
+  const dOn = diaAtivo();
+  /* O recorte de dia so vale DENTRO do mes selecionado. Duas linhas escapam
+     dele de proposito, e as duas por motivo medido:
+
+     1) a linha SEM DIA. O V8 traz 14 devolucoes sem data (-R$ 10.305 em 2026),
+        as que a macro lanca sem numero de nota.
+     2) a linha cujo DIA e de OUTRO MES. O V8 data a devolucao pelo dia da VENDA
+        de origem: uma devolucao lancada em outubro de uma venda de setembro tem
+        Mes "Outubro" e Dia "2026-09-xx". Em outubro/2026 sao 10 linhas,
+        -R$ 8.606.
+
+     Nos dois casos a linha pertence ao mes e o dia nao serve para recortar. Sem
+     esta regra, abrir o filtro no padrao (dia 1 a hoje) mostrava R$ 434.701 num
+     mes que todo mundo conhece como R$ 426.095 - o faturamento SUBIA por ligar
+     um filtro, que e o pior tipo de surpresa. */
+  const pref = dOn ? String(FILTER.diaDe).slice(0, 7) : null;
   return ROWS.filter(r => {
     if(!ms.has(r.m)) return false;
+    if(dOn && r.d && r.d.slice(0, 7) === pref
+       && (r.d < FILTER.diaDe || r.d > FILTER.diaAte)) return false;
     // O recorte por vendedor vem PRIMEIRO e vale para todo nao-admin: o filtro
     // nunca amplia o que a pessoa pode ver, so recorta dentro dele.
     if(!SESSION.isAdmin && !VEND_VIS.has(r.v)) return false;
