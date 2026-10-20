@@ -14054,7 +14054,15 @@ const LINKS_UTEIS = [
    url:  'https://forms.monday.com/forms/7b36360683927057a2ea687ad7a8a2e3?r=use1'},
   {nome: 'Dashboard · Trade Promotoria',
    desc: 'Merchandising e visitas da promotoria',
-   url:  'https://igorsoudobro.github.io/promotoria-dobro/DashMerchan_2.html'}
+   url:  'https://igorsoudobro.github.io/promotoria-dobro/DashMerchan_2.html'},
+  /* `soProducao: true` = NAO aparece no Portal Ao Vivo (20/10/2026).
+     O index.html do Ao Vivo e GERADO deste arquivo, entao tudo que entra aqui
+     entra la tambem. Esta marca e o jeito de ter um link so na producao sem
+     manter duas listas - duas listas divergiriam no primeiro link novo. Quem
+     tira e o bloco do gerar_portal_novo.py. */
+  {nome: 'Portal · Pendências de Cadastro',
+   desc: 'Acompanhamento de pendências de cadastro de clientes',
+   url:  'https://assent-tracker.lovable.app/'}
 ];
 
 function vLinks(){
@@ -14796,6 +14804,22 @@ function aovivoAplicar(){
   })();
   return AOVIVO_RODANDO;
 }
+
+/* LINKS QUE SAO SO DA PRODUCAO.
+   Este arquivo e o index.html da producao mais este bloco, entao a lista de
+   links vem inteira de la. Os itens marcados com `soProducao: true` saem aqui.
+   Roda no parse, bem antes de alguem abrir a aba - o vLinks() so e chamado no
+   clique. */
+(function(){
+  try{
+    if(typeof LINKS_UTEIS === 'undefined' || !Array.isArray(LINKS_UTEIS)) return;
+    let n = 0;
+    for(let i = LINKS_UTEIS.length - 1; i >= 0; i--){
+      if(LINKS_UTEIS[i] && LINKS_UTEIS[i].soProducao){ LINKS_UTEIS.splice(i, 1); n++; }
+    }
+    if(n) console.log('ao vivo: ' + n + ' link(s) só da produção foram tirados');
+  }catch(e){ console.error('links só da produção:', e); }
+})();
 
 /* CAMINHO 1 - o gancho no carregamento. Substituir a funcao global e o mesmo
    padrao que o resto do arquivo usa para estender sem reescrever. */
