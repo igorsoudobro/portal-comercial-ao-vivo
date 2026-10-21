@@ -884,7 +884,8 @@ function diaLimites(mes){
   const alvo = '-' + dois(i + 1) + '-';
   const umaData = (D && Array.isArray(D.Dia))
     ? D.Dia.find(x => x && x.indexOf(alvo) === 4) : null;
-  const ano = umaData ? Number(umaData.slice(0, 4)) : hoje.getFullYear();
+  const ano = (typeof ANO_ATIVO === 'number' && ANO_ATIVO) ? ANO_ATIVO
+            : (umaData ? Number(umaData.slice(0, 4)) : hoje.getFullYear());
   const ultimo = new Date(ano, i + 1, 0).getDate();        // dia 0 do mês seguinte
   const primeiro = ano + '-' + dois(i + 1) + '-01';
   const hojeISO = hoje.toLocaleDateString('sv');            // YYYY-MM-DD local
@@ -1086,7 +1087,7 @@ function vResumo(){
   const cats=groupSum(L,'cat');
   // clientes ativos e novos (1ª compra no período)
   const ativos=new Set(L.filter(r=>r.venda&&r.cn).map(r=>r.cn));
-  const primeira={}; ROWS.forEach(r=>{ if(r.venda&&r.cn){const mi=MESES_ORD.indexOf(r.m); if(primeira[r.cn]===undefined||mi<primeira[r.cn])primeira[r.cn]=mi;} });
+  const primeira={}; anoComAnterior().forEach(r=>{ if(r.venda&&r.cn){const mi=anoIdxMes(r); if(primeira[r.cn]===undefined||mi<primeira[r.cn])primeira[r.cn]=mi;} });
   const msSel=new Set(mesesAtivos()); const minSel=Math.min(...[...msSel].map(m=>MESES_ORD.indexOf(m)));
   const novos=[...ativos].filter(cn=>primeira[cn]>=minSel && msSel.has(MESES_ORD[primeira[cn]])).length;
   // farol: vendedor vê só bolinha; admin vê número
@@ -1134,7 +1135,7 @@ function renderMapa(L){
   const cliUF={}; const cliPrimMes={};
   // 1ª compra global de cada CNPJ (no dataset inteiro), p/ definir "novo no período"
   const primeiraCompra={};
-  ROWS.forEach(r=>{ if(r.venda&&r.cn){ const mi=MESES_ORD.indexOf(r.m); if(primeiraCompra[r.cn]===undefined||mi<primeiraCompra[r.cn]) primeiraCompra[r.cn]=mi; } });
+  anoComAnterior().forEach(r=>{ if(r.venda&&r.cn){ const mi=anoIdxMes(r); if(primeiraCompra[r.cn]===undefined||mi<primeiraCompra[r.cn]) primeiraCompra[r.cn]=mi; } });
   const mesesSel=new Set(mesesAtivos()); const idxSel=[...mesesSel].map(m=>MESES_ORD.indexOf(m));
   const minSel=Math.min(...idxSel);
   L.forEach(r=>{
@@ -1709,12 +1710,13 @@ function cartBalde(cn, ano){
    Montado uma vez, sob demanda, a partir do ROWS inteiro (e nao do linhas()):
    a pergunta e sobre o cliente, nao sobre o recorte do filtro. */
 let CART_ULT_VAL = null;
+window.__anoZerarUltPedido = () => { CART_ULT_VAL = null; };
 function cartIndexarUltimoPedido(){
   if(CART_ULT_VAL) return;
   CART_ULT_VAL = {};
   try{
     const porCn = {};
-    ROWS.forEach(r => {
+    anoTodas().forEach(r => {
       if(!r.venda || !r.cn || !r.d) return;
       const o = porCn[r.cn];
       if(!o || r.d > o.dia) porCn[r.cn] = {dia: r.d, val: r.fat};
@@ -3367,13 +3369,15 @@ function recCelula(o){
 const JANELA_MESES = 4;          // 4 meses ~ 120 dias
 
 let MESES_COMPRA = null;         // cn -> Set de indices de mes com venda
+/* Ao Vivo: o ano anterior entra com indice negativo (dezembro = -1) */
+window.__anoZerarMesesCompra = () => { MESES_COMPRA = null; };
 function indexarCompras(){
   if(MESES_COMPRA) return;
   MESES_COMPRA = {};
-  ROWS.forEach(r => {
+  anoComAnterior().forEach(r => {
     if(!r.venda || !r.cn) return;
-    const i = MESES_ORD.indexOf(r.m);
-    if(i < 0) return;
+    const i = anoIdxMes(r);
+    if(MESES_ORD.indexOf(r.m) < 0) return;
     (MESES_COMPRA[r.cn] = MESES_COMPRA[r.cn] || new Set()).add(i);
   });
 }
@@ -3388,10 +3392,11 @@ function statusNoMes(cn, mRef){
   indexarCompras();
   const s = MESES_COMPRA[cn];
   if(!s) return 'sem histórico';
-  let ult = -1;
+  let ult = -Infinity;
   s.forEach(i => { if(i <= mRef && i > ult) ult = i; });
-  if(ult < 0) return 'sem histórico';          // só comprou depois do mês ref.
-  return (mRef - ult) < JANELA_MESES ? 'Ativo' : 'Inativo';
+  if(ult === -Infinity) return 'sem histórico';          // só comprou depois do mês ref.
+  if((mRef - ult) < JANELA_MESES) return 'Ativo';
+  return ult < 0 ? 'sem histórico' : 'Inativo';
 }
 
 /* AS MESMAS QUATRO FAIXAS DA ABA CARTEIRA, só que medidas em MESES (14/10/2026).
@@ -3411,13 +3416,13 @@ function faixaNoMes(cn, mRef){
   indexarCompras();
   const s = MESES_COMPRA[cn];
   if(!s) return 'semano';
-  let ult = -1;
+  let ult = -Infinity;
   s.forEach(i => { if(i <= mRef && i > ult) ult = i; });
-  if(ult < 0) return 'semano';
+  if(ult === -Infinity) return 'semano';
   const atras = mRef - ult;
   if(atras < MESES_ATIVO) return 'ativo';
   if(atras < JANELA_MESES) return 'atencao';
-  return 'inativo';
+  return ult < 0 ? 'semano' : 'inativo';
 }
 window.faixaNoMes = faixaNoMes;
 
@@ -3791,8 +3796,8 @@ window.verNovosClientes = function(){
   const L = linhas();
   const ativosSet = new Set(L.filter(r => r.venda && r.cn).map(r => r.cn));
   const primeira = {};
-  ROWS.forEach(r => { if(r.venda && r.cn){
-    const mi = MESES_ORD.indexOf(r.m);
+  anoComAnterior().forEach(r => { if(r.venda && r.cn){
+    const mi = anoIdxMes(r);
     if(primeira[r.cn] === undefined || mi < primeira[r.cn]) primeira[r.cn] = mi;
   }});
   const msSel = new Set(mesesAtivos());
@@ -3924,8 +3929,8 @@ function ajustarKpisResumo(){
   // clientes ativos e novos: mesma conta do vResumo original
   const ativos = new Set(L.filter(r => r.venda && r.cn).map(r => r.cn));
   const primeira = {};
-  ROWS.forEach(r => { if(r.venda && r.cn){
-    const mi = MESES_ORD.indexOf(r.m);
+  anoComAnterior().forEach(r => { if(r.venda && r.cn){
+    const mi = anoIdxMes(r);
     if(primeira[r.cn] === undefined || mi < primeira[r.cn]) primeira[r.cn] = mi;
   }});
   const ms = new Set(mesesAtivos());
@@ -4138,7 +4143,8 @@ function vResumoNovo(){
   const anoKpi = (() => {
     const g = (typeof _Z === 'object' && _Z && _Z.META) ? _Z.META.gerado_em : null;
     const a = g ? parseInt(String(g).slice(0,4), 10) : NaN;
-    return isFinite(a) ? a : (new Date()).getFullYear();
+    return (typeof ANO_ATIVO === 'number' && ANO_ATIVO) ? ANO_ATIVO
+         : (isFinite(a) ? a : (new Date()).getFullYear());
   })();
   const kpiHtml =
     '<div class="kpirow kpi-mini" id="kpiClientes" style="margin-top:4px">' +
@@ -4221,8 +4227,8 @@ function vResumoNovo(){
 
   // faturamento, pedidos e novos por vendedor, no periodo
   const primeira = {};
-  ROWS.forEach(r => { if(r.venda && r.cn){
-    const mi = MESES_ORD.indexOf(r.m);
+  anoComAnterior().forEach(r => { if(r.venda && r.cn){
+    const mi = anoIdxMes(r);
     if(primeira[r.cn] === undefined || mi < primeira[r.cn]) primeira[r.cn] = mi;
   }});
   const msSel = new Set(mesesAtivos());
@@ -4392,7 +4398,8 @@ function vResumoNovo(){
   const anoDado = (() => {
     const g = (typeof _Z === 'object' && _Z && _Z.META) ? _Z.META.gerado_em : null;
     const a = g ? parseInt(String(g).slice(0,4), 10) : NaN;
-    return isFinite(a) ? a : (new Date()).getFullYear();
+    return (typeof ANO_ATIVO === 'number' && ANO_ATIVO) ? ANO_ATIVO
+         : (isFinite(a) ? a : (new Date()).getFullYear());
   })();
 
   const tabela =
@@ -11213,6 +11220,10 @@ function metasBlocoDoFiltro(M, meses){
 }
 
 function metasResumoItens(){
+  if(typeof anoFechadoNaTela === 'function' && anoFechadoNaTela())
+    return [{lab: 'Meta do período', val: '<span style="font-size:15px">—</span>',
+             cls: 'metaparcial', sub: 'não há meta de ' + ANO_ATIVO,
+             dica: 'As metas são do ano corrente (' + ANO_BASE + ').'}];
   if(!METAS_D || !METAS_D.vend) return [];
   const A = metasApurar(METAS_D);
   if(A.erro){
@@ -14656,6 +14667,290 @@ const AOVIVO_MAX_IDADE_MIN = 60;   /* mais velho que isto, nao mescla */
 const ANO_ARQ = "ano_ao_vivo.json";
 let AOVIVO_INFO = null, ANO_INFO = null;
 
+/* ==========================================================================
+   EIXO DE ANO - um ano por vez (21/10/2026)
+   ==========================================================================
+   O Portal so conhece o NOME do mes. Em vez de ensinar ano a cada tela, o Ao
+   Vivo guarda as vendas POR ANO e troca a lista inteira (ROWS) quando se
+   escolhe outro ano. Dentro de um ano o nome do mes nao se repete, entao todas
+   as abas continuam certas sem saber que ano e.
+
+   O que olha para tras ("cliente novo", "ativo/inativo") usa anoComAnterior(),
+   que junta o ano anterior com indice de mes negativo (dez = -1, nov = -2...).
+   Essas contas foram trocadas no texto do Portal pelo gerador - ver TROCAS_ANO
+   em gerar_portal_novo.py. Sem ano anterior carregado, tudo da o mesmo de
+   antes. */
+let ANO_ATIVO = null;          /* o ano que a tela mostra */
+const ANOS_ROWS = {};          /* ano -> as linhas daquele ano */
+const ANOS_MESES = {};         /* ano -> a lista MESES daquele ano */
+let _ANO_ANT_SRC = null, _ANO_ANT_SET = null, _ANO_JUNTO = null;
+
+function anoDasLinhas(L){
+  for(let i = 0; i < (L || []).length; i++){
+    const d = L[i] && L[i].d;
+    if(d && /^\d{4}-/.test(d)) return +d.slice(0, 4);
+  }
+  return null;
+}
+/* as linhas do ano anterior ao ativo, e um Set delas para anoIdxMes */
+function _anoAnterior(){
+  const prev = ANO_ATIVO !== null ? ANOS_ROWS[ANO_ATIVO - 1] : null;
+  if(!prev || prev === ROWS) return null;
+  if(prev !== _ANO_ANT_SRC){
+    _ANO_ANT_SRC = prev; _ANO_ANT_SET = new Set(prev); _ANO_JUNTO = null;
+  }
+  return prev;
+}
+/* o ano ativo com o anterior na frente. Sem anterior: o proprio ROWS. */
+function anoComAnterior(){
+  const prev = _anoAnterior();
+  if(!prev) return ROWS;
+  if(!_ANO_JUNTO || _ANO_JUNTO.rows !== ROWS)
+    _ANO_JUNTO = {rows: ROWS, todas: prev.concat(ROWS)};
+  return _ANO_JUNTO.todas;
+}
+/* o indice do mes, com o ano anterior negativo. Mes desconhecido = -1, igual
+   ao MESES_ORD.indexOf que ele substitui. */
+function anoIdxMes(r){
+  const i = MESES_ORD.indexOf(r.m);
+  if(i < 0) return i;
+  return (_anoAnterior() && _ANO_ANT_SET.has(r)) ? i - 12 : i;
+}
+/* todos os anos carregados: para o que e estado de AGORA (ultimo pedido) */
+function anoTodas(){
+  const anos = Object.keys(ANOS_ROWS).map(Number).sort();
+  if(anos.length < 2) return ROWS;
+  let L = [];
+  anos.forEach(a => { L = L.concat(a === ANO_ATIVO ? ROWS : ANOS_ROWS[a]); });
+  return L;
+}
+function anoZerarCaches(){
+  try{ if(window.__anoZerarMesesCompra) window.__anoZerarMesesCompra(); }catch(e){}
+  try{ if(window.__anoZerarUltPedido) window.__anoZerarUltPedido(); }catch(e){}
+  _ANO_JUNTO = null;
+}
+/* Chamado depois que a base e o dia de hoje entram. O _loadData reconstroi o
+   ROWS do zero a cada recarga, entao se a tela estiver noutro ano, volta para
+   ele em vez de mostrar o ano da base com o filtro dizendo outro. */
+let ANO_BASE = null;           /* o ano corrente: o da base que se regera todo dia */
+function anoRegistrar(){
+  /* o ano vem do PERIODO da base (em 1o de janeiro ela nao tem linha nenhuma
+     para dizer o ano); sem base do espelho, das linhas; por ultimo, o relogio */
+  const a = (ANO_INFO && ANO_INFO.ligado && ANO_INFO.ano) || anoDasLinhas(ROWS) ||
+            new Date().getFullYear();
+  ANO_BASE = a;
+  ANOS_ROWS[a] = ROWS;
+  ANOS_MESES[a] = (MESES || []).slice();
+  if(ANO_ATIVO === null) ANO_ATIVO = a;
+  if(ANO_ATIVO !== a && ANOS_ROWS[ANO_ATIVO]){
+    ROWS = ANOS_ROWS[ANO_ATIVO];
+    MESES = ANOS_MESES[ANO_ATIVO].slice();
+  }
+  anoZerarCaches();
+  anoPintarSeletor();
+  anoCarregarFechados();
+}
+
+/* ANOS FECHADOS: um arquivo por ano, gerado uma vez
+   (python gerar_ano_portal_novo.py --ano 2025). Baixados em SEGUNDO PLANO
+   depois que o Portal abre - a abertura nao espera por eles - e SEMPRE, nao so
+   quando alguem escolhe o ano: "cliente novo" e "ativo/inativo" de 2026 olham
+   o ano anterior, e esses numeros nao podem depender de alguem ter clicado em
+   2025 antes. Baixado uma vez por sessao; uma recarga dos dados reaproveita. */
+/* Todo ano de ANO_PRIMEIRO ate o anterior ao da base. Era [2025] fixo; em
+   2027 o 2026 entra sozinho, assim que o ano_2026.json existir. */
+const ANO_PRIMEIRO = 2025;
+let ANOS_FECHADOS = null;
+const _ANO_FECHADO_CACHE = {};       /* ano -> linhas ja prontas */
+let _ANO_FECHADO_RODANDO = null;
+function anoToparDims(L){
+  const topar = (lista, valores) => {
+    if(!Array.isArray(lista)) return;
+    const tem = new Set(lista);
+    valores.forEach(v => { if(v && !tem.has(v)){ lista.push(v); tem.add(v); } });
+  };
+  const col = (f) => { const s = new Set(); L.forEach(l => s.add(l[f])); return s; };
+  topar(D.Vendedor, col('v'));       topar(D.Modelo, col('mo'));
+  topar(D.Mes, col('m'));            topar(D.CanalSeg, col('ca'));
+  topar(D.Categoria, col('cat'));    topar(D.Regiao, col('reg'));
+  topar(D.Estado, col('uf'));        topar(D.CNPJ, col('cn'));
+  topar(D.SKU, col('sk'));           topar(D.Dia, col('d'));
+  topar(D.CategoriaOMIE, col('co'));
+  L.forEach(l => { if(l.cn && l.cli && !CNPJ_CLI[l.cn]) CNPJ_CLI[l.cn] = l.cli; });
+}
+/* O FRETE do ano fechado e refeito aqui, na abertura, com o percentual REAL
+   de 2026 por estado (CALC.frete_estado, recalculado pela rodada diaria).
+   Assim ele acompanha a media de 2026 conforme entram fretes novos - pedido do
+   Igor em 21/10/2026. Mesmo sinal do gerador: venda +, devolucao -, bonif 0. */
+function anoRefazerFrete(L){
+  const pct = (typeof CALC === 'object' && CALC && CALC.frete_estado) || null;
+  if(!pct) return false;
+  /* so a linha de frete ESTIMADO (fe = 1; arquivo sem a marca conta como
+     estimado). O frete real de um ano que ja teve V8 - 2026 - fica. */
+  L.forEach(l => {
+    if(l.fe === 0) return;
+    const mult = l.tipo === 1 ? 1 : (l.tipo === 0 ? -1 : 0);
+    l.fr = Math.abs(l.fat || 0) * (+pct[l.uf] || 0) * mult;
+  });
+  return true;
+}
+let ANO_FECHADO_INFO = {};
+function anoCarregarFechados(){
+  if(_ANO_FECHADO_RODANDO) return _ANO_FECHADO_RODANDO;
+  _ANO_FECHADO_RODANDO = (async () => {
+    let mudou = false;
+    ANOS_FECHADOS = [];
+    for(let a = ANO_PRIMEIRO; a < (ANO_BASE || ANO_PRIMEIRO); a++) ANOS_FECHADOS.push(a);
+    for(const ano of ANOS_FECHADOS){
+      try{
+        if(ANOS_ROWS[ano]) continue;
+        let L = _ANO_FECHADO_CACHE[ano];
+        if(!L){
+          const d = await aovivoBaixarArquivo('ano_' + ano + '.json');
+          if(!d || !d.LINHAS){
+            ANO_FECHADO_INFO[ano] = 'arquivo ainda nao publicado'; continue;
+          }
+          L = await _unz(d.LINHAS);
+          if(!Array.isArray(L) || !L.length){
+            ANO_FECHADO_INFO[ano] = 'arquivo veio vazio'; continue;
+          }
+          anoRefazerFrete(L);
+          _ANO_FECHADO_CACHE[ano] = L;
+        }
+        anoToparDims(L);
+        ANOS_ROWS[ano] = L;
+        const tem = new Set(L.map(l => l.m));
+        ANOS_MESES[ano] = MESES_ORD.filter(m => tem.has(m));
+        ANO_FECHADO_INFO[ano] = 'ok: ' + L.length + ' linhas';
+        console.log('ano ' + ano + ': ' + L.length + ' linhas');
+        mudou = true;
+      }catch(e){
+        ANO_FECHADO_INFO[ano] = 'falhou: ' + (e.message || e);
+        console.error('ano ' + ano + ':', e);
+      }
+    }
+    if(mudou){
+      anoZerarCaches();
+      anoPintarSeletor();
+      /* "novos" e "ativos" do ano da tela podem ter mudado */
+      try{ if(typeof refresh === 'function' && SESSION && SESSION.user) refresh(); }catch(e){}
+    }
+  })().finally(() => { _ANO_FECHADO_RODANDO = null; });
+  return _ANO_FECHADO_RODANDO;
+}
+
+/* AS ABAS QUE SAO "AGORA". Carteira, metas, CRM, SLA, calculadora,
+   orcamento, degustacoes e acessos descrevem o estado de HOJE (preco de hoje,
+   meta deste ano, lead aberto, dias desde o ultimo pedido). Num ano fechado
+   elas mostrariam o numero de agora como se fosse daquele ano - entao, fora do
+   ano corrente, dizem isso e oferecem voltar. */
+const ANO_ABAS_DE_AGORA = ['metas', 'carteira', 'crm', 'calc', 'sla',
+                           'degustacoes', 'acessos', 'orcamento'];
+/* Como e o frete de um ano fechado, em palavras. 2025 nunca teve V8: e todo
+   estimado. 2026 fechado tem o frete real do V8 em ~96% das linhas - dizer
+   "estimado" para ele seria mentira. */
+function anoFreteTexto(ano){
+  const L = ANOS_ROWS[ano] || [];
+  const reais = L.reduce((n, l) => n + (l.fe === 0 ? 1 : 0), 0);
+  return (L.length && reais / L.length > 0.5)
+    ? 'o frete é o real do V8 (onde não havia, estimado pela média real de ' +
+      ANO_BASE + ' de cada estado)'
+    : 'o frete é estimado pela média real de ' + ANO_BASE + ' de cada estado';
+}
+function anoFechadoNaTela(){
+  return ANO_ATIVO !== null && ANO_BASE !== null && ANO_ATIVO !== ANO_BASE;
+}
+function anoEnvolverAbas(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  VIEWS.forEach(v => {
+    if(ANO_ABAS_DE_AGORA.indexOf(v.id) < 0 || !v.fn || v.fn.__anoEnvolto) return;
+    const original = v.fn;
+    const envolto = function(){
+      if(!anoFechadoNaTela()) return original.apply(this, arguments);
+      const box = el('v-' + v.id);
+      if(box) box.innerHTML =
+        '<div class="card"><div style="padding:28px 24px;max-width:640px">' +
+        '<h3 style="margin:0 0 8px">' + v.lab + ' mostra a situação de hoje</h3>' +
+        '<p style="margin:0 0 16px;color:var(--muted)">Esta aba não tem versão ' +
+        'de ' + ANO_ATIVO + ': ela usa a carteira, as metas, os preços e os ' +
+        'registros de agora. Para vê-la, volte para ' + ANO_BASE + '.</p>' +
+        '<button class="btn-y" onclick="anoTrocar(' + ANO_BASE + ')">Voltar para ' +
+        ANO_BASE + '</button></div></div>';
+    };
+    envolto.__anoEnvolto = true;
+    v.fn = envolto;
+  });
+}
+
+/* Troca o ano da tela inteira. Devolve false se o ano nao esta carregado. */
+function anoTrocar(ano){
+  ano = +ano;
+  if(!ANOS_ROWS[ano]) return false;
+  if(ano === ANO_ATIVO) return true;
+  ANO_ATIVO = ano;
+  ROWS = ANOS_ROWS[ano];
+  MESES = (ANOS_MESES[ano] || MESES_ORD.filter(m => ROWS.some(r => r.m === m))).slice();
+  anoZerarCaches();
+  /* os seletores de mes, como o buildFilters monta - sem religar ouvintes,
+     que ja estao ligados desde o login */
+  try{
+    const opt = MESES.map(m => '<option>' + m + '</option>').join('');
+    ['mesSel', 'mesDe', 'mesAte'].forEach(id => { const s = el(id); if(s) s.innerHTML = opt; });
+    const ult = MESES[MESES.length - 1], pri = MESES[0];
+    if(el('mesSel')) el('mesSel').value = ult;
+    if(el('mesDe')) el('mesDe').value = pri;
+    if(el('mesAte')) el('mesAte').value = ult;
+    FILTER.mes = ult; FILTER.de = pri; FILTER.ate = ult;
+    if(typeof diaPadrao === 'function') diaPadrao();
+  }catch(e){ console.error('ano: seletores de mes', e); }
+  /* Vendedor, modelo, regiao, UF e canal: as listas saem do ano. Mesma regra
+     do buildFilters (admin ve tudo; os outros, so a propria visao). Os chips
+     leem estes <select> e se repintam no refresh. O supervisor tem a lista
+     propria, refeita no refresh pelo prepararFiltrosSupervisor. */
+  try{
+    const univ = (SESSION && SESSION.isAdmin) ? ROWS
+               : ROWS.filter(r => !VEND_VIS || !VEND_VIS.size || VEND_VIS.has(r.v));
+    [['admVend', 'v'], ['admMod', 'mo'], ['admReg', 'reg'],
+     ['admUf', 'uf'], ['admCanal', 'ca']].forEach(([id, f]) => {
+      const s = el(id);
+      if(!s || !s.options.length) return;        /* nunca foi preenchido */
+      const ok = (id === 'admVend' || id === 'admMod') ? (x => true) : Boolean;
+      const vals = [...new Set(univ.map(r => r[f]))].filter(ok).sort();
+      s.innerHTML = ['(todos)', ...vals].map(v => '<option>' + v + '</option>').join('');
+    });
+  }catch(e){ console.error('ano: listas da barra', e); }
+  anoPintarSeletor();
+  anoEnvolverAbas();
+  try{ if(typeof refresh === 'function' && SESSION && SESSION.user) refresh(); }catch(e){}
+  return true;
+}
+window.anoTrocar = anoTrocar;
+window.anoComAnterior = anoComAnterior;
+
+/* O SELETOR DE ANO na barra de filtros, logo depois de "Visao". Mostra os anos
+   carregados, do mais novo para o mais velho. */
+function anoPintarSeletor(){
+  try{
+    let g = el('anoGroup');
+    if(!g){
+      const visao = el('periodSeg') && el('periodSeg').closest('.fgroup');
+      if(!visao) return;
+      visao.insertAdjacentHTML('afterend',
+        '<div class="fgroup" id="anoGroup"><label>Ano</label>' +
+        '<select id="anoSel"></select></div>');
+      g = el('anoGroup');
+      el('anoSel').addEventListener('change', e => {
+        if(!anoTrocar(e.target.value)) anoPintarSeletor();
+      });
+    }
+    const anos = Object.keys(ANOS_ROWS).map(Number).sort((a, b) => b - a);
+    const s = el('anoSel');
+    const html = anos.map(a => '<option value="' + a + '">' + a + '</option>').join('');
+    if(s.innerHTML !== html) s.innerHTML = html;
+    if(ANO_ATIVO !== null) s.value = String(ANO_ATIVO);
+  }catch(e){ console.error('ano: seletor', e); }
+}
+
 /* Baixa um arquivo da mesma pasta do SharePoint de onde vem o faixa.json.
    E o faixaBaixar() do Portal, parametrizado pelo nome - nao da para reusar
    aquele porque ele fixa o FAIXA_ARQ dentro. */
@@ -14708,7 +15003,13 @@ async function anoSubstituirBase(){
       return;
     }
     const linhas = await _unz(d.LINHAS);
-    if(!Array.isArray(linhas) || !linhas.length){
+    /* VAZIA E CERTO no comeco do ano: em 1o de janeiro a base vai de 01/01 a
+       01/01 (exclusivo) e nao tem venda nenhuma - o dia de hoje vem da faixa.
+       So aceito vazio quando o periodo e curto; vazia no meio do ano e falha. */
+    const ini = (d.periodo || [])[0] || '';
+    const curto = ini && fim &&
+      (new Date(fim + 'T00:00:00') - new Date(ini + 'T00:00:00')) <= 15 * 86400000;
+    if(!Array.isArray(linhas) || (!linhas.length && !curto)){
       ANO_INFO = {ligado: false, motivo: 'arquivo do ano veio vazio'};
       return;
     }
@@ -14731,12 +15032,19 @@ async function anoSubstituirBase(){
     topar(D.SKU, col('sk'));           topar(D.Dia, col('d'));
     topar(D.CategoriaOMIE, col('co'));
     base.forEach(l => { if(l.cn && l.cli) CNPJ_CLI[l.cn] = l.cli; });
-    MESES = MESES_ORD.filter(m => D.Mes.includes(m));
+    /* OS MESES SAEM DA BASE, nao das dimensoes do V8. Em janeiro de 2027, se o
+       V8 ainda estiver em 2026, D.Mes teria de janeiro a dezembro e o filtro
+       abriria em "Dezembro" de um ano que so tem dias de janeiro. O mes de
+       hoje entra sempre, mesmo sem venda ainda. Em 2026 da a mesma lista. */
+    const mesHoje = MESES_ORD[new Date().getMonth()];
+    const temMes = new Set(base.map(l => l.m));
+    if(ini.slice(0, 4) === hoje.slice(0, 4)) temMes.add(mesHoje);
+    MESES = MESES_ORD.filter(m => temMes.has(m));
 
     const antes = ROWS.length;
     ROWS = base;
     ANO_INFO = {ligado: true, linhas: base.length, antes: antes, hora: ger,
-                periodo: d.periodo};
+                periodo: d.periodo, ano: +ini.slice(0, 4) || null};
     console.log('base do ano: ' + base.length + ' linhas do espelho (o V8 tinha '
                 + antes + ')');
   }catch(e){
@@ -14797,6 +15105,7 @@ function aovivoAplicar(){
     try{
       await anoSubstituirBase();   /* a base: 2026 ate ontem, pelo espelho */
       await aovivoMesclar();       /* e por cima, o dia de hoje */
+      anoRegistrar();              /* guarda como o ano da base */
     }finally{
       AOVIVO_RODANDO = null;
       AOVIVO_JA_RODOU = true;
@@ -14896,6 +15205,17 @@ function aovivoAplicar(){
             texto = base + hoje + ' Frete e imposto do dia são estimativa; o ' +
                     'fechamento oficial continua no Portal de produção.';
           }
+          /* num ano fechado a tarja fala DELE, e diz as duas estimativas que
+             quem compara com o fechamento antigo precisa saber */
+          if(typeof anoFechadoNaTela === 'function' && anoFechadoNaTela()){
+            const n = (ANOS_ROWS[ANO_ATIVO] || []).length;
+            const fr = anoFreteTexto(ANO_ATIVO);
+            texto = 'Você está vendo <b>' + ANO_ATIVO + '</b>: ' +
+                    n.toLocaleString('pt-BR') + ' linhas do banco do OMIE, ' +
+                    'sem passar pela macro. ' + fr.charAt(0).toUpperCase() + fr.slice(1) +
+                    ', e o custo é o da tabela de hoje. Vendedor e canal seguem a ' +
+                    'carteira de hoje.';
+          }
           const html = '<b>Versão de teste.</b> ' + texto;
           let nota = document.getElementById('aovivoNota');
           if(!nota){
@@ -14912,6 +15232,472 @@ function aovivoAplicar(){
     document.addEventListener('DOMContentLoaded', () => setTimeout(pinta, 800));
   else setTimeout(pinta, 800);
   setInterval(pinta, 4000);
+})();
+</script>
+
+<script>
+/* ==========================================================================
+   ABA COMPARATIVOS (21/10/2026, pedido do Igor) - so no Ao Vivo
+   ==========================================================================
+   Dois periodos lado a lado, cada um com ano e intervalo de meses: o caso que
+   ele deu foi mar-set/2025 x mar-set/2026. Padrao ao abrir: B = de marco ate o
+   ultimo mes fechado do ano corrente; A = os mesmos meses do ano anterior.
+
+   AS LINHAS SAO AS DO PROPRIO PORTAL. cmpLinhas() aponta ROWS/MESES/FILTER
+   para o ano e os meses pedidos, chama o linhas() de sempre e desfaz tudo.
+   Assim permissao (vendedor ve so a carteira dele) e os filtros da barra
+   (vendedor, modelo, regiao, UF, canal) valem exatamente como no resto. E os
+   numeros saem do mesmo dre() do DRE - nada de segunda conta.
+   ========================================================================== */
+const CMP = {aAno: null, aIni: null, aFim: null, bAno: null, bIni: null, bFim: null,
+             quebra: 'ca', aberto: null, todos: false};
+const CMP_QUEBRAS = [['ca', 'Canal'], ['cat', 'Categoria'], ['v', 'Vendedor'],
+                     ['uf', 'UF'], ['cn', 'Cliente']];
+let CMP_CHART = null;
+
+function cmpMesesDe(ano){
+  return (ANOS_MESES[ano] || []).slice();
+}
+/* o ultimo mes FECHADO do ano: no ano corrente, o mes de hoje ainda esta em
+   aberto e comparar um mes pela metade com um mes inteiro mente */
+function cmpUltimoFechado(ano){
+  const ms = cmpMesesDe(ano);
+  const hoje = new Date();
+  if(ano === hoje.getFullYear()){
+    const atual = MESES_ORD[hoje.getMonth()];
+    const i = ms.indexOf(atual);
+    if(i > 0) return ms[i - 1];
+  }
+  return ms[ms.length - 1];
+}
+function cmpPadrao(){
+  const anos = Object.keys(ANOS_ROWS).map(Number).sort();
+  let b = ANO_BASE || anos[anos.length - 1];
+  /* Em janeiro o ano novo nao tem mes fechado: compararia jan/27 pela metade
+     com jan/26 inteiro (-100% no dia 1o). Ai o padrao sao os dois ultimos anos
+     completos - mar-dez/26 x mar-dez/25. */
+  const msB0 = cmpMesesDe(b);
+  if(ANOS_ROWS[b - 1] && b === new Date().getFullYear() &&
+     msB0.indexOf(MESES_ORD[new Date().getMonth()]) <= 0) b = b - 1;
+  const a = ANOS_ROWS[b - 1] ? b - 1 : b;
+  const msA = cmpMesesDe(a), msB = cmpMesesDe(b);
+  /* comeca no primeiro mes que existe nos DOIS anos (2025 so comeca em marco) */
+  const ini = MESES_ORD.find(m => msA.indexOf(m) >= 0 && msB.indexOf(m) >= 0) || msB[0];
+  const fim = cmpUltimoFechado(b);
+  Object.assign(CMP, {aAno: a, aIni: ini, aFim: fim, bAno: b, bIni: ini, bFim: fim});
+}
+function cmpIntervalo(ano, ini, fim){
+  const ms = cmpMesesDe(ano);
+  let i1 = ms.indexOf(ini), i2 = ms.indexOf(fim);
+  if(i1 < 0) i1 = 0;
+  if(i2 < 0) i2 = ms.length - 1;
+  return ms.slice(Math.min(i1, i2), Math.max(i1, i2) + 1);
+}
+function cmpLinhas(ano, ini, fim){
+  const salvo = {ROWS: ROWS, MESES: MESES, period: FILTER.period, de: FILTER.de,
+                 ate: FILTER.ate, diaDe: FILTER.diaDe, diaAte: FILTER.diaAte};
+  try{
+    ROWS = ANOS_ROWS[ano] || [];
+    MESES = cmpMesesDe(ano);
+    const ms = cmpIntervalo(ano, ini, fim);
+    FILTER.period = 'periodo'; FILTER.de = ms[0]; FILTER.ate = ms[ms.length - 1];
+    FILTER.diaDe = null; FILTER.diaAte = null;
+    return ms.length ? linhas() : [];
+  }finally{
+    ROWS = salvo.ROWS; MESES = salvo.MESES; FILTER.period = salvo.period;
+    FILTER.de = salvo.de; FILTER.ate = salvo.ate;
+    FILTER.diaDe = salvo.diaDe; FILTER.diaAte = salvo.diaAte;
+  }
+}
+/* cliente novo = primeira compra DENTRO do periodo, olhando o ano anterior
+   tambem (mesma regra do Resumo depois do eixo de ano) */
+function cmpNovos(ano, ini, L){
+  const antes = new Set();
+  const iIni = MESES_ORD.indexOf(ini);
+  (ANOS_ROWS[ano - 1] || []).forEach(r => { if(r.venda && r.cn) antes.add(r.cn); });
+  (ANOS_ROWS[ano] || []).forEach(r => {
+    if(r.venda && r.cn && MESES_ORD.indexOf(r.m) < iIni) antes.add(r.cn);
+  });
+  /* Sem NENHUMA venda antes do periodo (mar/2025 e o comeco do banco) todo
+     cliente pareceria novo - 1.408 de 1.408. Nao da para medir: null. */
+  if(!antes.size) return null;
+  const no = new Set();
+  L.forEach(r => { if(r.venda && r.cn && !antes.has(r.cn)) no.add(r.cn); });
+  return no.size;
+}
+function cmpMedir(ano, ini, fim){
+  const L = cmpLinhas(ano, ini, fim);
+  const d = dre(L);
+  d.ativos = new Set(L.filter(r => r.venda && r.cn).map(r => r.cn)).size;
+  d.novos = cmpNovos(ano, ini, L);
+  d.L = L;
+  return d;
+}
+function cmpRotulo(ano, ini, fim){
+  const ms = cmpIntervalo(ano, ini, fim);
+  const c = m => m.slice(0, 3).toLowerCase();
+  return ms.length === 1 ? c(ms[0]) + '/' + String(ano).slice(2)
+       : c(ms[0]) + '–' + c(ms[ms.length - 1]) + '/' + String(ano).slice(2);
+}
+function cmpVar(a, b){ return a ? (b - a) / Math.abs(a) : null; }
+function cmpVarTxt(a, b, tipo){
+  if(tipo === 'pp'){
+    const d = (b - a) * 100;
+    return {t: (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(1).replace('.', ',') + ' p.p.', s: d};
+  }
+  if(a === null || a === undefined || b === null || b === undefined) return {t: '—', s: 0};
+  const v = cmpVar(a, b);
+  if(v === null) return {t: '—', s: 0};
+  return {t: (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(1).replace('.', ',') + '%', s: v};
+}
+function cmpCor(s){ return s > 0 ? 'var(--pos)' : (s < 0 ? 'var(--neg)' : 'var(--muted)'); }
+
+/* os cartoes: [rotulo, campo, formato, quem ve] */
+function cmpCartoes(){
+  const c = [['Faturamento líquido', 'fatLiq', 'brl', true]];
+  c.push(['Margem bruta', 'margem', 'pp', 'farol']);
+  c.push(['Rentabilidade', 'rent', 'pp', 'farol']);
+  if(veLucroFinal()) c.push(['Lucro final', 'lucro', 'brl', true]);
+  c.push(['Clientes ativos', 'ativos', 'n', true], ['Ticket médio', 'ticket', 'brl', true],
+         ['Pedidos', 'nfs', 'n', true], ['Novos clientes', 'novos', 'n', true]);
+  return c;
+}
+function cmpFmt(v, f){
+  if(v === null || v === undefined) return '—';
+  return f === 'brl' ? brl(v) : f === 'pp' ? pct(v) : n0(v);
+}
+
+/* agrupa faturamento liquido (venda + devolucao) pela chave da quebra */
+function cmpAgrupar(L, campo){
+  const m = {};
+  L.forEach(r => {
+    if(!(r.venda || r.tipo === 0)) return;
+    const k = r[campo] || '(sem)';
+    m[k] = (m[k] || 0) + (r.fat || 0);
+  });
+  return m;
+}
+function cmpNome(campo, k){ return campo === 'cn' ? cliName(k) : k; }
+function cmpQuebraLinhas(A, B, campo){
+  const a = cmpAgrupar(A.L, campo), b = cmpAgrupar(B.L, campo);
+  const ks = [...new Set([...Object.keys(a), ...Object.keys(b)])];
+  return ks.map(k => ({k: k, nome: cmpNome(campo, k), a: a[k] || 0, b: b[k] || 0}))
+           .map(x => Object.assign(x, {d: x.b - x.a, p: cmpVar(x.a, x.b)}))
+           .sort((x, y) => y.b - x.b || y.a - x.a);
+}
+/* quem mais subiu e mais caiu DENTRO de uma linha da quebra */
+function cmpClientesDe(A, B, campo, k){
+  const f = r => (r[campo] || '(sem)') === k;
+  const ln = cmpQuebraLinhas({L: A.L.filter(f)}, {L: B.L.filter(f)}, 'cn');
+  const sub = ln.slice().sort((x, y) => y.d - x.d).filter(x => x.d > 0).slice(0, 5);
+  const cai = ln.slice().sort((x, y) => x.d - y.d).filter(x => x.d < 0).slice(0, 5);
+  return {sub, cai};
+}
+function cmpMesAMes(A, B){
+  const ma = cmpIntervalo(CMP.aAno, CMP.aIni, CMP.aFim);
+  const mb = cmpIntervalo(CMP.bAno, CMP.bIni, CMP.bFim);
+  const n = Math.max(ma.length, mb.length);
+  const soma = (L, m) => L.reduce((s, r) => s + ((r.m === m && (r.venda || r.tipo === 0)) ? r.fat : 0), 0);
+  const out = [];
+  for(let i = 0; i < n; i++){
+    const xa = ma[i], xb = mb[i];
+    const ya = String(CMP.aAno).slice(2), yb = String(CMP.bAno).slice(2);
+    const rot = (xa && xb && xa === xb) ? xa.slice(0, 3)
+              : ((xa ? xa.slice(0, 3) + '/' + ya : '—') + ' × ' + (xb ? xb.slice(0, 3) + '/' + yb : '—'));
+    const a = xa ? soma(A.L, xa) : 0, b = xb ? soma(B.L, xb) : 0;
+    out.push({rot: rot, ma: xa, mb: xb, a: a, b: b, p: cmpVar(a, b)});
+  }
+  return out;
+}
+
+function cmpSelect(id, opcoes, valor){
+  return '<select id="' + id + '" class="inp" style="padding:6px 8px">' +
+    opcoes.map(o => '<option' + (String(o) === String(valor) ? ' selected' : '') + '>' + o +
+                    '</option>').join('') + '</select>';
+}
+function cmpBarraPeriodo(lado){
+  const ano = CMP[lado + 'Ano'];
+  const anos = Object.keys(ANOS_ROWS).map(Number).sort((x, y) => y - x);
+  const ms = cmpMesesDe(ano);
+  return '<div style="display:flex;gap:7px;align-items:center;background:var(--grey);' +
+    'border-radius:10px;padding:8px 12px">' +
+    '<b style="color:var(--navy)">Período ' + lado.toUpperCase() + '</b>' +
+    cmpSelect('cmp_' + lado + 'Ano', anos, ano) +
+    cmpSelect('cmp_' + lado + 'Ini', ms, CMP[lado + 'Ini']) +
+    '<span class="hint">até</span>' +
+    cmpSelect('cmp_' + lado + 'Fim', ms, CMP[lado + 'Fim']) + '</div>';
+}
+
+function vComparativos(){
+  const box = el('v-comparativos');
+  if(!box) return;
+  if(CMP.bAno === null || !ANOS_ROWS[CMP.bAno] || !ANOS_ROWS[CMP.aAno]) cmpPadrao();
+  const A = cmpMedir(CMP.aAno, CMP.aIni, CMP.aFim);
+  const B = cmpMedir(CMP.bAno, CMP.bIni, CMP.bFim);
+  const rA = cmpRotulo(CMP.aAno, CMP.aIni, CMP.aFim), rB = cmpRotulo(CMP.bAno, CMP.bIni, CMP.bFim);
+  window.__CMP_ULTIMO = {A: A, B: B, rA: rA, rB: rB};
+
+  const cartoes = cmpCartoes().map(([lab, k, f, quem]) => {
+    const vr = cmpVarTxt(A[k], B[k], f === 'pp' ? 'pp' : '');
+    const escondido = quem === 'farol' && !verNumeroRent();
+    const val = escondido ? farol(B[k], false) : cmpFmt(B[k], f);
+    let sub = escondido ? ('A: ' + farol(A[k], false)) : ('A: ' + cmpFmt(A[k], f));
+    if(k === 'novos' && (A[k] === null || B[k] === null))
+      sub += '<br>sem venda antes do período para comparar';
+    return '<div class="kpi"><div class="lab">' + lab + '</div><div class="val">' + val +
+      '</div><div class="sub">' + sub + '</div>' +
+      ((escondido || vr.t === '—') ? '' : '<div style="font-weight:800;margin-top:3px;color:' + cmpCor(vr.s) + '">' +
+       vr.t + '</div>') + '</div>';
+  }).join('');
+
+  /* o DRE lado a lado, com as MESMAS linhas e a mesma permissao do DRE */
+  const dreLinhas = dreRowsFor().map(([lab, key, f, flag]) => {
+    const sens = flag === 's', bold = flag === 'b';
+    const pctLinha = f === 'pct';
+    const vr = pctLinha ? cmpVarTxt(A[key], B[key], 'pp') : cmpVarTxt(A[key], B[key], '');
+    const farolado = DRE_PCT_FAROL.indexOf(key) >= 0 && !verNumeroRent();
+    const dif = pctLinha ? '' : brl((B[key] || 0) - (A[key] || 0));
+    return '<tr class="' + (bold ? 'tot' : '') + '"><td class="rowlab">' + lab + (sens ? SENS : '') +
+      '</td><td class="mono">' + fmtCell(A[key], f, key) + '</td><td class="mono">' +
+      fmtCell(B[key], f, key) + '</td><td class="mono">' + (farolado ? '' : dif) +
+      '</td><td class="mono" style="color:' + (farolado ? 'inherit' : cmpCor(vr.s)) + '">' +
+      (farolado ? '' : vr.t) + '</td></tr>';
+  }).join('');
+
+  const mam = cmpMesAMes(A, B);
+  const mamLinhas = mam.map(x => '<tr><td>' + x.rot + '</td><td class="mono">' + brl(x.a) +
+    '</td><td class="mono">' + brl(x.b) + '</td><td class="mono">' + brl(x.b - x.a) +
+    '</td><td class="mono" style="color:' + cmpCor(x.p || 0) + '">' +
+    cmpVarTxt(x.a, x.b, '').t + '</td></tr>').join('');
+
+  const campo = CMP.quebra;
+  const nomeQ = (CMP_QUEBRAS.find(q => q[0] === campo) || [0, ''])[1];
+  const ql = cmpQuebraLinhas(A, B, campo);
+  const mostra = CMP.todos ? ql : ql.slice(0, 25);
+  const qLinhas = mostra.map(x => {
+    let det = '';
+    if(campo !== 'cn' && CMP.aberto === x.k){
+      const c = cmpClientesDe(A, B, campo, x.k);
+      const lista = (arr, tit) => '<div style="flex:1;min-width:260px"><b>' + tit + '</b>' +
+        (arr.length ? arr.map(y => '<div style="display:flex;justify-content:space-between;' +
+          'gap:10px;padding:2px 0"><span>' + y.nome + '</span><span class="mono" style="color:' +
+          cmpCor(y.d) + '">' + brl(y.d) + '</span></div>').join('')
+          : '<div class="hint">ninguém</div>') + '</div>';
+      det = '<tr class="cmp-det"><td colspan="5" style="background:#F6F8FD;padding:10px 14px">' +
+        '<div style="display:flex;gap:24px;flex-wrap:wrap">' +
+        lista(c.sub, 'Mais subiram') + lista(c.cai, 'Mais caíram') + '</div></td></tr>';
+    }
+    return '<tr data-cmpk="' + String(x.k).replace(/"/g, '&quot;') + '" style="cursor:' +
+      (campo === 'cn' ? 'default' : 'pointer') + '"><td>' + x.nome +
+      (campo !== 'cn' ? (CMP.aberto === x.k ? ' ▾' : ' ▸') : '') + '</td><td class="mono">' +
+      brl(x.a) + '</td><td class="mono">' + brl(x.b) + '</td><td class="mono" style="color:' +
+      cmpCor(x.d) + '">' + brl(x.d) + '</td><td class="mono" style="color:' + cmpCor(x.p || 0) +
+      '">' + cmpVarTxt(x.a, x.b, '').t + '</td></tr>' + det;
+  }).join('');
+
+  const cab = (c1) => '<thead><tr><th>' + c1 + '</th><th style="text-align:right">A · ' + rA +
+    '</th><th style="text-align:right">B · ' + rB + '</th><th style="text-align:right">Diferença' +
+    '</th><th style="text-align:right">%</th></tr></thead>';
+  const tem2025 = [CMP.aAno, CMP.bAno].some(a => a !== ANO_BASE);
+
+  box.innerHTML =
+    '<div class="card"><div style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px;' +
+    'align-items:center">' + cmpBarraPeriodo('a') + '<b style="color:var(--muted)">×</b>' +
+    cmpBarraPeriodo('b') +
+    '<button type="button" class="inp" id="cmp_anoAnt" style="cursor:pointer;font-weight:700;' +
+    'color:var(--sky);background:var(--card)">mesmo período do ano anterior</button>' +
+    '<button type="button" class="btn-y" id="cmp_excel" style="margin-left:auto">Baixar Excel</button>' +
+    '</div><div class="hint" style="padding:0 18px 12px">Vendedor, modelo, região, UF e canal ' +
+    'da barra de cima valem para os dois lados. Mês e ano da barra não: aqui quem manda são ' +
+    'os dois períodos acima.</div></div>' +
+
+    '<div class="kpirow">' + cartoes + '</div>' +
+
+    '<div class="card"><div class="card-h"><h3>Mês a mês</h3><span class="hint">A ' + rA +
+    ' × B ' + rB + ' · faturamento líquido</span></div>' +
+    '<div style="padding:14px 18px;height:260px"><canvas id="cmp_chart"></canvas></div>' +
+    '<div class="scroll"><table>' + cab('Mês') + '<tbody>' + mamLinhas + '</tbody></table></div></div>' +
+
+    '<div class="card"><div class="card-h"><h3>Quebrar por</h3><div class="seg" id="cmp_quebra">' +
+    CMP_QUEBRAS.map(([k, n]) => '<button data-q="' + k + '" class="' + (k === campo ? 'on' : '') +
+      '">' + n + '</button>').join('') + '</div></div>' +
+    '<div class="scroll"><table id="cmp_tab_quebra">' + cab(nomeQ) + '<tbody>' + qLinhas +
+    '</tbody></table></div>' +
+    (ql.length > 25 ? '<div style="padding:10px 18px"><button type="button" class="inp" ' +
+      'id="cmp_todos" style="cursor:pointer">' + (CMP.todos ? 'mostrar só os 25 maiores'
+      : 'mostrar todos (' + ql.length + ')') + '</button></div>' : '') +
+    (campo !== 'cn' ? '<div class="hint" style="padding:0 18px 12px">Clique numa linha para ' +
+      'ver os clientes que mais subiram e mais caíram.</div>' : '') + '</div>' +
+
+    '<div class="card"><div class="card-h"><h3>DRE lado a lado</h3><span class="hint">' +
+    'mesmas linhas do DRE</span></div><div class="scroll"><table>' + cab('Linha') +
+    '<tbody>' + dreLinhas + '</tbody></table></div></div>' +
+
+    (tem2025 ? '<div class="fonte">' + [...new Set([CMP.aAno, CMP.bAno])]
+      .filter(a => a !== ANO_BASE).map(a => a + ': ' + anoFreteTexto(a)).join('; ') +
+      '. Custo pela tabela de hoje; vendedor e canal pela carteira de hoje.</div>' : '');
+
+  /* ouvintes - o innerHTML acima recria tudo a cada render */
+  ['a', 'b'].forEach(l => {
+    el('cmp_' + l + 'Ano').addEventListener('change', e => {
+      CMP[l + 'Ano'] = +e.target.value;
+      const ms = cmpMesesDe(CMP[l + 'Ano']);
+      if(ms.indexOf(CMP[l + 'Ini']) < 0) CMP[l + 'Ini'] = ms[0];
+      if(ms.indexOf(CMP[l + 'Fim']) < 0) CMP[l + 'Fim'] = ms[ms.length - 1];
+      vComparativos();
+    });
+    el('cmp_' + l + 'Ini').addEventListener('change', e => { CMP[l + 'Ini'] = e.target.value; vComparativos(); });
+    el('cmp_' + l + 'Fim').addEventListener('change', e => { CMP[l + 'Fim'] = e.target.value; vComparativos(); });
+  });
+  el('cmp_anoAnt').addEventListener('click', () => {
+    const a = CMP.bAno - 1;
+    if(!ANOS_ROWS[a]){ el('cmp_anoAnt').textContent = 'não há ' + a + ' carregado'; return; }
+    const ms = cmpMesesDe(a);
+    CMP.aAno = a;
+    CMP.aIni = ms.indexOf(CMP.bIni) >= 0 ? CMP.bIni : ms[0];
+    CMP.aFim = ms.indexOf(CMP.bFim) >= 0 ? CMP.bFim : ms[ms.length - 1];
+    vComparativos();
+  });
+  el('cmp_quebra').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    CMP.quebra = b.dataset.q; CMP.aberto = null; CMP.todos = false; vComparativos();
+  }));
+  if(el('cmp_todos')) el('cmp_todos').addEventListener('click', () => { CMP.todos = !CMP.todos; vComparativos(); });
+  el('cmp_tab_quebra').addEventListener('click', ev => {
+    const tr = ev.target.closest('tr[data-cmpk]');
+    if(!tr || CMP.quebra === 'cn') return;
+    CMP.aberto = (CMP.aberto === tr.dataset.cmpk) ? null : tr.dataset.cmpk;
+    vComparativos();
+  });
+  el('cmp_excel').addEventListener('click', cmpExcel);
+
+  try{
+    if(CMP_CHART){ CMP_CHART.destroy(); CMP_CHART = null; }
+    if(typeof Chart !== 'undefined'){
+      CMP_CHART = new Chart(el('cmp_chart'), {
+        type: 'bar',
+        data: {labels: mam.map(x => x.rot), datasets: [
+          {label: 'A · ' + rA, data: mam.map(x => Math.round(x.a)), backgroundColor: '#B8C0D8'},
+          {label: 'B · ' + rB, data: mam.map(x => Math.round(x.b)), backgroundColor: '#2C3B7E'}]},
+        options: {responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: {tooltip: {callbacks: {label: c => c.dataset.label + ': ' + brl(c.raw)}}},
+          scales: {y: {ticks: {callback: v => 'R$ ' + Math.round(v / 1000) + 'k'}}}}
+      });
+    }
+  }catch(e){ console.error('comparativos: grafico', e); }
+}
+
+/* BAIXAR EXCEL: um .xlsx de verdade, uma aba por bloco. A biblioteca (SheetJS)
+   so e baixada no clique - quem nunca exporta nao paga por ela. Respeita a
+   mesma permissao da tela: quem ve farol nao recebe o numero no arquivo. */
+function cmpCarregarXlsx(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((ok, falha) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => ok(window.XLSX);
+    s.onerror = () => falha(new Error('não consegui baixar a biblioteca do Excel'));
+    document.head.appendChild(s);
+  });
+}
+async function cmpExcel(){
+  const bt = el('cmp_excel');
+  const txt = bt ? bt.textContent : '';
+  if(bt) bt.textContent = 'Gerando…';
+  try{
+    const X = await cmpCarregarXlsx();
+    const U = window.__CMP_ULTIMO;
+    const {A, B, rA, rB} = U;
+    const sens = verNumeroRent();
+    const vp = (a, b) => (a ? (b - a) / Math.abs(a) : null);
+    const wb = X.utils.book_new();
+    /* numero com formato de Excel, nao texto: da para somar e filtrar.
+       fmts = um formato por coluna ('r' reais, 'p' percentual, 'n' inteiro). */
+    const aba = (nome, linhas, fmts) => {
+      const ws = X.utils.aoa_to_sheet(linhas);
+      if(fmts){
+        for(let i = 1; i < linhas.length; i++){
+          fmts.forEach((fm, j) => {
+            const c = ws[X.utils.encode_cell({r: i, c: j})];
+            if(!c || typeof c.v !== 'number') return;
+            const fx = typeof fm === 'function' ? fm(linhas[i]) : fm;
+            if(fx === 'r'){ c.v = Math.round(c.v * 100) / 100; c.z = '#,##0.00'; }
+            else if(fx === 'p'){ c.z = '0.0%'; }
+            else if(fx === 'n'){ c.v = Math.round(c.v); c.z = '#,##0'; }
+          });
+        }
+      }
+      ws['!cols'] = linhas[0].map((_, j) => ({wch: j === 0 ? 34 : 18}));
+      X.utils.book_append_sheet(wb, ws, nome);
+    };
+    const FQ = [null, 'r', 'r', 'r', 'p'];
+    const cab = c1 => [c1, 'A · ' + rA, 'B · ' + rB, 'Diferença', '%'];
+
+    const cartoes = cmpCartoes().filter(c => c[3] !== 'farol' || sens);
+    const fmtDe = f => f === 'brl' ? 'r' : f === 'pp' ? 'p' : 'n';
+    const fmtLinha = {};
+    cartoes.forEach(([lab, , f]) => { fmtLinha[lab] = fmtDe(f); });
+    aba('Resumo', [['Indicador', 'A · ' + rA, 'B · ' + rB, 'Variação']].concat(
+      cartoes.map(([lab, k, f]) =>
+        [lab, A[k], B[k], (A[k] === null || B[k] === null) ? null
+                         : (f === 'pp' ? (B[k] - A[k]) : vp(A[k], B[k]))])),
+      [null, l => fmtLinha[l[0]], l => fmtLinha[l[0]], 'p']);
+    const dreSel = dreRowsFor().filter(([, key]) => DRE_PCT_FAROL.indexOf(key) < 0 || sens);
+    const fmtDre = {};
+    dreSel.forEach(([lab, , f]) => { fmtDre[lab] = f === 'pct' ? 'p' : (f === 'n' ? 'n' : 'r'); });
+    aba('DRE', [cab('Linha')].concat(dreSel.map(([lab, key, f]) =>
+        [lab, A[key], B[key], f === 'pct' ? null : (B[key] - A[key]),
+         f === 'pct' ? (B[key] - A[key]) : vp(A[key], B[key])])),
+      [null, l => fmtDre[l[0]], l => fmtDre[l[0]], l => fmtDre[l[0]], 'p']);
+    aba('Mes a mes', [cab('Mês')].concat(cmpMesAMes(A, B).map(x =>
+      [x.rot, x.a, x.b, x.b - x.a, x.p])), FQ);
+    CMP_QUEBRAS.forEach(([campo, nome]) => {
+      aba('Por ' + nome.toLowerCase(), [cab(nome)].concat(cmpQuebraLinhas(A, B, campo)
+        .map(x => [x.nome, x.a, x.b, x.d, x.p])), FQ);
+    });
+    const f = (k) => Array.isArray(FILTER[k]) ? FILTER[k].join(', ') : FILTER[k];
+    aba('Leia-me', [
+      ['Comparativo do Portal Comercial (Ao Vivo)'],
+      ['Período A', rA], ['Período B', rB],
+      ['Gerado em', new Date().toLocaleString('pt-BR')],
+      ['Usuário', SESSION.user],
+      ['Filtros da barra', 'vendedor: ' + f('vend') + ' | modelo: ' + f('mod') + ' | região: ' +
+        f('reg') + ' | UF: ' + f('uf') + ' | canal: ' + f('canal')],
+      ['Faturamento', 'líquido (venda + devolução)'],
+      ['Anos fechados', [...new Set([CMP.aAno, CMP.bAno])].filter(a => a !== ANO_BASE)
+        .map(a => a + ': ' + anoFreteTexto(a)).join('; ') +
+        ' | custo pela tabela de hoje; vendedor e canal pela carteira de hoje'],
+      ['Percentuais', 'nas colunas % e Variação: 0,05 = 5%; em margem e rentabilidade a ' +
+        'variação é em pontos (0,03 = 3 p.p.)']]);
+    const hoje = new Date().toLocaleDateString('sv').replace(/-/g, '');
+    X.writeFile(wb, 'Comparativo_' + rA.replace(/[^\w]+/g, '-') + '_x_' +
+                    rB.replace(/[^\w]+/g, '-') + '_' + hoje + '.xlsx');
+    if(bt) bt.textContent = 'Baixado';
+  }catch(e){
+    console.error('comparativos: excel', e);
+    if(bt) bt.textContent = 'Erro ao gerar';
+  }
+  setTimeout(() => { if(el('cmp_excel')) el('cmp_excel').textContent = txt; }, 2000);
+}
+window.vComparativos = vComparativos;
+
+/* a aba entra logo depois do DRE, como o Links uteis entra: VIEWS + um .view */
+(function(){
+  try{
+    if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+    if(!VIEWS.some(v => v.id === 'comparativos')){
+      const i = VIEWS.findIndex(v => v.id === 'dre');
+      VIEWS.splice(i >= 0 ? i + 1 : VIEWS.length, 0,
+                   {id: 'comparativos', lab: 'Comparativos', fn: vComparativos});
+    }
+    if(!document.getElementById('v-comparativos')){
+      const irmao = document.querySelector('.view');
+      if(irmao && irmao.parentNode){
+        const d = document.createElement('div');
+        d.className = 'view'; d.id = 'v-comparativos';
+        irmao.parentNode.insertBefore(d, irmao);
+      }
+    }
+  }catch(e){ console.error('comparativos: registrar aba', e); }
 })();
 </script>
 
