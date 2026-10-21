@@ -2107,6 +2107,12 @@ function vCarteira(){
     return (va-vb)*dir;
   });
 
+  /* A LISTA INTEIRA fica guardada para o export, ANTES de paginar. A tela
+     desenha 250; o arquivo leva as 3.048. Guardo o mesmo `rows` que a tela
+     usou - ja recortado por VEND_VIS, pelo filtro de vendedor e pela busca -
+     para o arquivo nunca mostrar mais do que a tela mostraria. */
+  CART_EXPORT_ROWS = rows;
+
   // paginação
   const totalRows=rows.length;
   const totalPag=Math.max(1,Math.ceil(totalRows/CART_POR_PAG));
@@ -14238,7 +14244,96 @@ function expNomeArquivo(card){
           '_' + p(d.getHours()) + p(d.getMinutes())].join('_') + '.csv';
 }
 
+/* ===================== EXPORT DA CARTEIRA (21/10/2026) =====================
+   Pedido do Igor: "sair por vendedor, mas tambem vir os clientes, com as
+   colunas que ja estao la, inclusive o e-mail e o contato do WhatsApp".
+
+   POR QUE ESTE NAO PODE LER O DOM, como os outros 46 leem: a tabela da Carteira
+   e PAGINADA em 250 linhas. Medido em 21/10/2026: 250 clientes desenhados de
+   3.048 na carteira. O exportador generico entregava 8% do arquivo sem avisar,
+   e um CSV que parece completo e nao e e pior que nenhum CSV.
+
+   O PRECO DISTO, e ele e real: a regra de permissao passa a existir em dois
+   lugares. Mitigo nao reimplementando nada - a lista vem do mesmo `rows` que a
+   tela montou (ja recortado por VEND_VIS, filtro de vendedor e busca) e a
+   rentabilidade usa o mesmo verNumeroRent(). O que a tela nao mostra, o arquivo
+   nao mostra.
+
+   Os contatos (e-mail e WhatsApp) saem do bloco CONTATOS, por CNPJ. Em
+   21/10/2026 sao 2.157 dos 3.048 clientes; o resto sai em branco, e esta certo
+   que saia - a lacuna e do cadastro, nao do arquivo. */
+let CART_EXPORT_ROWS = null;     // preenchido pelo vCarteira a cada render
+
+function cartExportar(card){
+  const rows = CART_EXPORT_ROWS;
+  if(!Array.isArray(rows) || !rows.length) return null;
+  const verNum = (typeof verNumeroRent === 'function') ? verNumeroRent() : false;
+  const meses = (typeof MESES !== 'undefined' && MESES) ? MESES : [];
+  const num = v => (v === null || v === undefined || v === '')
+                     ? '' : String(v).replace('.', ',');
+
+  /* POR VENDEDOR, como ele pediu: ordena por vendedor e, dentro de cada um,
+     do maior faturamento para o menor. Quem abre o arquivo ja encontra a
+     carteira de cada vendedor em bloco, sem precisar ordenar no Excel. */
+  /* quem nao tem vendedor vai para o FIM, nao para o comeco: ordenar texto vazio
+     joga esse bloco para cima e enterra as carteiras de verdade no meio do
+     arquivo, que e o oposto do pedido */
+  const ord = rows.slice().sort((a, b) => {
+    const va = String(a.v || ''), vb = String(b.v || '');
+    if(!va !== !vb) return va ? -1 : 1;
+    return va.localeCompare(vb, 'pt-BR') || (b.ytd || 0) - (a.ytd || 0);
+  });
+
+  const cab = ['Vendedor', 'CNPJ', 'Razão Social', 'Cidade', 'UF', 'Canal',
+               'Contato', 'E-mail', 'WhatsApp',
+               'Vendas líq. YTD', 'Rentab. %', 'Ticket médio', 'Recorrência (d)',
+               'Último pedido', 'Dias do últ. pedido', 'Oportunidade', 'Status']
+              .concat(meses);
+
+  const linhas = [cab];
+  ord.forEach(r => {
+    const ct = (typeof contatoDe === 'function' && contatoDe(r.cn)) || {};
+    linhas.push([
+      r.v || '', r.cn || '', r.rz || '', r.ci || '', r.uf || '', r.ca || '',
+      ct.n || '', ct.e || '',
+      /* o WhatsApp sai como TEXTO: o Excel engole o zero da frente de um
+         numero e "091992479956" viraria 91992479956 */
+      ct.w ? ("'" + ct.w) : '',
+      num(r.ytd),
+      (r.rent === null || r.rent === undefined || !verNum)
+        ? '' : num((r.rent * 100).toFixed(1)),
+      num(r.ticket),
+      (r.rec === null || r.rec === undefined) ? '' : Math.round(r.rec),
+      r.ult ? (typeof cartDataBR === 'function' ? cartDataBR(r.ult) : r.ult) : '',
+      (r.diasCorr === null || r.diasCorr === undefined) ? '' : r.diasCorr,
+      r.oport ? 'sim' : '',
+      r.status || ''
+    ].concat((r.meses || []).map(num)));
+  });
+  return expBaixar(linhas, expNomeArquivo(card));
+}
+
+/* O download, separado para os dois exportadores usarem o mesmo. */
+function expBaixar(linhas, nome){
+  const esc = v => {
+    const s = String(v == null ? '' : v);
+    return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const csv = '﻿' + linhas.map(l => l.map(esc).join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8'}));
+  a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  return {nome: nome, linhas: linhas.length, colunas: linhas[0].length};
+}
+
 function expTabela(card){
+  /* a Carteira tem exportador proprio - ver o comentario acima */
+  if(card && card.id === 'cardClientesCarteira'){
+    const r = cartExportar(card);
+    if(r) return r;
+  }
   const tabela = card && card.querySelector('table');
   if(!tabela) return null;
   const linhas = expLinhas(tabela);
