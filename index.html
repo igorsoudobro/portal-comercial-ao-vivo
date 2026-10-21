@@ -14052,9 +14052,20 @@ const LINKS_UTEIS = [
      estiver na permissao da pasta recebe "acesso negado" mesmo com o endereco
      na mao. Por isso ele nao cai no aviso dos dois links ":f:/g/" acima; o que
      ele revela e o caminho da pasta, nao a entrada nela. */
+  /* CAMINHO CORRIGIDO EM 21/10/2026. O link anterior apontava para
+     OPS/02-Supply/06-Produtos/02-Specs dobro e dava "Este item nao esta
+     disponivel" ate para o Igor: a pasta foi MOVIDA e RENOMEADA para
+     OPS/05-SS/05-Comercial/07-Cadastro de SKUs/02-Specs. Achada pela busca do
+     SharePoint e conferida pelo conteudo (ops-dbr-spec-circular-*).
+
+     A LICAO: link por CAMINHO quebra quando a pasta anda, e quebra calado -
+     quem clica recebe "voce nao tem acesso" e culpa a permissao. Um link de
+     COMPARTILHAMENTO (.../:f:/g/personal/...) aponta para o ID do item e
+     sobrevive a mudanca de nome e de lugar. Vale trocar por um quando a Luisa
+     puder gerar, com acesso "Pessoas em Dobro". */
   {nome: 'Fichas técnicas',
    desc: 'Specs dos produtos no SharePoint — pede login da Dobro',
-   url:  'https://soudobro-my.sharepoint.com/personal/luisa_soudobro_com_br/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fluisa%5Fsoudobro%5Fcom%5Fbr%2FDocuments%2FOPS%2F02%2DSupply%2F06%2DProdutos%2F02%2DSpecs%20dobro&ga=1'},
+   url:  'https://soudobro-my.sharepoint.com/personal/luisa_soudobro_com_br/Documents/OPS/05-SS/05-Comercial/07-Cadastro%20de%20SKUs/02-Specs'},
   /* Virou FORMULARIO em 20/10/2026 (antes era o quadro
      monday.com/boards/18396941394). Muda a natureza do link: o quadro exigia
      login do monday, o formulario aceita envio de quem tiver o endereco. Como
