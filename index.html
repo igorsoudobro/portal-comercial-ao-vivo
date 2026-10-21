@@ -14083,6 +14083,20 @@ const LINKS_UTEIS = [
   {nome: 'Dashboard · Trade Promotoria',
    desc: 'Merchandising e visitas da promotoria',
    url:  'https://igorsoudobro.github.io/promotoria-dobro/DashMerchan_2.html'},
+  /* SEM O `?sk=` DE PROPOSITO (21/10/2026). O endereco veio com um parametro
+     `?sk=...` no fim, que NAO esta escrito aqui - nem no comentario, porque
+     comentario tambem e codigo publicado. Esse parametro e uma CHAVE DE
+     COMPARTILHAMENTO: quem tem ela abre o painel sem login nenhum. Num
+     repositorio aberto isso equivale a publicar o dashboard inteiro - e a regra
+     dele e clara: "quem abrir o codigo nao pode ver dado sensivel".
+
+     Sem a chave, o painel continua acessivel a quem tem conta da Dobro (ele
+     esta compartilhado com a organizacao). Se o time comercial nao tiver conta,
+     o link nao abre para eles - e ai a decisao de colocar a chave e dele, com o
+     custo na mesa. */
+  {nome: 'Dashboard de Comunidade',
+   desc: 'Programa Comunidade DOBRO: metas por cluster, top vendedores e ROI por creator',
+   url:  'https://claude.ai/artifact/Ab9LoQx394kAMXzCiGuvsG'},
   /* `soProducao: true` = NAO aparece no Portal Ao Vivo (20/10/2026).
      O index.html do Ao Vivo e GERADO deste arquivo, entao tudo que entra aqui
      entra la tambem. Esta marca e o jeito de ter um link so na producao sem
