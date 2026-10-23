@@ -14097,38 +14097,1109 @@ const LINKS_UTEIS = [
   {nome: 'Dashboard de Comunidade',
    desc: 'Programa Comunidade DOBRO: metas por cluster, top vendedores e ROI por creator',
    url:  'https://claude.ai/artifact/Ab9LoQx394kAMXzCiGuvsG'},
-  /* `soProducao: true` = NAO aparece no Portal Ao Vivo (20/10/2026).
-     O index.html do Ao Vivo e GERADO deste arquivo, entao tudo que entra aqui
-     entra la tambem. Esta marca e o jeito de ter um link so na producao sem
+  /* `soProducao: true` num item = ele NAO aparece no Portal Ao Vivo. O
+     index.html do Ao Vivo e GERADO deste arquivo, entao tudo que entra aqui
+     entra la tambem; a marca e o jeito de ter um link so na producao sem
      manter duas listas - duas listas divergiriam no primeiro link novo. Quem
-     tira e o bloco do gerar_portal_novo.py. */
+     tira e o bloco do gerar_portal_novo.py.
+
+     HOJE NENHUM ITEM USA A MARCA. Este link nasceu "so producao" em
+     20/10/2026, mas em 23/10/2026 o Igor liberou ele para os dois portais.
+     O mecanismo fica de pe para o proximo que precisar. */
   {nome: 'Portal · Pendências de Cadastro',
    desc: 'Acompanhamento de pendências de cadastro de clientes',
    url:  'https://assent-tracker.lovable.app/'}
 ];
 
-function vLinks(){
+/* ======================================================================
+   LINKS ÚTEIS EM 3D — "Maratona Dobro"   (pedido do Igor em 23/10/2026)
+
+   Cada link vira um ponto de parada de uma prova de 10 km que dá a volta
+   numa ilha com a cara do Rio. O corredor trota sozinho pelo circuito; ao
+   clicar num ponto ele corre até lá e abre um cartão de vidro com o nome da
+   página. O link só abre no botão do cartão — nunca no clique do mundo,
+   para ninguém cair num site sem saber qual era.
+
+   TRÊS DECISÕES QUE VALE REGISTRAR:
+
+   1. A LISTA CONTINUA EXISTINDO E É O PLANO A DE QUEM PRECISA DE PRESSA.
+      O seletor no cabeçalho alterna, e a escolha fica no localStorage. Um
+      mundo 3D não se navega por teclado nem por leitor de tela, e este é um
+      portal de trabalho: ninguém pode ser obrigado a correr 2 km para achar
+      a planilha de cubagem.
+
+   2. O three.js (600 KB) só é baixado quando alguém ABRE esta aba. Se os
+      dois CDNs falharem, ou se a máquina não tiver WebGL, a aba cai na
+      lista sozinha e diz por quê. Nenhuma outra aba do Portal sente isso.
+
+   3. O laço de animação PARA quando a aba sai de cena — showView() tira a
+      classe `on` e a div vira display:none, então basta olhar o
+      offsetParent. Sem isso o 3D ficaria queimando GPU com o usuário
+      olhando o DRE.
+
+   O relevo é uma função matemática (l3dAltura): a mesma conta desenha a
+   malha do chão, assenta a pista e cola o corredor no solo. Por isso nada
+   flutua nem afunda — não há um "modelo" para sair do lugar.
+   ====================================================================== */
+
+const L3D_CDN = [
+  'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+  'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'
+];
+let L3D_CARGA = null;    /* Promise única do download do three */
+let L3D_APP = null;      /* o mundo é montado uma vez e reaproveitado */
+let L3D_TEM_CSS = false;
+
+/* ---------- preferência mundo x lista ---------- */
+function l3dModo(){
+  try{
+    const m = localStorage.getItem('dobro_links_modo');
+    if(m === 'lista' || m === 'mundo') return m;
+  }catch(e){}
+  return 'mundo';
+}
+function l3dSetModo(m){
+  try{ localStorage.setItem('dobro_links_modo', m); }catch(e){}
+}
+function l3dTemWebGL(){
+  try{
+    const c = document.createElement('canvas');
+    return !!(window.WebGLRenderingContext &&
+             (c.getContext('webgl') || c.getContext('experimental-webgl')));
+  }catch(e){ return false; }
+}
+function l3dCarregarTres(){
+  if(window.THREE) return Promise.resolve(window.THREE);
+  if(L3D_CARGA) return L3D_CARGA;
+  L3D_CARGA = new Promise(function(ok, falha){
+    let i = 0;
+    const tenta = function(){
+      if(i >= L3D_CDN.length){ falha(new Error('three.js nao carregou')); return; }
+      const s = document.createElement('script');
+      s.src = L3D_CDN[i++];
+      s.async = true;
+      s.onload = function(){ window.THREE ? ok(window.THREE) : tenta(); };
+      s.onerror = tenta;
+      document.head.appendChild(s);
+    };
+    tenta();
+  });
+  return L3D_CARGA;
+}
+
+/* ---------- CSS próprio, injetado uma vez ---------- */
+function l3dEstilo(){
+  if(L3D_TEM_CSS) return;
+  L3D_TEM_CSS = true;
+  const s = document.createElement('style');
+  s.textContent =
+  '.l3d-seg{display:flex;gap:3px;background:var(--grey);padding:3px;border-radius:999px}' +
+  '.l3d-seg button{border:0;background:transparent;color:var(--muted);cursor:pointer;' +
+    'font:700 12px/1 inherit;padding:7px 15px;border-radius:999px}' +
+  '.l3d-seg button.on{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(30,46,95,.2)}' +
+  '.l3d-palco{position:relative;height:min(64vh,580px);min-height:340px;background:#0E2340;' +
+    'overflow:hidden}' +
+  '.l3d-raiz{position:absolute;inset:0}' +
+  '.l3d-raiz canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}' +
+  '.l3d-carregando{position:absolute;inset:0;display:flex;align-items:center;' +
+    'justify-content:center;color:#CFE0F6;font-size:13px;font-weight:600;letter-spacing:.3px}' +
+  '.l3d-hud{position:absolute;left:14px;top:14px;display:flex;align-items:center;gap:12px;' +
+    'padding:9px 16px;border-radius:999px;color:#fff;font-size:12px;font-weight:600;' +
+    'background:rgba(14,35,64,.46);border:1px solid rgba(255,255,255,.2);' +
+    '-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);pointer-events:none}' +
+  '.l3d-hud b{font-size:16px;color:var(--yellow);font-weight:800}' +
+  '.l3d-hud span{opacity:.82;max-width:30ch;overflow:hidden;text-overflow:ellipsis;' +
+    'white-space:nowrap}' +
+  '.l3d-tools{position:absolute;right:14px;top:14px;display:flex;gap:6px}' +
+  '.l3d-tools button{border:1px solid rgba(255,255,255,.22);color:#fff;cursor:pointer;' +
+    'background:rgba(14,35,64,.46);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);' +
+    'font:700 12px/1 inherit;padding:9px 13px;border-radius:999px}' +
+  '.l3d-tools button:hover{background:rgba(42,62,126,.72)}' +
+  '.l3d-tools button.on{background:var(--yellow);color:var(--navy);border-color:transparent}' +
+  '.l3d-cartao{position:absolute;left:50%;top:50%;width:286px;padding:18px 18px 16px;' +
+    'border-radius:16px;color:#fff;transform:translate(-50%,-112%);opacity:0;' +
+    'transition:opacity .18s ease;pointer-events:none;' +
+    'background:rgba(22,44,82,.55);border:1px solid rgba(255,255,255,.28);' +
+    '-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);' +
+    'box-shadow:0 20px 48px rgba(5,16,36,.42)}' +
+  '.l3d-cartao.on{opacity:1;pointer-events:auto}' +
+  '.l3d-cartao .km{font-size:11px;font-weight:800;letter-spacing:1.1px;color:var(--yellow)}' +
+  '.l3d-cartao .nome{font-size:19px;font-weight:800;line-height:1.2;margin:7px 0 5px}' +
+  '.l3d-cartao .desc{font-size:12px;line-height:1.5;opacity:.84}' +
+  '.l3d-cartao .abrir{display:inline-flex;align-items:center;gap:7px;margin-top:14px;' +
+    'background:var(--yellow);color:#20305E;text-decoration:none;font-weight:800;font-size:13px;' +
+    'padding:10px 17px;border-radius:999px}' +
+  '.l3d-cartao .abrir:hover{filter:brightness(1.07)}' +
+  '.l3d-cartao .fechar{position:absolute;right:10px;top:9px;width:26px;height:26px;' +
+    'border:0;border-radius:50%;cursor:pointer;background:rgba(255,255,255,.14);color:#fff;' +
+    'font:700 16px/1 inherit}' +
+  '.l3d-cartao .fechar:hover{background:rgba(255,255,255,.28)}' +
+  '.l3d-balao{position:absolute;transform:translate(-50%,-135%);padding:7px 13px;' +
+    'border-radius:999px;color:#fff;font:700 12px/1.35 inherit;white-space:nowrap;' +
+    'pointer-events:none;opacity:0;transition:opacity .13s ease;' +
+    'background:rgba(20,42,78,.62);border:1px solid rgba(255,255,255,.26);' +
+    '-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);' +
+    'box-shadow:0 10px 26px rgba(5,16,36,.32)}' +
+  '.l3d-balao.on{opacity:1}' +
+  '.l3d-balao i{font-style:normal;font-weight:800;color:var(--yellow);margin-right:8px}' +
+  '.l3d-balao:after{content:"";position:absolute;left:50%;bottom:-5px;width:9px;height:9px;' +
+    'transform:translateX(-50%) rotate(45deg);background:rgba(20,42,78,.62);' +
+    'border-right:1px solid rgba(255,255,255,.26);' +
+    'border-bottom:1px solid rgba(255,255,255,.26)}' +
+  '.l3d-rodape{padding:11px 20px;border-top:1px solid var(--line);font-size:12px;' +
+    'color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}' +
+  '.l3d-aviso{background:#FFF6D9;border:1px solid #E9D99A;color:#6B5A12;font-size:12px;' +
+    'padding:10px 13px;border-radius:9px;line-height:1.5}' +
+  '@media(max-width:620px){.l3d-cartao{left:50%!important;top:auto!important;bottom:14px;' +
+    'transform:translateX(-50%);width:min(300px,calc(100% - 28px))}' +
+    '.l3d-hud span{display:none}}';
+  document.head.appendChild(s);
+}
+
+/* ======================================================================
+   RELEVO — uma função, três usos: malha do chão, altura da pista, pés do
+   corredor. Mexer num número aqui move a ilha inteira de forma coerente.
+   ====================================================================== */
+function l3dSuave(a, b, x){
+  x = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return x * x * (3 - 2 * x);
+}
+function l3dMorro(x, z, cx, cz, r){
+  const d = Math.hypot(x - cx, z - cz);
+  if(d >= r) return 0;
+  return 0.5 + 0.5 * Math.cos(Math.PI * d / r);
+}
+/* Raio "visto da costa": a borda da ilha não é um círculo, senão ela sai com
+   cara de moeda. O mesmo número serve para afundar o terreno e para saber
+   onde pintar areia. */
+function l3dRaio(x, z){
+  const a = Math.atan2(z, x);
+  return Math.hypot(x, z) + 15 * Math.sin(3 * a + 0.7) + 8 * Math.sin(5 * a - 1.1);
+}
+function l3dAltura(x, z){
+  const r = l3dRaio(x, z);
+  let y = 2.2 + 1.0 * Math.sin(x * 0.013) * Math.cos(z * 0.011);
+  y -= 46 * l3dSuave(174, 248, r);            /* a ilha mergulha no mar */
+  y -= 13 * l3dMorro(x, z, -66,  56, 34);     /* a lagoa, no pé do morro */
+  y += 56 * l3dMorro(x, z, -20, -10, 86);     /* Corcovado, no miolo do circuito */
+  y += 40 * l3dMorro(x, z, 196, -56, 44);     /* Pão de Açúcar, na ponta */
+  y += 16 * l3dMorro(x, z, 158, -28, 30);     /* Morro da Urca */
+  return y;
+}
+
+/* Os 11 pontos de controle do circuito. Todos ficam a mais de 100 do centro
+   do Corcovado (raio 86) e fora da baía, então a pista corre em terreno
+   quase plano — 10 km sem uma rampa impossível. */
+const L3D_PISTA = [
+  [ 128,  18], [  98,  92], [  38, 128], [ -36, 134], [-104,  96], [-138,  22],
+  [-132, -56], [ -78,-112], [  -4,-136], [  72,-118], [ 124, -56]
+];
+
+/* gerador determinístico: a cidade tem de nascer igual toda vez */
+function l3dSorteio(semente){
+  let s = semente;
+  return function(){ s = (s * 16807) % 2147483647; return s / 2147483647; };
+}
+
+/* ======================================================================
+   PEÇAS DO MUNDO
+   ====================================================================== */
+function l3dTerreno(T){
+  const LADO = 620, SEG = 116;
+  const g = new T.PlaneGeometry(LADO, LADO, SEG, SEG);
+  g.rotateX(-Math.PI / 2);
+  const pos = g.attributes.position;
+  const cor = [];
+  const rnd = l3dSorteio(97);
+  for(let i = 0; i < pos.count; i++){
+    const x = pos.getX(i), z = pos.getZ(i);
+    const y = l3dAltura(x, z);
+    pos.setY(i, y);
+    const r = l3dRaio(x, z);
+    const v = 0.94 + rnd() * 0.12;
+    let c;
+    if(y < 0.4)                      c = [0.38, 0.34, 0.24];   /* fundo submerso */
+    else if(r > 156)                 c = [0.84, 0.74, 0.54];   /* areia da orla */
+    else if(y > 34)                  c = [0.49, 0.49, 0.46];   /* rocha do alto */
+    else if(y > 13)                  c = [0.24, 0.38, 0.22];   /* mata do morro */
+    else if(r < 118)                 c = [0.47, 0.50, 0.44];   /* chão urbano */
+    else                             c = [0.40, 0.57, 0.33];   /* gramado */
+    cor.push(c[0] * v, c[1] * v, c[2] * v);
+  }
+  g.setAttribute('color', new T.Float32BufferAttribute(cor, 3));
+  g.computeVertexNormals();
+  return new T.Mesh(g, new T.MeshStandardMaterial({
+    vertexColors: true, roughness: 1, flatShading: true
+  }));
+}
+
+function l3dMar(T){
+  const g = new T.PlaneGeometry(1900, 1900, 30, 30);
+  g.rotateX(-Math.PI / 2);
+  const m = new T.Mesh(g, new T.MeshStandardMaterial({
+    color: 0x2E73BE, roughness: 0.24, metalness: 0.14,
+    transparent: true, opacity: 0.93, flatShading: true
+  }));
+  m.position.y = 0;
+  return m;
+}
+
+/* Fita que acompanha a pista. Cada vértice pousa no relevo pela l3dAltura,
+   então a estrada nunca "voa" sobre uma ondulação. */
+function l3dFita(T, curva, largura, desloc, alt, cor, tracejada, padrao){
+  const N = 440, pos = [], idx = [], cores = [];
+  const cima = new T.Vector3(0, 1, 0);
+  const c1 = new T.Color(cor), c2 = new T.Color(0x24345E);
+  for(let i = 0; i <= N; i++){
+    const t = i / N;
+    const p = curva.getPointAt(t), tg = curva.getTangentAt(t);
+    const lado = new T.Vector3().crossVectors(tg, cima).normalize();
+    for(let k = 0; k < 2; k++){
+      const s = k === 0 ? -1 : 1;
+      const q = p.clone().addScaledVector(lado, desloc + s * largura / 2);
+      q.y = l3dAltura(q.x, q.z) + alt;
+      pos.push(q.x, q.y, q.z);
+      if(padrao){
+        const c = Math.sin(i * 0.42 + s * 1.15) > 0 ? c1 : c2;
+        cores.push(c.r, c.g, c.b);
+      }
+    }
+  }
+  for(let i = 0; i < N; i++){
+    if(tracejada && Math.floor(i / 5) % 2) continue;
+    const o = i * 2;
+    idx.push(o, o + 1, o + 2, o + 1, o + 3, o + 2);
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+  if(padrao) g.setAttribute('color', new T.Float32BufferAttribute(cores, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return new T.Mesh(g, new T.MeshStandardMaterial({
+    color: padrao ? 0xFFFFFF : cor, vertexColors: !!padrao,
+    roughness: 0.94, side: T.DoubleSide
+  }));
+}
+
+function l3dCabo(T, a, b, raio, cor){
+  const d = new T.Vector3().subVectors(b, a);
+  const m = new T.Mesh(new T.CylinderGeometry(raio, raio, d.length(), 6),
+    new T.MeshStandardMaterial({ color: cor, roughness: 0.6 }));
+  m.position.copy(a).addScaledVector(d, 0.5);
+  m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.clone().normalize());
+  return m;
+}
+
+function l3dCristo(T){
+  const g = new T.Group();
+  const mat = new T.MeshStandardMaterial({ color: 0xE9E7DF, roughness: 0.92, flatShading: true });
+  const peca = function(geo, y){ const m = new T.Mesh(geo, mat); m.position.y = y; return m; };
+  g.add(peca(new T.BoxGeometry(7, 4, 7), 2));
+  g.add(peca(new T.BoxGeometry(4.4, 3.2, 4.4), 5.6));
+  g.add(peca(new T.CylinderGeometry(1.4, 2.5, 9, 8), 11.7));
+  g.add(peca(new T.BoxGeometry(14, 1.5, 1.4), 13.6));
+  g.add(peca(new T.SphereGeometry(1.25, 10, 8), 17.1));
+  g.scale.setScalar(1.7);
+  g.position.set(-20, l3dAltura(-20, -10), -10);
+  g.rotation.y = -0.7;
+  return g;
+}
+
+function l3dBondinho(T, grupo){
+  const pe   = new T.Vector3(128, l3dAltura(128, -10) + 3, -10);
+  const urca = new T.Vector3(158, l3dAltura(158, -28) + 3, -28);
+  const pao  = new T.Vector3(196, l3dAltura(196, -56) + 3, -56);
+  const torre = new T.MeshStandardMaterial({ color: 0xBFC3CB, roughness: 0.7, flatShading: true });
+  [pe, urca].forEach(function(p){
+    const m = new T.Mesh(new T.CylinderGeometry(0.7, 1.1, 9, 6), torre);
+    m.position.set(p.x, p.y - 1.5, p.z);
+    grupo.add(m);
+  });
+  grupo.add(l3dCabo(T, pe, urca, 0.18, 0x5A6170));
+  grupo.add(l3dCabo(T, urca, pao, 0.18, 0x5A6170));
+  const cabines = [];
+  const cm = new T.MeshStandardMaterial({ color: 0xD8C733, roughness: 0.55, flatShading: true });
+  [[pe, urca], [urca, pao]].forEach(function(par){
+    const c = new T.Mesh(new T.BoxGeometry(3, 2.4, 2.4), cm);
+    grupo.add(c);
+    cabines.push({ malha: c, a: par[0], b: par[1] });
+  });
+  return cabines;
+}
+
+function l3dArcosDaLapa(T, curva, grupo){
+  const pedra = new T.MeshStandardMaterial({ color: 0xEFE9DB, roughness: 0.95, flatShading: true });
+  for(let k = 0; k < 8; k++){
+    const t = 0.402 + k * 0.0135;
+    const p = curva.getPointAt(t), tg = curva.getTangentAt(t);
+    const a = new T.Group();
+    a.position.set(p.x, l3dAltura(p.x, p.z), p.z);
+    a.lookAt(p.x + tg.x, l3dAltura(p.x, p.z), p.z + tg.z);
+    [-8.2, 8.2].forEach(function(x){
+      const col = new T.Mesh(new T.BoxGeometry(2.6, 13, 2.6), pedra);
+      col.position.set(x, 6.5, 0);
+      a.add(col);
+    });
+    const arco = new T.Mesh(new T.TorusGeometry(8.2, 1.5, 6, 14, Math.PI), pedra);
+    arco.position.y = 13;
+    a.add(arco);
+    const viga = new T.Mesh(new T.BoxGeometry(21, 1.8, 3.4), pedra);
+    viga.position.y = 22.2;
+    a.add(viga);
+    grupo.add(a);
+  }
+}
+
+function l3dEstadio(T){
+  const g = new T.Group();
+  const anel = new T.Mesh(new T.CylinderGeometry(33, 37, 15, 26, 1, true),
+    new T.MeshStandardMaterial({ color: 0xD9DCE3, roughness: 0.9, side: T.DoubleSide, flatShading: true }));
+  anel.position.y = 7.5;
+  const campo = new T.Mesh(new T.CircleGeometry(26, 22),
+    new T.MeshStandardMaterial({ color: 0x3E8C44, roughness: 1 }));
+  campo.rotation.x = -Math.PI / 2; campo.position.y = 2.2;
+  const teto = new T.Mesh(new T.RingGeometry(30, 38, 26),
+    new T.MeshStandardMaterial({ color: 0xF3F4F7, roughness: 0.82, side: T.DoubleSide }));
+  teto.rotation.x = -Math.PI / 2; teto.position.y = 15.4;
+  g.add(anel, campo, teto);
+  g.position.set(70, l3dAltura(70, 30), 30);
+  return g;
+}
+
+function l3dPalmeira(T, geoTronco, matTronco, geoFolha, matFolha){
+  const g = new T.Group();
+  const tr = new T.Mesh(geoTronco, matTronco);
+  tr.position.y = 3.5;
+  tr.rotation.z = 0.08;
+  g.add(tr);
+  for(let i = 0; i < 5; i++){
+    const giro = new T.Group();
+    giro.position.y = 7;
+    giro.rotation.y = i / 5 * Math.PI * 2;
+    const folha = new T.Group();
+    folha.rotation.z = -1.12;
+    const f = new T.Mesh(geoFolha, matFolha);
+    f.position.y = 2.4;
+    f.scale.set(0.42, 1, 0.95);
+    folha.add(f);
+    giro.add(folha);
+    g.add(giro);
+  }
+  return g;
+}
+
+function l3dCidade(T, grupo){
+  const rnd = l3dSorteio(20261023);
+  const cores = [0xD9D5CD, 0xC9D0DA, 0xE3DDD0, 0xBFC6CF, 0xD3C9BB, 0xCDD6DD];
+  const mats = cores.map(function(c){
+    return new T.MeshStandardMaterial({ color: c, roughness: 0.86, flatShading: true });
+  });
+  const topo = new T.MeshStandardMaterial({ color: 0x4E5A77, roughness: 0.85, flatShading: true });
+  let posto = 0, tentativas = 0;
+  while(posto < 58 && tentativas < 900){
+    tentativas++;
+    const a = rnd() * Math.PI * 2;
+    const r = 38 + rnd() * 67;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if(Math.hypot(x + 20, z + 10) < 96) continue;      /* não sobe no Corcovado */
+    if(Math.hypot(x - 70, z - 30) < 46) continue;      /* não invade o estádio */
+    const y = l3dAltura(x, z);
+    if(y < 1.0 || y > 11) continue;
+    const alt = 7 + rnd() * rnd() * 36;
+    const l = 6 + rnd() * 7, p = 6 + rnd() * 7;
+    const b = new T.Mesh(new T.BoxGeometry(l, alt, p), mats[(rnd() * mats.length) | 0]);
+    b.position.set(x, y + alt / 2, z);
+    b.rotation.y = rnd() * 0.5;
+    grupo.add(b);
+    const t = new T.Mesh(new T.BoxGeometry(l * 0.72, 1.1, p * 0.72), topo);
+    t.position.set(x, y + alt + 0.5, z);
+    t.rotation.y = b.rotation.y;
+    grupo.add(t);
+    posto++;
+  }
+  /* palmeiras na faixa entre a pista e a praia */
+  const geoTr = new T.CylinderGeometry(0.26, 0.55, 7, 6);
+  const matTr = new T.MeshStandardMaterial({ color: 0x8C7355, roughness: 1, flatShading: true });
+  const geoFo = new T.ConeGeometry(1.15, 5.4, 4);
+  const matFo = new T.MeshStandardMaterial({
+    color: 0x3F8F46, roughness: 1, flatShading: true, side: T.DoubleSide });
+  for(let i = 0; i < 30; i++){
+    const a = rnd() * Math.PI * 2;
+    const r = 150 + rnd() * 20;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const y = l3dAltura(x, z);
+    if(y < 1.4 || y > 7) continue;
+    const pm = l3dPalmeira(T, geoTr, matTr, geoFo, matFo);
+    pm.position.set(x, y, z);
+    pm.rotation.y = rnd() * 6.28;
+    pm.scale.setScalar(0.85 + rnd() * 0.5);
+    grupo.add(pm);
+  }
+}
+
+function l3dBarcos(T, grupo){
+  const rnd = l3dSorteio(7717);
+  const casco = new T.MeshStandardMaterial({ color: 0xF2F4F8, roughness: 0.7, flatShading: true });
+  const vela = new T.MeshStandardMaterial({
+    color: 0xFFFFFF, roughness: 0.9, side: T.DoubleSide, flatShading: true });
+  const lista = [];
+  for(let i = 0; i < 9; i++){
+    const g = new T.Group();
+    const h = new T.Mesh(new T.BoxGeometry(5, 1.3, 1.9), casco);
+    h.position.y = 0.6;
+    const v = new T.Mesh(new T.ConeGeometry(1.9, 5.4, 3), vela);
+    v.position.y = 3.9; v.scale.set(0.3, 1, 1); v.rotation.y = Math.PI / 2;
+    g.add(h, v);
+    const a = rnd() * Math.PI * 2;
+    const dentro = i < 3;                       /* três velejam na lagoa */
+    const r = dentro ? 12 + rnd() * 13 : 215 + rnd() * 55;
+    const cx = dentro ? -66 : 0, cz = dentro ? 56 : 0;
+    if(dentro) g.scale.setScalar(0.45);
+    g.userData = { a: a, r: r, cx: cx, cz: cz, v: 0.04 + rnd() * 0.05, f: rnd() * 6 };
+    grupo.add(g);
+    lista.push(g);
+  }
+  return lista;
+}
+
+function l3dNuvens(T, grupo){
+  const rnd = l3dSorteio(331);
+  const mat = new T.MeshStandardMaterial({
+    color: 0xFFFFFF, roughness: 1, transparent: true, opacity: 0.8 });
+  const lista = [];
+  for(let i = 0; i < 11; i++){
+    const g = new T.Group();
+    for(let k = 0; k < 4; k++){
+      const s = new T.Mesh(new T.SphereGeometry(7 + rnd() * 7, 10, 7), mat);
+      s.position.set((rnd() - 0.5) * 26, (rnd() - 0.5) * 4, (rnd() - 0.5) * 15);
+      s.scale.y = 0.5;
+      g.add(s);
+    }
+    g.position.set((rnd() - 0.5) * 700, 165 + rnd() * 55, (rnd() - 0.5) * 700);
+    grupo.add(g);
+    lista.push(g);
+  }
+  return lista;
+}
+
+/* ---------- o corredor ---------- */
+function l3dCorredor(T){
+  const g = new T.Group();
+  const pele   = new T.MeshStandardMaterial({ color: 0xC98A5E, roughness: 0.85, flatShading: true });
+  const regata = new T.MeshStandardMaterial({ color: 0xD8C733, roughness: 0.78, flatShading: true });
+  const calcao = new T.MeshStandardMaterial({ color: 0x2A3E7E, roughness: 0.82, flatShading: true });
+  const tenis  = new T.MeshStandardMaterial({ color: 0xF2F4F8, roughness: 0.7, flatShading: true });
+
+  const tronco = new T.Mesh(new T.BoxGeometry(1.7, 2.1, 1.0), regata);
+  tronco.position.y = 3.4;
+  const quadril = new T.Mesh(new T.BoxGeometry(1.6, 0.95, 1.0), calcao);
+  quadril.position.y = 2.2;
+  const cabeca = new T.Mesh(new T.SphereGeometry(0.72, 10, 8), pele);
+  cabeca.position.y = 5.0;
+  const bone = new T.Mesh(new T.SphereGeometry(0.76, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), regata);
+  bone.position.y = 5.05;
+  const aba = new T.Mesh(new T.BoxGeometry(1.4, 0.14, 0.75), regata);
+  aba.position.set(0, 5.02, 0.6);
+  g.add(tronco, quadril, cabeca, bone, aba);
+
+  const membro = function(x, y, geo, mat, pe){
+    const piv = new T.Group();
+    piv.position.set(x, y, 0);
+    const m = new T.Mesh(geo, mat);
+    m.position.y = -geo.parameters.height / 2;
+    piv.add(m);
+    if(pe){
+      const t = new T.Mesh(new T.BoxGeometry(0.62, 0.3, 1.15), tenis);
+      t.position.set(0, -geo.parameters.height + 0.15, 0.22);
+      piv.add(t);
+    }
+    g.add(piv);
+    return piv;
+  };
+  const gBraco = new T.BoxGeometry(0.44, 1.75, 0.44);
+  const gPerna = new T.BoxGeometry(0.56, 1.95, 0.56);
+  const partes = {
+    bracoE: membro(-1.05, 4.2, gBraco, pele, false),
+    bracoD: membro( 1.05, 4.2, gBraco, pele, false),
+    pernaE: membro(-0.42, 2.0, gPerna, pele, true),
+    pernaD: membro( 0.42, 2.0, gPerna, pele, true)
+  };
+  return { grupo: g, partes: partes };
+}
+
+/* ---------- placa numerada de cada ponto ---------- */
+function l3dNumero(T, n){
+  const c = document.createElement('canvas');
+  c.width = c.height = 160;
+  const x = c.getContext('2d');
+  x.fillStyle = '#2A3E7E';
+  x.beginPath(); x.arc(80, 80, 72, 0, Math.PI * 2); x.fill();
+  x.lineWidth = 10; x.strokeStyle = '#D8C733'; x.stroke();
+  x.fillStyle = '#FFFFFF';
+  x.font = 'bold 84px "Barlow Condensed","Arial Narrow",Arial,sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(String(n), 80, 86);
+  const tex = new T.CanvasTexture(c);
+  const sp = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sp.scale.set(5, 5, 1);
+  sp.renderOrder = 10;
+  return sp;
+}
+
+function l3dEstacoes(T, A){
+  A.estacoes = [];
+  A.alvos = [];
+  const n = A.links.length;
+  const matPedra = new T.MeshStandardMaterial({ color: 0xE8E4D7, roughness: 0.95, flatShading: true });
+  const matMastro = new T.MeshStandardMaterial({ color: 0x2A3E7E, roughness: 0.6, flatShading: true });
+  const matBand = new T.MeshStandardMaterial({
+    color: 0xD8C733, roughness: 0.75, side: T.DoubleSide, flatShading: true });
+  const geoHit = new T.CylinderGeometry(9.5, 9.5, 20, 8);
+  const matHit = new T.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+
+  for(let i = 0; i < n; i++){
+    const t = i / n;
+    const p = A.curva.getPointAt(t), tg = A.curva.getTangentAt(t);
+    const lado = new T.Vector3().crossVectors(tg, new T.Vector3(0, 1, 0)).normalize();
+    const b = p.clone().addScaledVector(lado, -11);
+    b.y = l3dAltura(b.x, b.z);
+
+    const g = new T.Group();
+    g.position.copy(b);
+    g.lookAt(p.x, b.y, p.z);
+
+    const base = new T.Mesh(new T.CylinderGeometry(5.4, 6.4, 1.1, 12), matPedra);
+    base.position.y = 0.55;
+    const mastro = new T.Mesh(new T.CylinderGeometry(0.42, 0.56, 11, 8), matMastro);
+    mastro.position.y = 6.3;
+    const band = new T.Mesh(new T.PlaneGeometry(5, 3.1), matBand);
+    band.position.set(2.9, 10.1, 0);
+    const anel = new T.Mesh(new T.RingGeometry(7.2, 8.8, 26),
+      new T.MeshBasicMaterial({ color: 0xD8C733, transparent: true, opacity: 0.5, side: T.DoubleSide }));
+    anel.rotation.x = -Math.PI / 2;
+    anel.position.y = 0.14;
+    const placa = l3dNumero(T, i + 1);
+    placa.position.y = 15;
+    /* Feixe de luz: só acende na vista de cima, onde o mastro de 11 vira um
+       risco de 3 pixels e ninguém acha os pontos. */
+    const feixe = new T.Mesh(new T.CylinderGeometry(1.0, 2.6, 42, 8),
+      new T.MeshBasicMaterial({ color: 0xD8C733, transparent: true, opacity: 0, depthWrite: false }));
+    feixe.position.y = 21;
+    feixe.visible = false;
+    const hit = new T.Mesh(geoHit, matHit);
+    hit.position.y = 8;
+
+    g.add(base, mastro, band, anel, placa, feixe, hit);
+    g.traverse(function(o){ o.userData.estacao = i; });
+    A.mundo.add(g);
+    A.alvos.push(hit, placa);
+    A.estacoes.push({
+      grupo: g, anel: anel, placa: placa, feixe: feixe, t: t,
+      topo: new T.Vector3(b.x, b.y + 17, b.z)
+    });
+  }
+
+  /* pórtico de largada/chegada sobre o ponto 1 */
+  const p0 = A.curva.getPointAt(0), tg0 = A.curva.getTangentAt(0);
+  const y0 = l3dAltura(p0.x, p0.z);
+  const port = new T.Group();
+  port.position.set(p0.x, y0, p0.z);
+  port.lookAt(p0.x + tg0.x, y0, p0.z + tg0.z);
+  const matP = new T.MeshStandardMaterial({ color: 0x2A3E7E, roughness: 0.6, flatShading: true });
+  [-9, 9].forEach(function(x){
+    const c = new T.Mesh(new T.BoxGeometry(1.5, 15, 1.5), matP);
+    c.position.set(x, 7.5, 0);
+    port.add(c);
+  });
+  const cv = document.createElement('canvas');
+  cv.width = 512; cv.height = 96;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#2A3E7E'; cx.fillRect(0, 0, 512, 96);
+  cx.fillStyle = '#D8C733'; cx.fillRect(0, 78, 512, 18);
+  cx.fillStyle = '#FFFFFF';
+  cx.font = 'bold 50px "Barlow Condensed","Arial Narrow",Arial,sans-serif';
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText('MARATONA DOBRO  ·  LARGADA / CHEGADA', 256, 40);
+  /* Duas faixas costa a costa: uma só, com DoubleSide, sairia espelhada para
+     quem chega por trás — e é justamente por trás que a câmera começa. */
+  const matFaixa = new T.MeshStandardMaterial({ map: new T.CanvasTexture(cv), roughness: 0.9 });
+  [0, Math.PI].forEach(function(giro){
+    const f = new T.Mesh(new T.PlaneGeometry(20, 3.8), matFaixa);
+    f.position.set(0, 14.2, giro ? -0.05 : 0.05);
+    f.rotation.y = giro;
+    port.add(f);
+  });
+  A.mundo.add(port);
+}
+
+/* ======================================================================
+   MONTAGEM
+   ====================================================================== */
+function l3dConstruir(T, palco, links){
+  const A = {
+    links: links, palco: palco, sel: null, alvo: null, parado: false,
+    t: 0.015, vel: 9.2, passo: 0, aereo: false, rodando: false, kmHud: -1,
+    orb: { az: 0, el: 0.40, dist: 36, livreAte: 0 }
+  };
+  A.raiz = document.createElement('div');
+  A.raiz.className = 'l3d-raiz';
+
+  A.cena = new T.Scene();
+  A.cena.background = new T.Color(0xBFD9F5);
+  A.cena.fog = new T.Fog(0xBFD9F5, 330, 880);
+  A.mundo = new T.Group();
+  A.cena.add(A.mundo);
+
+  A.cam = new T.PerspectiveCamera(52, 16 / 9, 0.5, 2600);
+  A.cam.position.set(150, 60, 150);
+  A.olhar = new T.Vector3(0, 4, 0);
+  A.rend = new T.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
+  A.rend.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
+  A.raiz.appendChild(A.rend.domElement);
+  A.relogio = new T.Clock();
+  A.ray = new T.Raycaster();
+
+  /* Soma das luzes perto de 1,0 de propósito: com 2,0 a areia e os prédios
+     brancos estouravam e a ilha virava um borrão branco. */
+  A.cena.add(new T.HemisphereLight(0xD6E8FF, 0x3E5B38, 0.58));
+  const sol = new T.DirectionalLight(0xFFF4DA, 0.68);
+  sol.position.set(160, 220, 90);
+  A.cena.add(sol);
+
+  A.mundo.add(l3dTerreno(T));
+  A.mar = l3dMar(T);
+  A.marBase = Float32Array.from(A.mar.geometry.attributes.position.array);
+  A.mundo.add(A.mar);
+
+  A.curva = new T.CatmullRomCurve3(L3D_PISTA.map(function(p){
+    return new T.Vector3(p[0], l3dAltura(p[0], p[1]), p[1]);
+  }), true, 'catmullrom', 0.5);
+  A.comp = A.curva.getLength();
+
+  A.mundo.add(l3dFita(T, A.curva, 7.5, 12.8, 0.16, 0xF0EAD8, false, true));   /* calçadão */
+  A.mundo.add(l3dFita(T, A.curva, 13.4, 0, 0.12, 0x3A4150, false, false));    /* asfalto */
+  A.mundo.add(l3dFita(T, A.curva, 0.55, -6.1, 0.2, 0xE9EDF5, false, false));
+  A.mundo.add(l3dFita(T, A.curva, 0.55,  6.1, 0.2, 0xE9EDF5, false, false));
+  A.mundo.add(l3dFita(T, A.curva, 0.8, 0, 0.2, 0xE8D98A, true, false));       /* faixa central */
+
+  l3dCidade(T, A.mundo);
+  A.mundo.add(l3dCristo(T));
+  A.mundo.add(l3dEstadio(T));
+  l3dArcosDaLapa(T, A.curva, A.mundo);
+  A.cabines = l3dBondinho(T, A.mundo);
+  A.barcos = l3dBarcos(T, A.mundo);
+  A.nuvens = l3dNuvens(T, A.cena);
+
+  l3dEstacoes(T, A);
+
+  const c = l3dCorredor(T);
+  A.corredor = c.grupo;
+  A.membros = c.partes;
+  A.mundo.add(A.corredor);
+  A.sombra = new T.Mesh(new T.CircleGeometry(1.5, 14),
+    new T.MeshBasicMaterial({ color: 0x1A2138, transparent: true, opacity: 0.22 }));
+  A.sombra.rotation.x = -Math.PI / 2;
+  A.mundo.add(A.sombra);
+
+  l3dInterface(T, A);
+  l3dEventos(T, A);
+  palco.appendChild(A.raiz);
+  l3dMedir(A);
+  return A;
+}
+
+function l3dInterface(T, A){
+  A.hud = document.createElement('div');
+  A.hud.className = 'l3d-hud';
+  A.hud.innerHTML = '<b>KM 0,0</b><span></span>';
+  A.raiz.appendChild(A.hud);
+
+  const tools = document.createElement('div');
+  tools.className = 'l3d-tools';
+  tools.innerHTML =
+    '<button data-a="ant" title="Ponto anterior">&#9664;</button>' +
+    '<button data-a="prox" title="Próximo ponto">&#9654;</button>' +
+    '<button data-a="aereo" title="Ver o percurso inteiro">Percurso</button>';
+  A.raiz.appendChild(tools);
+  A.btAereo = tools.querySelector('[data-a="aereo"]');
+  tools.addEventListener('click', function(ev){
+    const b = ev.target.closest('button');
+    if(!b) return;
+    if(b.dataset.a === 'aereo'){
+      A.aereo = !A.aereo;
+      A.btAereo.classList.toggle('on', A.aereo);
+      return;
+    }
+    const n = A.links.length;
+    const base = A.sel === null ? Math.round(A.t * n) % n : A.sel;
+    const i = ((b.dataset.a === 'prox' ? base + 1 : base - 1) % n + n) % n;
+    l3dSelecionar(A, i);
+  });
+
+  A.cartao = document.createElement('div');
+  A.cartao.className = 'l3d-cartao';
+  A.cartao.innerHTML =
+    '<button class="fechar" aria-label="Fechar">&times;</button>' +
+    '<div class="km"></div><div class="nome"></div><div class="desc"></div>' +
+    '<a class="abrir" target="_blank" rel="noopener noreferrer">Abrir página <span>&#8599;</span></a>';
+  A.raiz.appendChild(A.cartao);
+  A.cartao.querySelector('.fechar').addEventListener('click', function(){ l3dFechar(A); });
+
+  A.balao = document.createElement('div');
+  A.balao.className = 'l3d-balao';
+  A.balao.innerHTML = '<i></i><span></span>';
+  A.balaoQuem = null;
+  A.raiz.appendChild(A.balao);
+}
+
+function l3dMedir(A){
+  const l = A.palco.clientWidth || 900, h = A.palco.clientHeight || 500;
+  A.larg = l; A.alt = h;
+  A.rend.setSize(l, h, false);
+  A.cam.aspect = l / h;
+  A.cam.updateProjectionMatrix();
+}
+
+function l3dEventos(T, A){
+  const dom = A.rend.domElement;
+  let arr = false, px = 0, py = 0, mov = 0;
+
+  dom.addEventListener('pointerdown', function(e){
+    arr = true; mov = 0; px = e.clientX; py = e.clientY;
+    try{ dom.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  dom.addEventListener('pointermove', function(e){
+    if(!arr){ l3dPonteiro(A, e, false); return; }
+    const dx = e.clientX - px, dy = e.clientY - py;
+    px = e.clientX; py = e.clientY;
+    mov += Math.abs(dx) + Math.abs(dy);
+    A.orb.az -= dx * 0.006;
+    A.orb.el = Math.min(1.25, Math.max(0.07, A.orb.el + dy * 0.004));
+    A.orb.livreAte = A.relogio.elapsedTime + 5;
+  });
+  dom.addEventListener('pointerup', function(e){
+    arr = false;
+    try{ dom.releasePointerCapture(e.pointerId); }catch(_){}
+    if(mov < 8) l3dPonteiro(A, e, true);
+  });
+  dom.addEventListener('pointerleave', function(){ arr = false; A.hover = null; });
+  dom.addEventListener('wheel', function(e){
+    e.preventDefault();
+    A.orb.dist = Math.min(120, Math.max(16, A.orb.dist * (e.deltaY > 0 ? 1.12 : 0.89)));
+  }, { passive: false });
+
+  dom.addEventListener('webglcontextlost', function(e){
+    e.preventDefault();
+    A.rodando = false;
+    L3D_APP = null;
+    if(typeof vLinksLista === 'function'){
+      vLinksLista('O navegador encerrou o contexto 3D (costuma ser falta de memória ' +
+                  'de vídeo). A lista abaixo faz o mesmo trabalho.');
+    }
+  });
+
+  if(window.ResizeObserver){
+    A.ro = new ResizeObserver(function(){ l3dMedir(A); });
+    A.ro.observe(A.palco);
+  }else{
+    window.addEventListener('resize', function(){ l3dMedir(A); });
+  }
+}
+
+function l3dAchar(A, e){
+  const r = A.rend.domElement.getBoundingClientRect();
+  const v = new window.THREE.Vector2(
+    ((e.clientX - r.left) / r.width) * 2 - 1,
+    -((e.clientY - r.top) / r.height) * 2 + 1);
+  A.ray.setFromCamera(v, A.cam);
+  const hits = A.ray.intersectObjects(A.alvos, true);
+  for(let i = 0; i < hits.length; i++){
+    const u = hits[i].object.userData;
+    if(u && u.estacao !== undefined) return u.estacao;
+  }
+  return null;
+}
+
+function l3dPonteiro(A, e, clicou){
+  const i = l3dAchar(A, e);
+  A.hover = i;
+  A.rend.domElement.style.cursor = i === null ? 'grab' : 'pointer';
+  if(!clicou) return;
+  if(i === null) l3dFechar(A); else l3dSelecionar(A, i);
+}
+
+function l3dSelecionar(A, i){
+  A.sel = i;
+  A.alvo = A.estacoes[i].t;
+  A.parado = false;
+  const l = A.links[i];
+  const km = (A.estacoes[i].t * 10).toFixed(1).replace('.', ',');
+  A.cartao.querySelector('.km').textContent = 'PONTO ' + (i + 1) + '  ·  KM ' + km;
+  A.cartao.querySelector('.nome').textContent = l.nome;
+  A.cartao.querySelector('.desc').textContent = l.desc;
+  A.cartao.querySelector('.abrir').href = l.url;
+  A.cartao.classList.add('on');
+}
+
+function l3dFechar(A){
+  A.sel = null;
+  A.alvo = null;
+  A.parado = false;
+  A.cartao.classList.remove('on');
+}
+
+function l3dRetomar(A){
+  if(A.rodando) return;
+  A.rodando = true;
+  A.relogio.getDelta();          /* descarta o tempo parado fora da aba */
+  l3dMedir(A);
+  l3dAnimar(A);
+}
+
+/* ======================================================================
+   LAÇO
+   ====================================================================== */
+function l3dAnimar(A){
+  if(!A.rodando) return;
+  if(!A.palco || !A.palco.offsetParent){ A.rodando = false; return; }  /* aba saiu de cena */
+  requestAnimationFrame(function(){ l3dAnimar(A); });
+
+  const T = window.THREE;
+  const dt = Math.min(A.relogio.getDelta(), 0.05);
+  const agora = A.relogio.elapsedTime;
+
+  /* ---- avanço do corredor ---- */
+  let vel = A.vel;
+  if(A.alvo !== null){
+    let falta = (A.alvo - A.t + 1) % 1;
+    if(falta > 0.985) falta = 0;
+    if(falta < 0.0022){
+      A.t = A.alvo; A.alvo = null; A.parado = true; vel = 0;
+    }else{
+      vel = A.vel * (0.45 + 1.95 * Math.min(1, falta / 0.06));
+    }
+  }
+  if(A.parado) vel = 0;
+  A.t = (A.t + (vel * dt) / A.comp) % 1;
+  A.passo += dt * (vel > 0.1 ? 7.4 : 1.8);
+
+  const p = A.curva.getPointAt(A.t);
+  const tg = A.curva.getTangentAt(A.t);
+  const chao = l3dAltura(p.x, p.z);
+  const pulo = vel > 0.1 ? Math.abs(Math.sin(A.passo)) * 0.5 : Math.sin(A.passo) * 0.07;
+  A.corredor.position.set(p.x, chao + pulo, p.z);
+  A.corredor.lookAt(p.x + tg.x, chao + pulo, p.z + tg.z);
+  A.corredor.rotation.x = vel > 0.1 ? -0.1 : 0;
+  A.sombra.position.set(p.x, chao + 0.08, p.z);
+  A.sombra.scale.setScalar(1 - pulo * 0.2);
+
+  const amp = vel > 0.1 ? 1 : 0.12;
+  A.membros.bracoE.rotation.x =  Math.sin(A.passo) * 0.95 * amp;
+  A.membros.bracoD.rotation.x = -Math.sin(A.passo) * 0.95 * amp;
+  A.membros.pernaE.rotation.x = -Math.sin(A.passo) * 0.85 * amp;
+  A.membros.pernaD.rotation.x =  Math.sin(A.passo) * 0.85 * amp;
+
+  /* ---- câmera ---- */
+  let destino;
+  if(A.aereo){
+    destino = new T.Vector3(0, 300, 248);
+    A.olhar.lerp(new T.Vector3(0, 0, -10), Math.min(1, dt * 2.4));
+  }else{
+    if(agora > A.orb.livreAte){
+      const atras = Math.atan2(-tg.x, -tg.z);
+      let dif = ((atras - A.orb.az + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      A.orb.az += dif * Math.min(1, dt * 1.5);
+    }
+    const d = A.orb.dist, el = A.orb.el;
+    destino = new T.Vector3(
+      p.x + Math.sin(A.orb.az) * Math.cos(el) * d,
+      chao + 4.2 + Math.sin(el) * d,
+      p.z + Math.cos(A.orb.az) * Math.cos(el) * d);
+    const minY = l3dAltura(destino.x, destino.z) + 4;
+    if(destino.y < minY) destino.y = minY;
+    A.olhar.lerp(new T.Vector3(p.x, chao + 4.2, p.z), Math.min(1, dt * 6));
+  }
+  A.cam.position.lerp(destino, Math.min(1, dt * (A.aereo ? 2.4 : 4.5)));
+  A.cam.lookAt(A.olhar);
+
+  /* ---- cenário vivo ---- */
+  const mp = A.mar.geometry.attributes.position;
+  for(let i = 0; i < mp.count; i++){
+    const x = A.marBase[i * 3], z = A.marBase[i * 3 + 2];
+    mp.setY(i, Math.sin(x * 0.028 + agora * 0.8) * 0.9 +
+               Math.sin(z * 0.034 + agora * 1.1) * 0.7);
+  }
+  mp.needsUpdate = true;
+  A.mar.geometry.computeVertexNormals();
+
+  A.barcos.forEach(function(b){
+    const u = b.userData;
+    u.a += u.v * dt;
+    const x = u.cx + Math.cos(u.a) * u.r, z = u.cz + Math.sin(u.a) * u.r;
+    b.position.set(x, 0.3 + Math.sin(agora * 1.6 + u.f) * 0.35, z);
+    b.rotation.y = -u.a + Math.PI / 2;
+    b.rotation.z = Math.sin(agora * 1.3 + u.f) * 0.06;
+  });
+  A.nuvens.forEach(function(n, i){
+    n.visible = !A.aereo;        /* na vista de cima elas tapam a ilha */
+    n.position.x += dt * (2.2 + i * 0.25);
+    if(n.position.x > 420) n.position.x = -420;
+  });
+  A.cabines.forEach(function(c, i){
+    const f = 0.5 + 0.5 * Math.sin(agora * 0.26 + i * Math.PI);
+    c.malha.position.lerpVectors(c.a, c.b, f);
+    c.malha.position.y -= 1.3;
+  });
+  /* Quanto a câmera já se afastou: 0 = atrás do corredor, 1 = vista de cima.
+     Tudo que precisa crescer no "Percurso" se pendura neste número. */
+  A.longe = (A.longe || 0) + ((A.aereo ? 1 : 0) - (A.longe || 0)) * Math.min(1, dt * 3);
+  A.estacoes.forEach(function(s, i){
+    const sel = A.sel === i, hv = A.hover === i;
+    const o = (sel ? 0.85 : hv ? 0.72 : 0.42) + 0.16 * Math.sin(agora * 2.2 + i);
+    s.anel.material.opacity = o;
+    s.anel.material.color.setHex(sel ? 0xFFFFFF : 0xD8C733);
+    const e = (sel || hv ? 1.12 : 1) * (1 + 1.1 * A.longe);
+    s.anel.scale.setScalar(s.anel.scale.x + (e - s.anel.scale.x) * Math.min(1, dt * 9));
+    s.placa.scale.setScalar(5 + 11 * A.longe + (sel || hv ? 1.6 : 0));
+    s.feixe.visible = A.longe > 0.04;
+    s.feixe.material.opacity = (sel || hv ? 0.6 : 0.42) * A.longe;
+  });
+
+  /* ---- HUD e cartão ---- */
+  const km = Math.round(A.t * 100) / 10;
+  if(km !== A.kmHud){
+    A.kmHud = km;
+    const n = A.links.length;
+    const prox = A.links[Math.ceil(A.t * n - 0.0001) % n];
+    A.hud.firstChild.textContent = 'KM ' + km.toFixed(1).replace('.', ',');
+    A.hud.lastChild.textContent = A.parado && A.sel !== null
+      ? 'parado no ponto ' + (A.sel + 1)
+      : 'a caminho de ' + (prox ? prox.nome : '');
+  }
+  if(A.sel !== null && A.larg > 620){
+    const v = A.estacoes[A.sel].topo.clone().project(A.cam);
+    if(v.z < 1){
+      A.cartao.style.left = Math.max(152, Math.min(A.larg - 152,
+        (v.x * 0.5 + 0.5) * A.larg)) + 'px';
+      /* o piso de 215 é o que mantém o cartão abaixo do HUD e dos botões */
+      A.cartao.style.top = Math.max(215, Math.min(A.alt - 16,
+        (-v.y * 0.5 + 0.5) * A.alt)) + 'px';
+    }
+  }else if(A.sel !== null){
+    A.cartao.style.left = ''; A.cartao.style.top = '';
+  }
+
+  /* balão de quem está sob o mouse — o cartão aberto manda nesse ponto */
+  const hv = A.hover;
+  if(hv !== null && hv !== undefined && hv !== A.sel){
+    const v = A.estacoes[hv].topo.clone().project(A.cam);
+    if(v.z < 1){
+      if(A.balaoQuem !== hv){
+        A.balaoQuem = hv;
+        A.balao.firstChild.textContent = String(hv + 1);
+        A.balao.lastChild.textContent = A.links[hv].nome;
+      }
+      A.balao.style.left = Math.round((v.x * 0.5 + 0.5) * A.larg) + 'px';
+      A.balao.style.top = Math.round((-v.y * 0.5 + 0.5) * A.alt) + 'px';
+      A.balao.classList.add('on');
+    }else{
+      A.balao.classList.remove('on');
+    }
+  }else if(A.balaoQuem !== null){
+    A.balaoQuem = null;
+    A.balao.classList.remove('on');
+  }
+
+  A.rend.render(A.cena, A.cam);
+}
+
+/* ======================================================================
+   AS DUAS CARAS DA ABA
+   ====================================================================== */
+function l3dCabecalho(modo){
+  return '<div class="card-h"><h3>Links úteis</h3>' +
+    '<span class="l3d-seg">' +
+    '<button data-m="mundo"' + (modo === 'mundo' ? ' class="on"' : '') + '>Maratona 3D</button>' +
+    '<button data-m="lista"' + (modo === 'lista' ? ' class="on"' : '') + '>Lista</button>' +
+    '</span></div>';
+}
+function l3dLigarSeletor(){
   const box = el('v-links');
   if(!box) return;
+  box.querySelectorAll('.l3d-seg button').forEach(function(b){
+    b.addEventListener('click', function(){ l3dSetModo(b.dataset.m); vLinks(); });
+  });
+}
+
+function vLinksLista(aviso){
+  const box = el('v-links');
+  if(!box) return;
+  l3dEstilo();
   box.innerHTML =
-    '<div class="card"><div class="card-h"><h3>Links úteis</h3>' +
-    '<span class="hint">abrem em uma nova aba — você continua no Portal</span>' +
-    '</div><div style="padding:18px;display:flex;flex-direction:column;gap:12px">' +
-    LINKS_UTEIS.map(l =>
-      '<a href="' + metasEsc(l.url) + '" target="_blank" rel="noopener noreferrer" ' +
-      'class="link-util">' +
-      '<span style="flex:1">' +
-      '<span style="display:block;font-weight:700;color:var(--navy);font-size:15px">' +
-      metasEsc(l.nome) + '</span>' +
-      '<span style="display:block;font-size:12px;color:var(--muted);margin-top:3px">' +
-      metasEsc(l.desc) + '</span></span>' +
-      '<span style="color:var(--sky);font-weight:700;font-size:18px">\u2197</span>' +
-      '</a>').join('') +
+    '<div class="card">' + l3dCabecalho('lista') +
+    '<div style="padding:18px;display:flex;flex-direction:column;gap:12px">' +
+    (aviso ? '<div class="l3d-aviso">' + metasEsc(aviso) + '</div>' : '') +
+    LINKS_UTEIS.map(function(l){
+      return '<a href="' + metasEsc(l.url) + '" target="_blank" rel="noopener noreferrer" ' +
+        'class="link-util">' +
+        '<span style="flex:1">' +
+        '<span style="display:block;font-weight:700;color:var(--navy);font-size:15px">' +
+        metasEsc(l.nome) + '</span>' +
+        '<span style="display:block;font-size:12px;color:var(--muted);margin-top:3px">' +
+        metasEsc(l.desc) + '</span></span>' +
+        '<span style="color:var(--sky);font-weight:700;font-size:18px">↗</span>' +
+        '</a>';
+    }).join('') +
     '</div></div>' +
     '<div class="fonte">São sistemas separados do Portal: cada um pede o ' +
     'próprio login.</div>';
+  l3dLigarSeletor();
+}
+
+function vLinks(){
+  const box = el('v-links');
+  if(!box) return;
+  l3dEstilo();
+  if(l3dModo() === 'lista'){ vLinksLista(''); return; }
+  if(!l3dTemWebGL()){
+    vLinksLista('Esta máquina não tem WebGL disponível, então a maratona 3D não roda ' +
+                'aqui. A lista abaixo faz o mesmo trabalho.');
+    return;
+  }
+  box.innerHTML =
+    '<div class="card">' + l3dCabecalho('mundo') +
+    '<div class="l3d-palco" id="l3dPalco">' +
+    '<div class="l3d-carregando">Montando a cidade…</div></div>' +
+    '<div class="l3d-rodape">' +
+    '<span><b>Clique num ponto</b> para abrir o cartão — o link abre no botão.</span>' +
+    '<span>Arraste para girar a câmera · role para aproximar</span>' +
+    '</div></div>' +
+    '<div class="fonte">São sistemas separados do Portal: cada um pede o ' +
+    'próprio login.</div>';
+  l3dLigarSeletor();
+
+  if(L3D_APP){                       /* já montado numa visita anterior */
+    const palco = el('l3dPalco');
+    palco.innerHTML = '';
+    palco.appendChild(L3D_APP.raiz);
+    L3D_APP.palco = palco;
+    if(L3D_APP.ro){ L3D_APP.ro.disconnect(); L3D_APP.ro.observe(palco); }
+    l3dRetomar(L3D_APP);
+    return;
+  }
+  l3dCarregarTres().then(function(T){
+    const palco = el('l3dPalco');
+    if(!palco) return;              /* o usuário trocou de aba no meio do download */
+    palco.innerHTML = '';
+    L3D_APP = l3dConstruir(T, palco, LINKS_UTEIS);
+    l3dRetomar(L3D_APP);
+  }).catch(function(){
+    vLinksLista('Não consegui baixar a biblioteca 3D (three.js) — o CDN pode estar ' +
+                'bloqueado nesta rede. A lista abaixo faz o mesmo trabalho.');
+  });
 }
 window.vLinks = vLinks;
+window.vLinksLista = vLinksLista;
 
 if(typeof VIEWS !== 'undefined' && Array.isArray(VIEWS)){
   if(!VIEWS.some(v => v.id === 'links')){
