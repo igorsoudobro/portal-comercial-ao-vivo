@@ -9556,8 +9556,21 @@ if(typeof VIEWS !== 'undefined' && Array.isArray(VIEWS)){
 #v-crm .dtable td{text-align:left;font-size:12.5px;padding:8px 10px 8px 0}
 #v-crm .dtable td.r{text-align:right;font-variant-numeric:tabular-nums}
 #v-crm .chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+/* ETAPAS DO MERCOS (26/10/2026). As antigas ficam porque o histórico
+   congelado do OMIE ainda usa esses nomes em `faseOrig`, e porque um pacote
+   velho em cache não pode deixar o chip sem cor. */
 #v-crm .chip.Prospecção, #v-crm .chip.Apresentação, #v-crm .chip.Proposta, #v-crm .chip.Negociação{background:var(--mist);color:var(--navy)}
-#v-crm .chip.Fechamento{background:var(--win-bg);color:var(--win)}
+#v-crm .chip\.A\ Prospectar, #v-crm .chip.Prospectar, #v-crm .chip.contato{background:var(--mist);color:var(--navy)}
+#v-crm .chip.Fechamento, #v-crm .chip.Ganhos{background:var(--win-bg);color:var(--win)}
+/* 'A finalizar' é limbo, não vitória: card movido no Mercos sem alguém
+   definir ganha/perdida. Cor de atenção de propósito - ele precisa incomodar. */
+#v-crm .chip.pendente, #v-crm .chip.finalizar{background:var(--warn-bg);color:var(--warn)}
+#v-crm .funil-col.pendente .n{color:var(--warn)}
+#v-crm .crm-pend{margin:0 0 14px;padding:12px 14px;border-radius:10px;
+  background:var(--warn-bg);border:1px solid var(--warn);color:#6B5A12;font-size:12.5px;line-height:1.55}
+#v-crm .crm-pend b{color:#6B5A12}
+#v-crm .crm-pend ul{margin:8px 0 0;padding-left:18px}
+#v-crm .crm-pend li{margin:2px 0}
 #v-crm .chip.Perdido{background:var(--loss-bg);color:var(--loss)}
 #v-crm .chip.ciclo{background:var(--win-bg);color:var(--win)}
 #v-crm .chip.atencao{background:var(--warn-bg);color:var(--warn)}
@@ -9962,9 +9975,35 @@ async function crmDados(){
   return CRM;
 }
 
-const SLA_DIAS = 7;
-const FUNIL_ABERTO = ['Prospecção','Apresentação','Proposta','Negociação'];
+/* ETAPAS NOVAS (26/10/2026): o CRM saiu do OMIE e foi para o Mercos.
+   As fases antigas ('Prospecção','Apresentação','Proposta','Fechamento') não
+   existem mais em lead nenhum - o pacote já chega traduzido pelo
+   crm_unificar.py, com as etapas oficiais do funil "Novo Cliente".
+
+   'A finalizar' é a etapa que não existia: card arrastado para Ganhos ou
+   Perdido no Mercos SEM alguém clicar em "definir como ganha/perdida". Pela
+   regra do painel (22/10, Geovana), quem manda no desfecho é a SITUAÇÃO, não
+   a coluna - então esses ficam parados aqui, à vista, em vez de virarem ganho
+   que ninguém confirmou.
+
+   Os dois valores abaixo vêm do pacote quando ele os traz; as constantes são
+   só o que vale se vier um pacote velho. */
+let SLA_DIAS = 3;        /* era 7; virou 3 em 19/10/2026, decisão da Geovana */
+let CRM_ETAPAS = ['A Prospectar','Em contato','Negociação','A finalizar',
+                  'Ganhos','Perdido'];
+const ETAPA_GANHO = 'Ganhos', ETAPA_PERDIDO = 'Perdido';
+const ETAPA_PENDENTE = 'A finalizar';
+let FUNIL_ABERTO = ['A Prospectar','Em contato','Negociação','A finalizar'];
 const CRM_TODAY = new Date();
+
+/* "Trabalhado" e "chegou a negociar" vêm PRONTOS do pacote, em chegouContato
+   e chegouNegociacao. Antes a tela deduzia isso de dApresentacao/dProposta,
+   que só o OMIE preenchia - com o Mercos esses campos são sempre nulos e a
+   coluna "Trabalhados" zeraria sem ninguém entender por quê. */
+const crmTrabalhado = r => !!r.chegouContato;
+const crmNegociou = r => !!r.chegouNegociacao;
+const crmGanho = r => r.fase === ETAPA_GANHO;
+const crmPerdido = r => r.fase === ETAPA_PERDIDO;
 
 const crmMoney = n => 'R$ ' + Math.round(n).toLocaleString('pt-BR');
 const crmPct = n => (isFinite(n)?n:0).toLocaleString('pt-BR',
@@ -10028,8 +10067,8 @@ function crmCohort(){
 
 function leadsMetrics(cohort){
   const recebidos = cohort.length;
-  const trabalhadosArr = cohort.filter(r=>!!r.dApresentacao);
-  const ganhosArr = cohort.filter(r=>r.fase==='Fechamento');
+  const trabalhadosArr = cohort.filter(crmTrabalhado);
+  const ganhosArr = cohort.filter(crmGanho);
   const perdidosArr = cohort.filter(r=>r.fase==='Perdido');
   const abertosArr = cohort.filter(r=>FUNIL_ABERTO.includes(r.fase));
   const valorGanho = ganhosArr.reduce((s,r)=>s+r.valor,0);
@@ -10039,13 +10078,13 @@ function leadsMetrics(cohort){
 }
 
 function slaMetrics(cohort){
-  const emProspeccao = cohort.filter(r=>r.fase==='Prospecção');
+  const emProspeccao = cohort.filter(r=>!crmTrabalhado(r) && !crmGanho(r) && !crmPerdido(r));
   let aguardando=0, atrasado=0;
   emProspeccao.forEach(r=>{ const d=crmDiasDesde(r.dProspeccao);
     if(d!==null && d<=SLA_DIAS) aguardando++; else atrasado++; });
-  const trabalhados = cohort.filter(r=>!!r.dApresentacao);
+  const trabalhados = cohort.filter(crmTrabalhado);
   let dentroPrazo=0;
-  trabalhados.forEach(r=>{ const gap=crmDiasEntre(r.dProspeccao,r.dApresentacao);
+  trabalhados.forEach(r=>{ const gap=crmDiasEntre(r.dProspeccao, r.dApresentacao||r.dUltMov);
     if(gap!==null && gap<=SLA_DIAS) dentroPrazo++; });
   return {emProspeccaoN:emProspeccao.length, aguardando, atrasado,
     pctTrabalhados: cohort.length? trabalhados.length/cohort.length*100:0,
@@ -10054,7 +10093,7 @@ function slaMetrics(cohort){
 }
 
 function pipelineAtual(cohort){
-  const b = {'Prospecção':0,'Apresentação':0,'Proposta':0,'Negociação':0,'Fechamento':0,'Perdido':0};
+  const b = {}; CRM_ETAPAS.forEach(e=>b[e]=0);
   cohort.forEach(r=>{ if(Object.prototype.hasOwnProperty.call(b, r.fase)) b[r.fase]++; });
   return b;
 }
@@ -10072,11 +10111,11 @@ function pipelineAtual(cohort){
    Eu tinha montado este quadro cumulativo primeiro; o Igor pediu por fase, que
    é o que serve para trabalhar a lista. */
 const FUNIL_COLUNAS = [
-  {k:'Prospecção',  lab:'Prospecção'},
-  {k:'Apresentação',lab:'Apresentação'},
-  {k:'Proposta',    lab:'Proposta'},
+  {k:'A Prospectar',lab:'A Prospectar'},
+  {k:'Em contato',  lab:'Em contato'},
+  {k:'A finalizar', lab:'A finalizar'},
   {k:'Negociação',  lab:'Negociação'},
-  {k:'Fechamento',  lab:'Ganhos'},
+  {k:'Ganhos',      lab:'Ganhos'},
   {k:'Perdido',     lab:'Perdidos'},
 ];
 
@@ -10095,7 +10134,8 @@ function crmFunilBoard(cohort){
         }).join('') + (rows.length>200
           ? '<div class="fb-mais">+ '+(rows.length-200)+' não listados</div>' : '')
       : '<div class="fb-vazio">nenhum</div>';
-    const cls = col.k==='Fechamento' ? ' ganho' : (col.k==='Perdido' ? ' perdido' : '');
+    const cls = col.k===ETAPA_GANHO ? ' ganho' : (col.k===ETAPA_PERDIDO ? ' perdido' :
+                (col.k===ETAPA_PENDENTE ? ' pendente' : ''));
     return '<div class="fb-col'+cls+'">'+
            '<div class="fb-head"><span>'+col.lab+'</span><b>'+rows.length+'</b></div>'+
            '<div class="fb-lista">'+corpo+'</div></div>';
@@ -10105,10 +10145,14 @@ function crmFunilBoard(cohort){
 function funilConversao(cohort){
   return [
     {label:'Recebidos',   n:cohort.length},
-    {label:'Trabalhados', n:cohort.filter(r=>!!r.dApresentacao).length},
-    {label:'Proposta',    n:cohort.filter(r=>!!r.dProposta).length},
-    {label:'Negociação',  n:cohort.filter(r=>!!r.dNegociacao).length},
-    {label:'Ganhos',      n:cohort.filter(r=>r.fase==='Fechamento').length},
+    {label:'Trabalhados', n:cohort.filter(crmTrabalhado).length},
+    /* UM degrau só para negociação (26/10/2026). Antes eram dois, 'Proposta'
+       e 'Negociação', porque o OMIE tinha uma data para cada. O funil do
+       Mercos incorporou proposta dentro de negociação e não guarda data de
+       etapa nenhuma - manter os dois degraus repetiria o mesmo número com
+       nomes diferentes, que foi o que o teste mostrou. */
+    {label:'Negociação',  n:cohort.filter(crmNegociou).length},
+    {label:'Ganhos',      n:cohort.filter(crmGanho).length},
   ];
 }
 
@@ -10117,10 +10161,11 @@ function vendorTableLeads(cohort){
   cohort.forEach(r=>{
     const o = map[r.vend] = map[r.vend] || {recebidos:0,trabalhados:0,abertos:0,atrasados:0,ganhos:0,perdidos:0};
     o.recebidos++;
-    if(r.dApresentacao) o.trabalhados++;
+    if(crmTrabalhado(r)) o.trabalhados++;
     if(FUNIL_ABERTO.includes(r.fase)) o.abertos++;
-    if(r.fase==='Prospecção'){ const d=crmDiasDesde(r.dProspeccao); if(d!==null && d>SLA_DIAS) o.atrasados++; }
-    if(r.fase==='Fechamento') o.ganhos++;
+    if(!crmTrabalhado(r) && !crmGanho(r) && !crmPerdido(r)){
+      const d=crmDiasDesde(r.dProspeccao); if(d!==null && d>SLA_DIAS) o.atrasados++; }
+    if(crmGanho(r)) o.ganhos++;
     if(r.fase==='Perdido') o.perdidos++;
   });
   return Object.entries(map).map(([v,o])=>{
@@ -10131,7 +10176,7 @@ function vendorTableLeads(cohort){
 function origemTable(cohort){
   const map={};
   cohort.forEach(r=>{ const o = map[r.orig] = map[r.orig] || {recebidos:0,ganhos:0};
-    o.recebidos++; if(r.fase==='Fechamento') o.ganhos++; });
+    o.recebidos++; if(crmGanho(r)) o.ganhos++; });
   return Object.entries(map).map(([o,v])=>({orig:o, recebidos:v.recebidos, ganhos:v.ganhos,
       conv:v.recebidos?v.ganhos/v.recebidos*100:0}))
     .sort((a,b)=>b.recebidos-a.recebidos);
@@ -10151,9 +10196,9 @@ function qualidadeLeads(cohort){
   const origPreenchida = cohort.filter(r=>r.orig && r.orig!=='Não informado').length;
   const perdidos = cohort.filter(r=>r.fase==='Perdido');
   const perdaComMotivo = perdidos.filter(r=>r.motivo).length;
-  const trabalhados = cohort.filter(r=>!!r.dApresentacao);
+  const trabalhados = cohort.filter(crmTrabalhado);
   const registroOk = trabalhados.filter(r=>r.contato && (r.fone||r.email)).length;
-  const mov = cohort.filter(r=>r.dApresentacao||r.dProposta||r.dNegociacao||r.dPerdido||r.dFechamento).length;
+  const mov = cohort.filter(r=>crmTrabalhado(r)||r.dPerdido||r.dFechamento||r.dUltMov).length;
   return {pctOrigem: total? origPreenchida/total*100:0,
     pctMotivoPerda: perdidos.length? perdaComMotivo/perdidos.length*100:0, perdidosN:perdidos.length,
     pctRegistroOk: trabalhados.length? registroOk/trabalhados.length*100:0, trabalhadosN:trabalhados.length,
@@ -10228,6 +10273,7 @@ function drawBarChart(elx, rows, seriesKey, colorFrom, colorTo, labelFn){
 function crmEsqueleto(){
   return ''+
   '<div class="crm-aviso" id="crm-aviso"></div>'+
+  '<div id="crm-pendentes"></div>'+
   '<p class="periodline" id="periodline-leads"></p>'+
   '<div class="filters">'+
     '<div class="fld"><label>Origem</label><select id="fl-orig"></select></div>'+
@@ -10237,7 +10283,7 @@ function crmEsqueleto(){
   '<div class="section"><p class="eyebrow">KPIs executivos</p>'+
     '<div class="kpis" id="kpis-leads"></div></div>'+
   '<div class="section"><p class="eyebrow">Execução comercial (SLA de 1º contato)'+
-    '<span class="tag">7 dias a partir da Data de Prospecção</span></p>'+
+    '<span class="tag">'+SLA_DIAS+' dias a partir da entrada do lead</span></p>'+
     '<div class="execgrid" id="exec-leads"></div></div>'+
   '<div class="section grid2">'+
     '<div class="card pane"><p class="eyebrow">Pipeline atual<span class="tag">posição de hoje</span></p>'+
@@ -10290,9 +10336,15 @@ function vCRM(){
   crmDados().then(C => {
     if(!C || !Array.isArray(C.leads)){
       box.innerHTML = '<div class="empty">Este pacote de dados não tem o CRM. ' +
-        'Para gerar: <code>python crm_extrair.py --planilha &lt;xlsx&gt;</code> e depois o gerador.</div>';
+        'Para gerar: <code>python extrair_mercos.py</code>, <code>crm_mercos.py</code>, ' +
+        '<code>crm_unificar.py</code> e depois o gerador.</div>';
       return;
     }
+    /* O pacote manda: etapas e SLA vêm do crm_unificar.py, não daqui. Se
+       mudarem a régua lá, a tela acompanha sem eu reeditar o HTML. */
+    if(Array.isArray(C.etapas) && C.etapas.length) CRM_ETAPAS = C.etapas;
+    if(+C.sla_dias > 0) SLA_DIAS = +C.sla_dias;
+    FUNIL_ABERTO = CRM_ETAPAS.filter(e => e !== ETAPA_GANHO && e !== ETAPA_PERDIDO);
     box.innerHTML = crmEsqueleto();
     crmLigar();
     renderLeads();
@@ -10368,6 +10420,37 @@ function renderLeads(){
       : '<b>' + cohort.length + '</b> lead(s) — todo o histórico visível está no recorte.';
   }
 
+  /* OPORTUNIDADES ESPERANDO FINALIZAÇÃO (26/10/2026).
+     O Mercos pede dois gestos para encerrar um negócio: arrastar o card E
+     clicar em "definir como ganha/perdida". Quando só o primeiro acontece, o
+     relatório mantém a oportunidade ABERTA - e ela não entra no ganho, nem no
+     perdido, nem some. Fica em 'A finalizar'.
+
+     Isso não é detalhe de tela. Em 26/10 havia 3 cards parados na coluna
+     Ganhos somando R$ 2.569,37 que ninguém estava contando como venda. O
+     bloco existe para a pessoa certa ver o nome e resolver em um clique, em
+     vez de o número ficar errado em silêncio. */
+  const pend = cohort.filter(r => r.fase === ETAPA_PENDENTE);
+  const alvo = el('crm-pendentes');
+  if(alvo){
+    if(!pend.length){ alvo.innerHTML = ''; }
+    else{
+      const soma = pend.reduce((a,r)=>a+(+r.valor||0),0);
+      const lista = pend.slice().sort((a,b)=>(b.valor||0)-(a.valor||0));
+      alvo.innerHTML =
+        '<div class="crm-pend"><b>' + pend.length + ' oportunidade(s) esperando ' +
+        'finalização no Mercos' + (soma ? ' — ' + crmMoney(soma) + ' parados' : '') +
+        '.</b> O card foi movido mas ninguém definiu se foi ganha ou perdida, ' +
+        'então ela não conta como nenhum dos dois.' +
+        '<ul>' + lista.slice(0,12).map(r =>
+          '<li>' + crmEsc(r.empresa) + ' — ' + crmEsc(r.vend) +
+          ' · está em <b>' + crmEsc(r.etapaMercos || '?') + '</b>' +
+          (r.valor ? ' · ' + crmMoney(r.valor) : '') + '</li>').join('') +
+        '</ul>' + (lista.length > 12 ? '<p style="margin:6px 0 0">e mais ' +
+          (lista.length-12) + '.</p>' : '') + '</div>';
+    }
+  }
+
   /* As opções de Origem saem da BASE e não da coorte: se saíssem da coorte, a
      opção escolhida desapareceria da lista assim que filtrasse por ela. */
   const sel = el('fl-orig');
@@ -10407,22 +10490,22 @@ function renderLeads(){
     {l:'Aguardando 1º contato', v:sla.aguardando, s:'em Prospecção, dentro de 7d'},
     {l:'1º contato atrasado', v:sla.atrasado, s:'em Prospecção, além de 7d', c:'warn'},
     {l:'% trabalhados', v:crmPct(sla.pctTrabalhados), s:sla.trabalhadosN+' de '+m.recebidos+' recebidos'},
-    {l:'% trabalhados no prazo', v:crmPct(sla.pctDentroPrazo), s:'1º contato em até 7 dias'},
+    {l:'% trabalhados no prazo', v:crmPct(sla.pctDentroPrazo), s:'1º contato em até '+SLA_DIAS+' dias'},
   ];
   el('exec-leads').innerHTML = exec.map(e=>
     '<div class="execcard '+(e.c||'')+'"><div class="e-label">'+e.l+'</div>'+
     '<div class="e-val">'+e.v+'</div><div class="e-sub">'+e.s+'</div></div>').join('');
 
   const pipe = pipelineAtual(cohort);
-  const order = ['Prospecção','Apresentação','Proposta','Negociação','Fechamento','Perdido'];
+  const order = CRM_ETAPAS;
   const maxP = Math.max(1,...order.map(k=>pipe[k]));
   el('pipeline').innerHTML = order.map((k,i)=>{
     const w = Math.round(pipe[k]/maxP*100);
-    const cls = k==='Fechamento'?'ganho':(k==='Perdido'?'perdido':'');
+    const cls = k===ETAPA_GANHO?'ganho':(k===ETAPA_PERDIDO?'perdido':(k===ETAPA_PENDENTE?'pendente':''));
     const on = stateL.foco==='fase:'+k ? ' active' : '';
     return '<div class="stage '+cls+on+'" data-pipe="'+k+'">'+
       '<span class="idx">'+String(i+1).padStart(2,'0')+'</span>'+
-      '<span class="nm">'+(k==='Fechamento'?'Ganhos':(k==='Perdido'?'Perdidos':k))+'</span>'+
+      '<span class="nm">'+(k===ETAPA_PERDIDO?'Perdidos':k)+'</span>'+
       '<span class="track"><span class="bar" style="width:'+w+'%"></span></span>'+
       '<span class="ct">'+pipe[k]+'</span></div>';
   }).join('');
@@ -10504,9 +10587,9 @@ function renderLeads(){
    lá, muda aqui junto, senão o card diria um número e a lista outro. */
 const CRM_FOCOS = {
   recebidos:   {lab:'recebidos',           ok:r=>true},
-  trabalhados: {lab:'trabalhados',         ok:r=>!!r.dApresentacao},
-  ganhos:      {lab:'ganhos',              ok:r=>r.fase==='Fechamento'},
-  conversao:   {lab:'que converteram',     ok:r=>r.fase==='Fechamento'},
+  trabalhados: {lab:'trabalhados',         ok:crmTrabalhado},
+  ganhos:      {lab:'ganhos',              ok:crmGanho},
+  conversao:   {lab:'que converteram',     ok:crmGanho},
 };
 
 function renderDetailLeads(cohort){
@@ -10515,7 +10598,7 @@ function renderDetailLeads(cohort){
   if(stateL.foco.indexOf('fase:') === 0){
     const f = stateL.foco.slice(5);
     rows = rows.filter(r => r.fase === f);
-    rotulo = (f==='Fechamento' ? 'Ganhos' : (f==='Perdido' ? 'Perdidos' : f));
+    rotulo = (f===ETAPA_PERDIDO ? 'Perdidos' : f);
   } else {
     const foco = CRM_FOCOS[stateL.foco];
     if(foco){ rows = rows.filter(foco.ok); rotulo = foco.lab; }
@@ -10530,15 +10613,15 @@ function renderDetailLeads(cohort){
   }
   body.innerHTML = rows.slice(0,300).map(r=>{
     let contato='—';
-    if(r.fase==='Prospecção'){
+    if(!crmTrabalhado(r) && !crmGanho(r) && !crmPerdido(r)){
       const d=crmDiasDesde(r.dProspeccao);
       contato = d>SLA_DIAS? '<span class="pill stuck">'+d+'d atrasado</span>'
                           : '<span class="pill ok">há '+d+'d</span>';
-    } else if(r.dApresentacao){ contato = crmBrDate(r.dApresentacao)+' (trabalhado)'; }
+    } else if(crmTrabalhado(r)){ contato = crmBrDate(r.dApresentacao||r.dUltMov)+' (trabalhado)'; }
     const emp = r.empresa || '';
     return '<tr><td title="'+crmEsc(emp)+'">'+crmEsc(emp.length>32?emp.slice(0,32)+'…':emp)+'</td>'+
       '<td>'+crmEsc(r.vend)+'</td><td><span class="chip '+crmEsc(r.fase)+'">'+
-      crmEsc(r.fase==='Fechamento'?'Ganho':r.fase)+'</span></td>'+
+      crmEsc(r.fase)+'</span></td>'+
       '<td>'+crmEsc(r.orig)+'</td><td class="r">'+crmBrDate(r.dProspeccao)+'</td>'+
       '<td class="r">'+contato+'</td>'+
       '<td class="r">'+(r.valor>0?crmMoney(r.valor):'—')+'</td></tr>';
