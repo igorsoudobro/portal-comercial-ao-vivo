@@ -16263,6 +16263,63 @@ async function aovivoBaixarArquivo(nome){
    Se qualquer coisa falhar, ROWS continua sendo o do V8 - o Portal novo vira o
    Portal de producao e ninguem fica sem numero. Por isso ROWS so e trocado na
    ultima linha, depois de tudo pronto. */
+/* LOGIN COM A SENHA TRANCADA (30/10/2026) - so no Ao Vivo.
+   O banco guarda, para cada usuario, um codigo PBKDF2-SHA256 da senha (salt e
+   numero de voltas por usuario), nunca a senha. Aqui o clique em "Entrar" e
+   interceptado ANTES do doLogin original: calculo o mesmo codigo do que a
+   pessoa digitou (trim + minusculas, como o doLogin sempre fez) e comparo.
+   Bateu: o doLogin original segue normal (perfil, filtros, tudo igual) com a
+   senha digitada so naquele instante. Nao bateu: "Usuario ou senha incorretos".
+   Enquanto o codigo nao chegou, nada e interceptado - o login funciona como
+   antes, ninguem fica trancado fora. */
+let AOVIVO_LOGIN_H = null;
+function aovivoLoginTrancado(h){
+  AOVIVO_LOGIN_H = h;
+  /* a lista do combo passa a vir do banco; os valores deixam de ser a senha */
+  const marca = '•';
+  ADMINS = {}; USERS = {};
+  Object.keys(h.admins||{}).forEach(u => ADMINS[u] = marca);
+  Object.keys(h.users||{}).forEach(u => USERS[u] = marca);
+  if(Array.isArray(h.moderadores)) window.MODERADORES_JSON = h.moderadores;
+  if(typeof buildLogin === 'function') buildLogin();
+}
+async function aovivoCodigo(senha, saltHex, voltas){
+  const bytes = new Uint8Array(saltHex.match(/../g).map(x => parseInt(x, 16)));
+  const chave = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha),
+                                              'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256',
+                                               salt: bytes, iterations: voltas}, chave, 256);
+  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function aovivoEntrar(){
+  const user = el('loginUser').value;
+  const pass = el('loginPass').value.trim().toLowerCase();
+  const err = el('loginErr');
+  const ehAdmin = !!(AOVIVO_LOGIN_H.admins||{})[user];
+  const reg = (AOVIVO_LOGIN_H.admins||{})[user] || (AOVIVO_LOGIN_H.users||{})[user];
+  let ok = false;
+  try{ ok = !!reg && pass && (await aovivoCodigo(pass, reg.s, reg.i)) === reg.h; }
+  catch(e){ console.error('login trancado:', e); }
+  if(!ok){ err.textContent = 'Usuário ou senha incorretos.'; return; }
+  /* o doLogin original compara texto: so neste instante a senha digitada vira
+     o valor do usuario escolhido, e volta a ser a marca logo depois */
+  const mapa = ehAdmin ? ADMINS : USERS;
+  const antes = mapa[user];
+  mapa[user] = pass;
+  try{ doLogin(); } finally { mapa[user] = antes; }
+}
+function aovivoInterceptar(e){
+  if(!AOVIVO_LOGIN_H || typeof DATA_READY === 'undefined' || !DATA_READY) return;
+  const alvo = e.target;
+  const clique = e.type === 'click' && alvo && alvo.id === 'loginBtn';
+  const enter = e.type === 'keydown' && e.key === 'Enter' && alvo && alvo.id === 'loginPass';
+  if(!clique && !enter) return;
+  e.stopPropagation(); e.preventDefault();
+  aovivoEntrar();
+}
+window.addEventListener('click', aovivoInterceptar, true);
+window.addEventListener('keydown', aovivoInterceptar, true);
+
 async function anoSubstituirBase(){
   try{
     const d = await aovivoBaixarArquivo(ANO_ARQ);
@@ -16282,6 +16339,24 @@ async function anoSubstituirBase(){
       CALC.cmv = Object.assign({}, CALC.cmv||{}, k.cmv||{});
       CALC.imp_estado = Object.assign({}, CALC.imp_estado||{}, k.imp_estado||{});
       CALC.frete_estado = Object.assign({}, CALC.frete_estado||{}, k.frete_estado||{});
+    }
+    /* contatos (30/10/2026): os do arquivo do ano POR CIMA dos da rodada - a
+       tabela e a mesma, so que agora alimentada tambem pelo banco */
+    if(d && d.CONTATOS && Object.keys(d.CONTATOS).length && typeof CONTATOS_D!=='undefined')
+      CONTATOS_D = Object.assign({}, CONTATOS_D||{}, d.CONTATOS);
+    /* aba Carteira (30/10/2026): pedidos, ultima compra, dias sem comprar,
+       recorrencia e o dinheiro do cliente, calculados sem a rodada - por cima
+       dos da rodada. Conferido: status igual em 3.012 de 3.057 clientes; os 8
+       que mudam estavam errados na rodada (devolucao contada como compra). */
+    if(d && d.LOGIN_HASH && d.LOGIN_HASH.admins && Object.keys(d.LOGIN_HASH.admins).length)
+      aovivoLoginTrancado(d.LOGIN_HASH);
+    /* metas (30/10/2026): do banco, mantidas a mao - TROCAM as da planilha */
+    if(d && d.METAS && Array.isArray(d.METAS.meses) && d.METAS.meses.length
+       && typeof METAS_D!=='undefined')
+      METAS_D = d.METAS;
+    if(d && d.CARTEIRA_ABA && d.CARTEIRA_ABA.CART_DATAS && typeof CART_DATAS!=='undefined'){
+      CART_DATAS = Object.assign({}, CART_DATAS||{}, d.CARTEIRA_ABA.CART_DATAS);
+      CART_MET = Object.assign({}, CART_MET||{}, d.CARTEIRA_ABA.CART_MET||{});
     }
     if(!d || !d.LINHAS){
       ANO_INFO = {ligado: false, motivo: 'arquivo do ano ainda nao publicado'};
