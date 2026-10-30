@@ -3985,6 +3985,11 @@ function ajustarKpisResumo(){
            'aplicado sobre o faturamento líquido de cada CNPJ. Vem de ' +
            'Parametros!BB:BD do V8. Mesmo critério do campo Contrato da ' +
            'Calculadora de pedido.'}] : []),
+    ...(d.promo ? [{lab: 'Promotoria', val: brl(d.promo), cls: '', sens: true,
+     sub: d.fatLiq ? pct(d.promo / d.fatLiq) + ' do líquido' : '—',
+     dica: 'Custo mensal de promotoria das redes, inteiro para o dono da ' +
+           'rede na carteira, comprando a rede no mês ou não. Sai do lucro ' +
+           'como Contratos.'}] : []),
     /* RENTAB. FIN. ANTES DA BONIFICACAO (25/09/2026). A ordem aqui e a mesma do
        DRE - contrato, rentab. fin., bonificacao, rentabilidade - para as duas
        telas contarem a mesma historia na mesma sequencia. A diferenca entre as
@@ -16562,6 +16567,19 @@ function promoValor(ctx, rows){
     meses = ms.length === 1 ? ms : mesesAtivos();
   }
   if(!ctx.cnpj && (_promoSel(FILTER.reg) || _promoSel(FILTER.uf))) return 0;
+  /* RESUMO: la o dre() e chamado para o recorte inteiro E para pedacos dele
+     (uma linha por vendedor, por canal...). O recorte inteiro leva tudo; a
+     linha de UM vendedor leva so as redes dele; qualquer outro pedaco, nada. */
+  let soVend = null;
+  if(ctx.auto){
+    let fat = 0; (rows || []).forEach(r => { fat += r.fat || 0; });
+    const inteiro = (rows || []).length === ctx.n && Math.abs(fat - ctx.fat) < 0.01;
+    if(!inteiro){
+      const vs = new Set((rows || []).map(r => r.v));
+      if(vs.size !== 1) return 0;
+      soVend = [...vs][0];
+    }
+  }
   const raiz = ctx.cnpj ? String(ctx.cnpj).replace(/\D/g, '').padStart(14, '0').slice(0, 8) : null;
   const filtrado = _promoSel(FILTER.vend) || _promoSel(FILTER.mod) || _promoSel(FILTER.canal);
   let tot = 0;
@@ -16576,6 +16594,7 @@ function promoValor(ctx, rows){
         return;
       }
       const d = (PROMO.dono || {})[it.rede_venda];
+      if(soVend !== null && (!d || d.vendedor !== soVend)) return;
       if(!d){ if(!filtrado && SESSION.isAdmin) tot += v; return; }
       if(!SESSION.isAdmin && !(VEND_VIS && VEND_VIS.has(d.vendedor))) return;
       if(!_promoOk(FILTER.vend, d.vendedor) || !_promoOk(FILTER.mod, d.modelo) ||
@@ -16625,6 +16644,17 @@ window.dre = function(rows){
         try{ return orig.apply(this, arguments); } finally { PROMO_CTX = null; }
       };
       v.fn.__promo = true;
+    }
+    const r = (typeof VIEWS !== 'undefined') ? VIEWS.find(x => x.id === 'resumo') : null;
+    if(r && !r.fn.__promo){
+      const origR = r.fn;
+      r.fn = function(){
+        /* a "impressao" do recorte inteiro: quantas linhas e quanto faturam */
+        const L = linhas(); let fat = 0; L.forEach(x => { fat += x.fat || 0; });
+        PROMO_CTX = {auto: true, n: L.length, fat: fat};
+        try{ return origR.apply(this, arguments); } finally { PROMO_CTX = null; }
+      };
+      r.fn.__promo = true;
     }
     if(typeof analisarCNPJ === 'function' && !analisarCNPJ.__promo){
       const origC = analisarCNPJ;
