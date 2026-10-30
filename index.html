@@ -15807,7 +15807,9 @@ function faixaHtml(d, corte){
      estão marcadas: o imposto (por UF, porque o real só existe por nota e a
      tabela de notas do espelho cobre 3% das linhas) e o frete DO DIA — o dos
      dias já fechados é o real, que veio do relatório do OMIE. */
-  const dre = (faixaEhCasa() && d.dre) ? d.dre.mes : null;
+  const dre = (typeof aovivoPromoFaixa === 'function')
+    ? aovivoPromoFaixa((faixaEhCasa() && d.dre) ? d.dre.mes : null, d)
+    : ((faixaEhCasa() && d.dre) ? d.dre.mes : null);
   const blocoLucro = (dre && dre.fat)
     ? bloco('Lucro no mês', brl(dre.lucro),
             pct(dre.rentab) + ' de rentabilidade')
@@ -15852,6 +15854,7 @@ function faixaDetalhe(dre){
     it('frete', dre.fr, dre.fr_estimado ? '(hoje estimado)' : '') +
     it('comissão', dre.com) +
     it('contrato', dre.contrato) +
+    (dre.promo ? it('promotoria', dre.promo) : '') +
     it('bonif.+amostra', dre.boni) +
     '</div>';
 }
@@ -16623,6 +16626,26 @@ window.dre = function(rows){
   }
   return d;
 };
+
+/* A FAIXA DO TOPO ("Lucro no mes"). O DRE dela vem pronto do faixa.json, que a
+   producao tambem le - por isso o arquivo nao muda e o ajuste e feito aqui, na
+   hora de desenhar: tira a promotoria do mes da faixa e refaz a rentabilidade.
+   Devolve uma COPIA: a faixa e redesenhada de 10 em 10 minutos com o mesmo
+   objeto, e descontar no original tiraria a promotoria duas vezes. */
+function aovivoPromoFaixa(dre, d){
+  try{
+    if(!dre || !PROMO || !PROMO.meses) return dre;
+    const chave = String((d && d.mes && d.mes.mes) || '');
+    const p = (PROMO.meses[chave] || []).reduce((s, it) => s + (+it.valor || 0), 0);
+    if(!p) return dre;
+    const c = Object.assign({}, dre);
+    c.promo = p;
+    c.lucro = (dre.lucro || 0) - p;
+    c.rentab = c.fat ? c.lucro / c.fat : null;
+    return c;
+  }catch(e){ console.error('promotoria: faixa', e); return dre; }
+}
+window.aovivoPromoFaixa = aovivoPromoFaixa;
 
 /* a linha, logo depois de Contratos - e, como Contratos, so no DRE de admin */
 (function(){
