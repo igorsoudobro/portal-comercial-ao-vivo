@@ -16268,6 +16268,11 @@ async function anoSubstituirBase(){
     const d = await aovivoBaixarArquivo(ANO_ARQ);
     /* a promotoria e premissa, nao venda: vale mesmo se a base for recusada */
     if(d && d.PROMOTORIA) PROMO = d.PROMOTORIA;
+    /* contratos (30/10/2026): os do banco por cima dos da rodada. Mesmo formato
+       {cnpj: fracao}; o contratoIndex() refaz o indice sozinho porque o cache
+       dele e por identidade do objeto. Sem o bloco, fica o da rodada. */
+    if(d && d.CONTRATOS && Object.keys(d.CONTRATOS).length && typeof _Z==='object' && _Z)
+      _Z.CONTRATOS = d.CONTRATOS;
     if(!d || !d.LINHAS){
       ANO_INFO = {ligado: false, motivo: 'arquivo do ano ainda nao publicado'};
       return;
