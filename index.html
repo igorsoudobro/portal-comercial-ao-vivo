@@ -15939,6 +15939,9 @@ async function faixaAtualizar(forcar){
    ========================================================================== */
 const AOVIVO_MAX_IDADE_MIN = 60;   /* mais velho que isto, nao mescla */
 const ANO_ARQ = "ano_ao_vivo.json";
+/* custo de promotoria por rede (premissas_comerciais.promotoria), publicado
+   dentro do ano_ao_vivo.json - ver o bloco PROMOTORIA */
+let PROMO = null;
 let AOVIVO_INFO = null, ANO_INFO = null;
 
 /* ==========================================================================
@@ -16255,6 +16258,8 @@ async function aovivoBaixarArquivo(nome){
 async function anoSubstituirBase(){
   try{
     const d = await aovivoBaixarArquivo(ANO_ARQ);
+    /* a promotoria e premissa, nao venda: vale mesmo se a base for recusada */
+    if(d && d.PROMOTORIA) PROMO = d.PROMOTORIA;
     if(!d || !d.LINHAS){
       ANO_INFO = {ligado: false, motivo: 'arquivo do ano ainda nao publicado'};
       return;
@@ -16511,6 +16516,131 @@ function aovivoAplicar(){
 
 <script>
 /* ==========================================================================
+   LINHA "PROMOTORIA" NO DRE (30/10/2026) - so no Ao Vivo
+   ==========================================================================
+   Custo mensal de promotoria por rede, publicado no ano_ao_vivo.json (chave
+   PROMOTORIA; quem mantem e o banco, premissas_comerciais.promotoria).
+
+   REGRA DO IGOR: o custo de cada rede vai INTEIRO para o dono da conta na
+   carteira, compre a rede no mes ou nao. Por isso ele nao sai das linhas de
+   venda: sai do RECORTE da tela (meses + filtros da barra).
+     - sem filtro: tudo;
+     - vendedor / modelo / canal: entra se o dono da rede passa no filtro;
+     - regiao ou UF filtrada: R$ 0 (promotoria nao e de estado);
+     - CNPJ (aba Rentab. por CNPJ): entra se a raiz do CNPJ e daquela rede;
+     - rede sem dono: so no DRE sem filtro;
+     - quem nao e admin: so as redes cujo dono ele enxerga.
+
+   ONDE ENTRA: so onde o DRE e do recorte - aba DRE, Rentab. por CNPJ e
+   Comparativos. Nas tabelas que quebram por cliente ou vendedor o custo
+   inteiro da rede seria somado em cada linha; la ele fica fora. O dre()
+   so soma a promotoria quando PROMO_CTX esta ligado, e quem liga e o
+   envoltorio de cada uma dessas telas.
+
+   Sai do lucro como Contratos: lucro fin. e lucro final caem, e as duas
+   rentabilidades sao refeitas sobre o mesmo faturamento liquido.
+   ========================================================================== */
+let PROMO_CTX = null;
+
+function _promoSel(f){
+  if(f === null || f === undefined || f === '(todos)') return false;
+  if(Array.isArray(f)) return f.length > 0 && f.indexOf('(todos)') < 0;
+  return true;
+}
+function _promoOk(f, v){
+  if(!_promoSel(f)) return true;
+  return Array.isArray(f) ? f.indexOf(v) >= 0 : f === v;
+}
+/* valor da promotoria para o contexto e as linhas que o dre() recebeu */
+function promoValor(ctx, rows){
+  if(!PROMO || !PROMO.meses) return 0;
+  const ano = ctx.ano || ANO_ATIVO;
+  let meses = ctx.meses;
+  if(!meses){
+    /* coluna de um mes so (DRE mes a mes) = aquele mes; senao, o filtro */
+    const ms = [...new Set((rows || []).map(r => r.m))];
+    meses = ms.length === 1 ? ms : mesesAtivos();
+  }
+  if(!ctx.cnpj && (_promoSel(FILTER.reg) || _promoSel(FILTER.uf))) return 0;
+  const raiz = ctx.cnpj ? String(ctx.cnpj).replace(/\D/g, '').padStart(14, '0').slice(0, 8) : null;
+  const filtrado = _promoSel(FILTER.vend) || _promoSel(FILTER.mod) || _promoSel(FILTER.canal);
+  let tot = 0;
+  meses.forEach(m => {
+    const i = MESES_ORD.indexOf(m);
+    if(i < 0) return;
+    const chave = ano + '-' + String(i + 1).padStart(2, '0');
+    (PROMO.meses[chave] || []).forEach(it => {
+      const v = +it.valor || 0;
+      if(raiz){
+        if((PROMO.raiz_rede || {})[raiz] === it.rede_venda) tot += v;
+        return;
+      }
+      const d = (PROMO.dono || {})[it.rede_venda];
+      if(!d){ if(!filtrado && SESSION.isAdmin) tot += v; return; }
+      if(!SESSION.isAdmin && !(VEND_VIS && VEND_VIS.has(d.vendedor))) return;
+      if(!_promoOk(FILTER.vend, d.vendedor) || !_promoOk(FILTER.mod, d.modelo) ||
+         !_promoOk(FILTER.canal, d.canal)) return;
+      tot += v;
+    });
+  });
+  return tot;
+}
+
+/* o dre() ganha a linha - capturar ANTES da troca (regra da casa) */
+const _drePromoBase = dre;
+window.dre = function(rows){
+  const d = _drePromoBase(rows);
+  d.promo = 0;
+  if(PROMO_CTX){
+    const p = promoValor(PROMO_CTX, rows);
+    if(p){
+      d.promo = p;
+      d.lucroFin -= p;
+      d.lucro -= p;
+      d.rentFin = d.fatLiq ? d.lucroFin / d.fatLiq : 0;
+      /* mesma guarda do resto do Portal: sem faturamento, rent fica nula */
+      if(d.rent !== null) d.rent = d.fatLiq > 0 ? d.lucro / d.fatLiq : null;
+    }
+  }
+  return d;
+};
+
+/* a linha, logo depois de Contratos - e, como Contratos, so no DRE de admin */
+(function(){
+  try{
+    if(typeof DRE_ROWS_FULL === 'undefined' || DRE_ROWS_FULL.some(r => r[1] === 'promo')) return;
+    const i = DRE_ROWS_FULL.findIndex(r => r[1] === 'contrato');
+    DRE_ROWS_FULL.splice(i >= 0 ? i + 1 : DRE_ROWS_FULL.length, 0, ['Promotoria', 'promo', 'brl']);
+  }catch(e){ console.error('promotoria: linha do DRE', e); }
+})();
+
+/* quem liga o contexto: a aba DRE e a analise por CNPJ */
+(function(){
+  try{
+    const v = (typeof VIEWS !== 'undefined') ? VIEWS.find(x => x.id === 'dre') : null;
+    if(v && !v.fn.__promo){
+      const orig = v.fn;
+      v.fn = function(){
+        PROMO_CTX = {};
+        try{ return orig.apply(this, arguments); } finally { PROMO_CTX = null; }
+      };
+      v.fn.__promo = true;
+    }
+    if(typeof analisarCNPJ === 'function' && !analisarCNPJ.__promo){
+      const origC = analisarCNPJ;
+      window.analisarCNPJ = function(){
+        const inp = document.getElementById('cnpjInp');
+        PROMO_CTX = {cnpj: inp ? inp.value : ''};
+        try{ return origC.apply(this, arguments); } finally { PROMO_CTX = null; }
+      };
+      window.analisarCNPJ.__promo = true;
+    }
+  }catch(e){ console.error('promotoria: envoltorios', e); }
+})();
+</script>
+
+<script>
+/* ==========================================================================
    ABA COMPARATIVOS (21/10/2026, pedido do Igor) - so no Ao Vivo
    ==========================================================================
    Dois periodos lado a lado, cada um com ano e intervalo de meses: o caso que
@@ -16601,7 +16731,10 @@ function cmpNovos(ano, ini, L){
 }
 function cmpMedir(ano, ini, fim){
   const L = cmpLinhas(ano, ini, fim);
-  const d = dre(L);
+  /* promotoria dos meses do periodo, com os filtros da barra */
+  PROMO_CTX = {ano: ano, meses: cmpIntervalo(ano, ini, fim)};
+  let d;
+  try{ d = dre(L); } finally { PROMO_CTX = null; }
   d.ativos = new Set(L.filter(r => r.venda && r.cn).map(r => r.cn)).size;
   d.novos = cmpNovos(ano, ini, L);
   d.L = L;
