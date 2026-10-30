@@ -16273,6 +16273,16 @@ async function anoSubstituirBase(){
        dele e por identidade do objeto. Sem o bloco, fica o da rodada. */
     if(d && d.CONTRATOS && Object.keys(d.CONTRATOS).length && typeof _Z==='object' && _Z)
       _Z.CONTRATOS = d.CONTRATOS;
+    /* Calculadora (30/10/2026): precos, tabelas por canal e SKUs vem do banco
+       e TROCAM os da rodada; CMV, imposto e frete por UF entram POR CIMA (o da
+       rodada cobre SKU/UF que o banco nao tem). Peso e caixa ficam da rodada. */
+    if(d && d.CALCULADORA && d.CALCULADORA.skus && typeof CALC==='object' && CALC){
+      const k = d.CALCULADORA;
+      CALC.precos = k.precos; CALC.tabelas = k.tabelas; CALC.skus = k.skus;
+      CALC.cmv = Object.assign({}, CALC.cmv||{}, k.cmv||{});
+      CALC.imp_estado = Object.assign({}, CALC.imp_estado||{}, k.imp_estado||{});
+      CALC.frete_estado = Object.assign({}, CALC.frete_estado||{}, k.frete_estado||{});
+    }
     if(!d || !d.LINHAS){
       ANO_INFO = {ligado: false, motivo: 'arquivo do ano ainda nao publicado'};
       return;
