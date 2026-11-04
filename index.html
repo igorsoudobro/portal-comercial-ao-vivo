@@ -3990,6 +3990,9 @@ function ajustarKpisResumo(){
      dica: 'Custo mensal de promotoria das redes, inteiro para o dono da ' +
            'rede na carteira, comprando a rede no mês ou não. Sai do lucro ' +
            'como Contratos.'}] : []),
+    ...(d.degust ? [{lab: 'Degustação', val: brl(d.degust), cls: '', sens: true,
+     sub: d.fatLiq ? pct(d.degust / d.fatLiq) + ' do líquido' : '—',
+     dica: (typeof degustDica === 'function') ? degustDica(d) : ''}] : []),
     /* RENTAB. FIN. ANTES DA BONIFICACAO (25/09/2026). A ordem aqui e a mesma do
        DRE - contrato, rentab. fin., bonificacao, rentabilidade - para as duas
        telas contarem a mesma historia na mesma sequencia. A diferenca entre as
@@ -15855,6 +15858,7 @@ function faixaDetalhe(dre){
     it('comissão', dre.com) +
     it('contrato', dre.contrato) +
     (dre.promo ? it('promotoria', dre.promo) : '') +
+    (dre.degust ? it('degustação', dre.degust) : '') +
     it('bonif.+amostra', dre.boni) +
     '</div>';
 }
@@ -15950,6 +15954,8 @@ const ANO_ARQ = "ano_ao_vivo.json";
 /* custo de promotoria por rede (premissas_comerciais.promotoria), publicado
    dentro do ano_ao_vivo.json - ver o bloco PROMOTORIA */
 let PROMO = null;
+/* custo de degustacao por mes/vendedor/canal (04/11/2026) - bloco DEGUSTACAO */
+let DEGUST = null;
 let AOVIVO_INFO = null, ANO_INFO = null;
 
 /* ==========================================================================
@@ -16407,6 +16413,7 @@ async function anoSubstituirBase(){
     const d = await aovivoBaixarArquivo(ANO_ARQ);
     /* a promotoria e premissa, nao venda: vale mesmo se a base for recusada */
     if(d && d.PROMOTORIA) PROMO = d.PROMOTORIA;
+    if(d && d.DEGUSTACAO && d.DEGUSTACAO.meses) DEGUST = d.DEGUSTACAO;
     /* contratos (30/10/2026): os do banco por cima dos da rodada. Mesmo formato
        {cnpj: fracao}; o contratoIndex() refaz o indice sozinho porque o cache
        dele e por identidade do objeto. Sem o bloco, fica o da rodada. */
@@ -16808,13 +16815,17 @@ window.dre = function(rows){
    objeto, e descontar no original tiraria a promotoria duas vezes. */
 function aovivoPromoFaixa(dre, d){
   try{
-    if(!dre || !PROMO || !PROMO.meses) return dre;
+    if(!dre) return dre;
     const chave = String((d && d.mes && d.mes.mes) || '');
-    const p = (PROMO.meses[chave] || []).reduce((s, it) => s + (+it.valor || 0), 0);
-    if(!p) return dre;
+    const soma = b => ((b && b.meses && b.meses[chave]) || [])
+                        .reduce((s, it) => s + (+it.valor || 0), 0);
+    /* degustacao (04/11/2026) sai da faixa do mesmo jeito - bloco DEGUSTACAO */
+    const p = soma(PROMO), g = soma(DEGUST);
+    if(!p && !g) return dre;
     const c = Object.assign({}, dre);
     c.promo = p;
-    c.lucro = (dre.lucro || 0) - p;
+    c.degust = g;
+    c.lucro = (dre.lucro || 0) - p - g;
     c.rentab = c.fat ? c.lucro / c.fat : null;
     return c;
   }catch(e){ console.error('promotoria: faixa', e); return dre; }
@@ -16863,6 +16874,102 @@ window.aovivoPromoFaixa = aovivoPromoFaixa;
       window.analisarCNPJ.__promo = true;
     }
   }catch(e){ console.error('promotoria: envoltorios', e); }
+})();
+</script>
+<script>
+/* ==========================================================================
+   LINHA "DEGUSTACAO" NO DRE + CARTAO NO RESUMO (04/11/2026) - so no Ao Vivo
+   ==========================================================================
+   Custo da degustadora por mes, vendedor e canal, publicado no ano_ao_vivo.json
+   (chave DEGUSTACAO; vem da planilha de degustacoes - ver bloco_degustacao()).
+
+   REGRAS APROVADAS PELO IGOR: o custo vai para o vendedor e o canal ESCRITOS na
+   planilha; mes = data da degustacao; degustacao sem vendedor ou sem canal so
+   entra no total (sem filtro daquele campo); regiao/UF filtrada = R$ 0 (a
+   planilha nao diz o estado); CNPJ = R$ 0 (nao diz o cliente).
+
+   Mesmo contexto da Promotoria (PROMO_CTX): aba DRE, Resumo, Comparativos e
+   Rentab. por CNPJ. Sai do lucro como Contratos e Promotoria.
+   ========================================================================== */
+function degustValor(ctx, rows, porCanal){
+  if(!DEGUST || !DEGUST.meses || ctx.cnpj) return 0;
+  const ano = ctx.ano || ANO_ATIVO;
+  let meses = ctx.meses;
+  if(!meses){
+    const ms = [...new Set((rows || []).map(r => r.m))];
+    meses = ms.length === 1 ? ms : mesesAtivos();
+  }
+  if(_promoSel(FILTER.reg) || _promoSel(FILTER.uf)) return 0;
+  /* Resumo: recorte inteiro leva tudo; a linha de UM vendedor leva so as
+     degustacoes dele; qualquer outro pedaco, nada (igual a Promotoria) */
+  let soVend = null;
+  if(ctx.auto){
+    let fat = 0; (rows || []).forEach(r => { fat += r.fat || 0; });
+    const inteiro = (rows || []).length === ctx.n && Math.abs(fat - ctx.fat) < 0.01;
+    if(!inteiro){
+      const vs = new Set((rows || []).map(r => r.v));
+      if(vs.size !== 1) return 0;
+      soVend = [...vs][0];
+    }
+  }
+  const fV = _promoSel(FILTER.vend), fM = _promoSel(FILTER.mod), fC = _promoSel(FILTER.canal);
+  let tot = 0;
+  meses.forEach(m => {
+    const i = MESES_ORD.indexOf(m);
+    if(i < 0) return;
+    const chave = ano + '-' + String(i + 1).padStart(2, '0');
+    (DEGUST.meses[chave] || []).forEach(it => {
+      const v = +it.valor || 0;
+      if(soVend !== null && it.vend !== soVend) return;
+      if(!SESSION.isAdmin && !(it.vend && VEND_VIS && VEND_VIS.has(it.vend))) return;
+      if(fV && !(it.vend && _promoOk(FILTER.vend, it.vend))) return;
+      if(fM && !(it.mo && _promoOk(FILTER.mod, it.mo))) return;
+      if(fC && !(it.canal && _promoOk(FILTER.canal, it.canal))) return;
+      tot += v;
+      if(porCanal){ const k = it.canal || 'sem canal'; porCanal[k] = (porCanal[k] || 0) + v; }
+    });
+  });
+  return tot;
+}
+
+/* o dre() ganha a linha - em cima do dre() que ja tem a promotoria */
+const _dreDegustBase = dre;
+window.dre = function(rows){
+  const d = _dreDegustBase(rows);
+  d.degust = 0;
+  if(PROMO_CTX){
+    const por = {};
+    const g = degustValor(PROMO_CTX, rows, por);
+    if(g){
+      d.degust = g;
+      d.degustCanal = por;
+      d.lucroFin -= g;
+      d.lucro -= g;
+      d.rentFin = d.fatLiq ? d.lucroFin / d.fatLiq : 0;
+      if(d.rent !== null) d.rent = d.fatLiq > 0 ? d.lucro / d.fatLiq : null;
+    }
+  }
+  return d;
+};
+
+/* texto do cartao do Resumo: o total por canal, maior primeiro */
+function degustDica(d){
+  const por = (d && d.degustCanal) || {};
+  const ks = Object.keys(por).sort((a, b) => por[b] - por[a]);
+  return 'Custo da degustadora (planilha de degustações), pelo vendedor e canal ' +
+         'escritos nela. Sai do lucro como Contratos e Promotoria. Por canal: ' +
+         (ks.length ? ks.map(k => k + ' ' + brl(por[k])).join(' · ') : '—') + '.';
+}
+window.degustDica = degustDica;
+
+/* a linha, logo depois de Promotoria */
+(function(){
+  try{
+    if(typeof DRE_ROWS_FULL === 'undefined' || DRE_ROWS_FULL.some(r => r[1] === 'degust')) return;
+    let i = DRE_ROWS_FULL.findIndex(r => r[1] === 'promo');
+    if(i < 0) i = DRE_ROWS_FULL.findIndex(r => r[1] === 'contrato');
+    DRE_ROWS_FULL.splice(i >= 0 ? i + 1 : DRE_ROWS_FULL.length, 0, ['Degustação', 'degust', 'brl']);
+  }catch(e){ console.error('degustacao: linha do DRE', e); }
 })();
 </script>
 
