@@ -3494,11 +3494,48 @@ window.multiOK = multiOK;
    Como a equipe do Fellipe e `null` ("os RCAs que sobraram"), tirar o Josias
    daqui ja o devolve para ele. Nao ha segundo lugar para editar - e por isso que
    a lista do Fellipe e null em vez de nominal. */
+/* RCA - Vinicius entrou em 05/11/2026. O Igor mudou o Modelo dele para
+   'Regionais 2 + Distr/Aliment' no V8 em 04/11 e esperava que a visão do
+   Jonas acompanhasse - mas esta lista é NOMINAL, não segue o Modelo, então
+   o Vinicius ficou invisível para o supervisor dele.
+
+   Conferido no dado antes de editar: o modelo 'Regionais 2 + Distr/Aliment'
+   tem exatamente o Jonas + estes 5 + o Vinicius. Nenhum nome sobra, nenhum
+   falta, e a carteira concorda (Vinicius com 110 clientes).
+
+   A MESMA LISTA EXISTE EM email_fechamento.py (EQUIPE_JONAS). Mudar uma só
+   deixa o e-mail de fechamento agrupando errado. */
 const EQUIPES = {
-  'Jonas de Paula': ['RCA - Marcos Lima', 'RCA - Jarbas', 'RCA - Alberto',
-                     'RCA - Marcelo Oliveira', 'RCA - Cainã'],
+  /* POR MODELO desde 05/11/2026 (antes era lista de nomes).
+     O Igor mudou o Modelo do RCA - Vinicius no V8 e esperava que a visão do
+     Jonas acompanhasse - não acompanhou, porque a lista era nominal e não
+     olhava o Modelo. Em vez de acrescentar mais um nome, o time passou a SER
+     o Modelo: quem o V8 colocar em 'Regionais 2 + Distr/Aliment' entra, quem
+     sair deixa de aparecer, sem ninguém editar código.
+
+     A troca tem um custo que o Igor aceitou em 05/11: a permissão sai do
+     código e passa a depender de Parametros!N:O no V8. Uma célula errada lá
+     muda quem enxerga o número de quem. */
+  'Jonas de Paula': {modelo: 'Regionais 2 + Distr/Aliment'},
   'Fellipe Argentati': null            // null = os RCAs que sobraram
 };
+
+/* Quem está num Modelo, segundo o dado - não segundo uma lista.
+   Olha o faturamento E a carteira: um RCA recém-movido pode ainda não ter nota
+   no modelo novo, mas já ter cadastro, e vice-versa. União dos dois para o
+   supervisor não ficar cego em nenhum dos casos. */
+function membrosDoModelo(modelo){
+  const set = new Set();
+  const varrer = (lista, fv, fm) => {
+    (lista || []).forEach(x => {
+      const v = fv(x), m = fm(x);
+      if(v && m && m === modelo) set.add(v);
+    });
+  };
+  varrer(typeof ROWS !== 'undefined' ? ROWS : [], r => r.v, r => r.mo);
+  varrer(typeof CARTEIRA !== 'undefined' ? CARTEIRA : [], c => c.v, c => c.mo);
+  return set;
+}
 
 /* Ver a EQUIPE e ver os CUSTOS sao coisas diferentes, e ficam declaradas
    separadas. O Igor autorizou numero sensivel (CMV, margem, lucro) para o
@@ -3550,12 +3587,18 @@ window.ehModerador = function(){
 function equipeDe(u){
   if(!(u in EQUIPES)) return null;
   const set = new Set([u]);
-  const nomeados = EQUIPES[u];
-  if(nomeados){ nomeados.forEach(v => set.add(v)); return set; }
-  /* time do RESTO: todos os 'RCA - ' menos os que ja tem dono */
+  const cfg = EQUIPES[u];
+  if(Array.isArray(cfg)){ cfg.forEach(v => set.add(v)); return set; }
+  if(cfg && cfg.modelo){ membrosDoModelo(cfg.modelo).forEach(v => set.add(v)); return set; }
+  /* time do RESTO: todos os 'RCA - ' menos os que ja tem dono.
+     O `comDono` TEM de considerar os times por modelo também - senão um RCA
+     movido para o modelo do Jonas apareceria para ele E continuaria no resto
+     do Fellipe, que é o oposto de um corte de supervisão. */
   const comDono = new Set();
   Object.keys(EQUIPES).forEach(k => {
-    if(EQUIPES[k]) EQUIPES[k].forEach(v => comDono.add(v));
+    const t = EQUIPES[k];
+    if(Array.isArray(t)) t.forEach(v => comDono.add(v));
+    else if(t && t.modelo) membrosDoModelo(t.modelo).forEach(v => comDono.add(v));
   });
   [...new Set(ROWS.map(r => r.v))].forEach(v => {
     if(v && v.indexOf('RCA - ') === 0 && !comDono.has(v)) set.add(v);
