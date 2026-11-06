@@ -10364,7 +10364,8 @@ function crmEsqueleto(){
     '<div class="card pane"><div class="funil-board" id="funil-board"></div></div></div>'+
   '<div class="section"><p class="eyebrow">Desempenho por vendedor</p>'+
     '<div class="card pane tablewrap"><table><thead><tr>'+
-    '<th>Vendedor</th><th>Recebidos</th><th>Trabalhados</th><th>Abertos</th><th>Atrasados&nbsp;&gt;7d</th>'+
+    '<th>Vendedor</th><th>Recebidos</th><th>Trabalhados</th><th>Abertos</th>'+
+    '<th>Atrasados&nbsp;&gt;'+SLA_DIAS+'d</th>'+
     '<th>Ganhos</th><th>Perdidos</th><th>Conversão</th>'+
     '</tr></thead><tbody id="vend-body"></tbody></table></div></div>'+
   '<div class="section grid2">'+
@@ -10554,8 +10555,13 @@ function renderLeads(){
     '<div class="k-val">'+k.v+'</div><div class="k-sub">'+k.s+'</div></div>').join('');
 
   const exec = [
-    {l:'Aguardando 1º contato', v:sla.aguardando, s:'em Prospecção, dentro de 7d'},
-    {l:'1º contato atrasado', v:sla.atrasado, s:'em Prospecção, além de 7d', c:'warn'},
+    /* O "7d" ficou escrito à mão aqui e sobreviveu à troca do SLA para 3 dias
+       (19/10/2026): a conta usava 3 e o rótulo dizia 7. Agora os dois leem
+       SLA_DIAS, que vem do pacote. 06/11/2026. */
+    {l:'Aguardando 1º contato', v:sla.aguardando,
+     s:'sem contato, dentro de '+SLA_DIAS+'d'},
+    {l:'1º contato atrasado', v:sla.atrasado,
+     s:'sem contato, além de '+SLA_DIAS+'d', c:'warn'},
     {l:'% trabalhados', v:crmPct(sla.pctTrabalhados), s:sla.trabalhadosN+' de '+m.recebidos+' recebidos'},
     {l:'% trabalhados no prazo', v:crmPct(sla.pctDentroPrazo), s:'1º contato em até '+SLA_DIAS+' dias'},
   ];
