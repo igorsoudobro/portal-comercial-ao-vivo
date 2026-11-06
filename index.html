@@ -10105,7 +10105,20 @@ function crmBase(){
   });
 }
 
-function crmCohort(){
+/* QUEM JA ERA CLIENTE FICA DE FORA (06/11/2026).
+   O funil se chama "Novo Cliente", mas o time abre oportunidade para quem já
+   compra: em out/2026 eram 12 de 75. Com eles dentro, "taxa de conversão de
+   novos clientes" media outra coisa - e media para melhor, porque cliente
+   antigo converte mais fácil.
+
+   A marca `jaCliente` vem pronta do crm_unificar.py, que tem 2025 e 2026
+   inteiros para olhar; o Portal só carrega 2026, então a conta não podia ser
+   feita aqui. Regra: teve VENDA (não bonificação, não amostra) antes do MÊS
+   em que a oportunidade abriu.
+
+   Eles não somem do pacote - `crmJaClientes()` devolve quantos foram postos
+   de lado, e o KPI diz isso na cara. */
+function crmCohortBruta(){
   const {de, ate} = crmPeriodo();
   return crmBase().filter(r => {
     if(stateL.orig && r.orig !== stateL.orig) return false;
@@ -10115,6 +10128,8 @@ function crmCohort(){
     return true;
   });
 }
+function crmJaClientes(){ return crmCohortBruta().filter(r => r.jaCliente).length; }
+function crmCohort(){ return crmCohortBruta().filter(r => !r.jaCliente); }
 
 function leadsMetrics(cohort){
   const recebidos = cohort.length;
@@ -10524,7 +10539,8 @@ function renderLeads(){
      Clicar de novo desfaz. */
   const kpis = [
     {k:'recebidos',  l:'Leads recebidos',   v:m.recebidos,
-     s:'Novo Cliente · prospecção no período'},
+     s:'Novo Cliente com entrada no período' +
+       (crmJaClientes() ? ' · ' + crmJaClientes() + ' já clientes à parte' : '')},
     {k:'trabalhados',l:'Leads trabalhados', v:m.trabalhadosArr.length,
      s:crmPct(m.recebidos?m.trabalhadosArr.length/m.recebidos*100:0)+' dos recebidos'},
     {k:'ganhos',     l:'Ganhos',            v:m.ganhosArr.length,
