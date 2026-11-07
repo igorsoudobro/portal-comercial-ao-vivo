@@ -19331,7 +19331,12 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 .ux-top-bt:hover{background:rgba(255,255,255,.25)}
 .ux-top-bt kbd{font-family:inherit;font-size:10px;opacity:.75;margin-left:6px;border:1px solid rgba(255,255,255,.45);border-radius:4px;padding:0 4px}
 #uxMenuBt,#uxFiltrosBt{display:none}
-/* menu em SECOES recolhiveis (07/11/2026) */
+/* menu em SECOES recolhiveis (07/11/2026) - fundo cinza, itens recuados */
+.nav{background:#EEF1F6 !important}
+.nav button[data-v].on{background:#fff !important}
+.nav button[data-v]:hover:not(.on){background:rgba(255,255,255,.6) !important}
+.nav .ux-grupo-h{border:none !important;border-radius:6px !important;background:none !important;box-shadow:none !important;margin:2px 0 0 !important}
+.nav .ux-grupo-itens button[data-v]{padding-left:30px !important;font-size:12.5px !important}
 .ux-grupo-h{display:flex;align-items:center;justify-content:space-between;width:100%;border:none;background:none;cursor:pointer;
   padding:12px 14px 5px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#9AA3BC;text-align:left}
 .ux-grupo-h:hover{color:var(--navy)}
@@ -19367,9 +19372,10 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
   /* menu vira gaveta */
   .nav{display:none !important}
   body.ux-nav-on .nav{display:flex !important;flex-direction:column !important;position:fixed !important;top:0;left:0;bottom:0;
-    width:78vw;max-width:300px;height:100vh !important;z-index:250;overflow-y:auto !important;background:#fff;
+    width:78vw;max-width:300px;height:100vh !important;z-index:250;overflow-y:auto !important;background:#EEF1F6 !important;
     padding:14px 8px !important;box-shadow:8px 0 30px rgba(20,28,55,.25);border:none !important}
-  body.ux-nav-on .nav button{width:100% !important;text-align:left;border-bottom:none !important;border-left:3px solid transparent !important;padding:12px 14px !important}
+  body.ux-nav-on .nav button[data-v]{width:100% !important;text-align:left;border-bottom:none !important;border-left:3px solid transparent !important;padding:12px 14px !important}
+  body.ux-nav-on .nav .ux-grupo-itens button[data-v]{padding-left:30px !important}
   body.ux-nav-on .nav button.on{border-left-color:var(--yellow) !important;background:#EEF2FB !important}
   body.ux-nav-on::after{content:'';position:fixed;inset:0;background:rgba(20,28,55,.35);z-index:240}
   /* filtros recolhidos atras de um botao */
@@ -19505,7 +19511,8 @@ function uxAgruparMenu(){
     const bad = itens.querySelector('.ux-badge');
     h.innerHTML = '<span>' + uxEsc(rot) + '</span>' + (bad ? '<span class="ux-badge">' + bad.textContent + '</span>' : '') + '<span class="ux-seta">▾</span>';
     const temAtiva = ids.indexOf(CURRENT) >= 0, lembrado = uxGrupoAberto(gid);
-    const aberto = temAtiva || (lembrado === null ? true : lembrado);
+    /* comeca RECOLHIDO (Igor, 07/11/2026); abre a da aba atual e o que a pessoa abriu */
+    const aberto = temAtiva || lembrado === true;
     if(!aberto){ g.classList.add('fechado'); h.setAttribute('aria-expanded', 'false'); }
     h.onclick = () => {
       const fechar = !g.classList.contains('fechado');
@@ -19799,6 +19806,34 @@ window.uxBuscaAbrir = uxBuscaAbrir;
 document.addEventListener('keydown', ev => {
   if((ev.ctrlKey || ev.metaKey) && (ev.key === 'k' || ev.key === 'K')){ ev.preventDefault(); uxBuscaAbrir(); }
 });
+
+/* ---------- 10) LOGIN SO COM A LISTA DO BANCO (Igor, 07/11/2026: "todos os nomes voltaram
+   a aparecer no login"). A lista do banco (LOGIN_HASH) so chega com a base do ano; ate la
+   a tela mostrava a lista VELHA do pacote do V8 - com quem ja saiu. Agora: "carregando
+   usuarios..." ate a do banco chegar; so se a base nao vier em 25 s volta a velha. */
+(function(){
+  const orig = window.buildLogin;
+  if(typeof orig !== 'function') return;
+  const temBanco = () => { try{ return !!AOVIVO_LOGIN_H; }catch(e){ return false; } };
+  let liberado = temBanco();
+  function esperar(){
+    const s = ux$('loginUser'); if(!s) return;
+    s.innerHTML = '<option value="">carregando usuários…</option>'; s.disabled = true;
+  }
+  window.buildLogin = function(){
+    if(temBanco()) liberado = true;
+    if(!liberado){ esperar(); return; }
+    const s = ux$('loginUser'); if(s) s.disabled = false;
+    return orig.apply(this, arguments);
+  };
+  if(liberado) window.buildLogin(); else esperar();
+  setTimeout(() => {
+    if(liberado) return;
+    liberado = true;
+    console.warn('login: a base do ano nao chegou em 25 s - uso a lista da rodada');
+    window.buildLogin();
+  }, 25000);
+})();
 
 /* se a pessoa ja estava logada quando este bloco carregou */
 try{ if(typeof SESSION === 'object' && SESSION && SESSION.user){ uxTopo(); uxEstado(); } }catch(e){}
