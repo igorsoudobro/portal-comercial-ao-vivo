@@ -1,6 +1,85 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>
+/* ===== CACHE LOCAL DOS ARQUIVOS GRANDES (07/11/2026) =====================
+   O Portal baixa do SharePoint, a cada abertura, a base do ano (2,7 MB), o
+   pacote da rodada (1,7 MB) e 2025 (2,5 MB). O Graph devolve antes a DATA de
+   cada arquivo: se o navegador ja tem aquele arquivo com a mesma data, entrega
+   o guardado e nao baixa de novo. Mudou a data = baixa e guarda o novo.
+   Falhou qualquer coisa (navegador sem IndexedDB, aba anonima) = rede, como era. */
+(function(){
+  const GRANDES = /^(ano_ao_vivo|ano_\d{4}|dados_dashboard)\.json$/;
+  const META = new Map();                       /* downloadUrl -> {nome, data} */
+  let _db = null;
+  function db(){
+    if(_db) return _db;
+    _db = new Promise((ok, falha) => {
+      try{
+        const r = indexedDB.open('dobro_portal_cache', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('arq');
+        r.onsuccess = () => ok(r.result);
+        r.onerror = () => falha(r.error);
+      }catch(e){ falha(e); }
+    });
+    return _db;
+  }
+  const comPrazo = (p, ms) => Promise.race([p, new Promise((_, f) => setTimeout(() => f(new Error('prazo')), ms))]);
+  async function ler(nome){
+    const d = await comPrazo(db(), 1500);
+    return comPrazo(new Promise((ok, f) => {
+      const t = d.transaction('arq').objectStore('arq').get(nome);
+      t.onsuccess = () => ok(t.result || null); t.onerror = () => f(t.error);
+    }), 1500);
+  }
+  async function gravar(nome, valor){
+    try{
+      const d = await comPrazo(db(), 1500);
+      d.transaction('arq', 'readwrite').objectStore('arq').put(valor, nome);
+    }catch(e){}
+  }
+  window.UX_CACHE = {usados: [], baixados: []};
+  const _fetch = window.fetch.bind(window);
+  window.fetch = async function(url, opt){
+    const u = String(url || '');
+    /* 1) a pergunta ao Graph "onde esta o arquivo X": guarda a data dele */
+    if(u.indexOf('graph.microsoft.com') >= 0 && u.indexOf('/drive/root:/') >= 0){
+      const res = await _fetch(url, opt);
+      try{
+        const nome = decodeURIComponent(u.split('/').pop().split('?')[0]).replace(/:$/, '');
+        if(res.ok && GRANDES.test(nome)){
+          const j = await res.clone().json();
+          if(j['@microsoft.graph.downloadUrl'])
+            META.set(j['@microsoft.graph.downloadUrl'], {nome, data: (j.lastModifiedDateTime || '') + '|' + (j.size || '')});
+        }
+      }catch(e){}
+      return res;
+    }
+    /* 2) o download em si: se ja tenho aquele arquivo com aquela data, entrego */
+    const m = META.get(u);
+    if(m){
+      try{
+        const c = await ler(m.nome);
+        if(c && c.data === m.data && typeof c.texto === 'string'){
+          window.UX_CACHE.usados.push(m.nome);
+          return new Response(c.texto, {status: 200, headers: {'content-type': 'application/json'}});
+        }
+      }catch(e){}
+      const res = await _fetch(url, opt);
+      if(res.ok){
+        try{
+          const texto = await res.clone().text();
+          window.UX_CACHE.baixados.push(m.nome);
+          gravar(m.nome, {data: m.data, texto, em: Date.now()});
+        }catch(e){}
+      }
+      return res;
+    }
+    return _fetch(url, opt);
+  };
+})();
+</script>
+
 <!-- FASE 3: login Microsoft para buscar os dados no SharePoint (Dobro BI) -->
 <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <!-- Chart.js: so a aba Degustacoes usa, e vem do MESMO CDN e da MESMA versao do
@@ -16394,7 +16473,14 @@ const AOVIVO_PEND_ABA = {'SKU vendido sem custo': 'cmv', 'SKU vendido fora da Ca
    valia X"; sem historico, o CONTRATOS de hoje vale o ano todo - como sempre foi.
    Sobrescreve o contratoPct(cn) da producao: quem chama sem mes recebe o de hoje
    (Calculadora de pedido). As 4 contas do DRE passam o mes - ver TROCAS_ANO. */
-function contratoMes(r){ return r && r.d ? String(r.d).slice(0, 7) : ''; }
+let _CH_SRC = null, _CH_TEM = false;
+function contratoMes(r){
+  /* sem historico (o normal), nao monta a chave do mes linha a linha: na tela do
+     ano todo isso custava ~0,1 s em 48 mil linhas (medido 07/11/2026) */
+  const H = (typeof _Z === 'object' && _Z) ? _Z.CONTRATOS_HIST : null;
+  if(H !== _CH_SRC){ _CH_SRC = H; _CH_TEM = !!(H && Object.keys(H).length); }
+  return _CH_TEM && r && r.d ? String(r.d).slice(0, 7) : '';
+}
 function contratoPct(cn, ym){
   const c = _canonCnpj(cn);
   if(!c) return 0;
@@ -17650,10 +17736,19 @@ function aovivoAplicarSupervisao(sup){
   try{
     if(!sup || typeof sup !== 'object' || typeof EQUIPES === 'undefined') return;
     Object.keys(EQUIPES).forEach(k => { delete EQUIPES[k]; });
+    window.SUP_VE_CUSTO = {};
     Object.keys(sup).forEach(k => {
       const s = sup[k] || {};
       EQUIPES[k] = {modelos: s.modelos || [], resto: !!s.resto, avulsos: s.avulsos || []};
+      if(typeof s.ve_custo === 'boolean') window.SUP_VE_CUSTO[k] = s.ve_custo;
     });
+    /* "ve custo" (07/11/2026): vem do banco (botao na aba Premissas) e troca a
+       lista fixa SUPERVISOR_VE_NUMERO do codigo. Supervisor fora do banco = lista. */
+    const _orig = window.veNumerosDe;
+    window.veNumerosDe = function(u){
+      if(window.SUP_VE_CUSTO && (u in window.SUP_VE_CUSTO)) return !!window.SUP_VE_CUSTO[u];
+      return typeof _orig === 'function' ? _orig(u) : false;
+    };
   }catch(e){ console.error('premissas: supervisao', e); }
 }
 function _equipeMembros(cfg){
@@ -18464,11 +18559,12 @@ function premSupervisao(){
       return '<label class="pm-pill' + (on ? ' on' : '') + '"><input type="checkbox" id="psM' + i + '_' + j + '"' + (on ? ' checked' : '') +
         ' onchange="this.parentNode.classList.toggle(\'on\',this.checked);premAvisoSup()">' + premEsc(m) + '</label>'; }).join('') +
     '</td><td><label class="pm-sw"><input type="checkbox" id="psR' + i + '"' + (s.resto_rca ? ' checked' : '') + ' onchange="premAvisoSup()"><span></span></label></td>' +
+    '<td><label class="pm-sw" title="vê CMV, margem, frete, comissão e lucro da equipe"><input type="checkbox" id="psC' + i + '"' + (s.ve_custo ? ' checked' : '') + '><span></span></label></td>' +
     '<td><input ' + premAttr('psV' + i, (s.avulsos || []).join('; '), 'class="pm-in" placeholder="nomes, separados por ;" onchange="premAvisoSup()"') + '></td></tr>').join('');
   const novo = '<tr><td><input id="psNovo" class="pm-in pm-box" placeholder="+ novo supervisor (nome de login)"></td>' +
-    '<td colspan="3" class="pm-hint">depois de salvar, marque os modelos dele</td></tr>';
+    '<td colspan="4" class="pm-hint">depois de salvar, marque os modelos dele</td></tr>';
   return premCard('Supervisão', 'quem cada supervisor enxerga · mudar o modelo do vendedor já muda a equipe' + premBtnXls('psTab', 'Supervisao'),
-    '<table class="pm-tab" id="psTab"><tr><th>Supervisor</th><th>Vê os modelos</th><th>RCAs restantes</th><th>Vê também (avulso)</th></tr>' + linhas + novo + '</table>' +
+    '<table class="pm-tab" id="psTab"><tr><th>Supervisor</th><th>Vê os modelos</th><th>RCAs restantes</th><th title="CMV, margem, frete, comissão e lucro">Vê custo</th><th>Vê também (avulso)</th></tr>' + linhas + novo + '</table>' +
     '<div class="pm-foot"><span id="psAviso" class="pm-hint">' + premConferirSupervisao(false) + '</span>' +
     '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
 }
@@ -18479,6 +18575,7 @@ function premLerSupervisao(){
     supervisor: s.supervisor,
     modelos: ms.filter((m, j) => { const el = document.getElementById('psM' + i + '_' + j); return el ? el.checked : (s.modelos || []).indexOf(m) >= 0; }),
     resto_rca: (document.getElementById('psR' + i) || {checked: s.resto_rca}).checked,
+    ve_custo: (document.getElementById('psC' + i) || {checked: !!s.ve_custo}).checked,
     avulsos: ((document.getElementById('psV' + i) || {value: (s.avulsos || []).join(';')}).value).split(';').map(x => x.trim()).filter(Boolean)
   }));
 }
@@ -18504,9 +18601,10 @@ function premItensSupervisao(){
     premLerSupervisao().forEach((s, i) => {
       const a = atual[i];
       const igual = (x, y) => JSON.stringify((x || []).slice().sort()) === JSON.stringify((y || []).slice().sort());
-      if(!igual(s.modelos, a.modelos) || !!s.resto_rca !== !!a.resto_rca || !igual(s.avulsos, a.avulsos)){
+      if(!igual(s.modelos, a.modelos) || !!s.resto_rca !== !!a.resto_rca || !igual(s.avulsos, a.avulsos) || !!s.ve_custo !== !!a.ve_custo){
         itens.push({tabela: 'supervisao', op: 'upsert', chave: {supervisor: s.supervisor},
-                    valores: {modelos: s.modelos, resto_rca: s.resto_rca, avulsos: s.avulsos}});
+                    valores: {modelos: s.modelos, resto_rca: s.resto_rca, avulsos: s.avulsos, ve_custo: s.ve_custo}});
+        if(!!s.ve_custo !== !!a.ve_custo) txt.push(s.supervisor + (s.ve_custo ? ': PASSA A VER custo, margem e lucro da equipe' : ': deixa de ver custo, margem e lucro'));
         txt.push(s.supervisor + ': vê ' + (s.modelos.join(', ') || '—') + (s.resto_rca ? ' + RCAs restantes' : '') +
                  (s.avulsos.length ? ' + ' + s.avulsos.join(', ') : ''));
       }
@@ -19195,6 +19293,516 @@ Object.assign(window, {premExcluir, premCatNova, premDescartar, premVoltarCampo,
   premBuscarCnpj, premSalvarPromotoria, premDesfazer});
 
 try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
+</script>
+
+<style>
+/* ===================== UX / DESIGN UNICO (07/11/2026) ===================== */
+:root{--ux-r:14px;--ux-sombra:0 1px 2px rgba(30,46,95,.06),0 6px 18px rgba(30,46,95,.06)}
+/* cartoes, KPIs e cabecalhos no mesmo padrao (o da aba Premissas) */
+.content .card{border-radius:var(--ux-r);box-shadow:var(--ux-sombra);border:1px solid var(--line)}
+.content .kpi{border-radius:var(--ux-r);box-shadow:var(--ux-sombra)}
+.content .card-h h3{font-family:'Barlow Condensed','Barlow',sans-serif;text-transform:uppercase;letter-spacing:.03em;font-size:18px}
+.content .btn-exp,.content .btn-nav,.content .btn-y,.ux-xls{border-radius:999px}
+#v-premissas table.pm-tab th{background:var(--navy);color:#fff}
+#v-premissas table.pm-tab th:first-child{border-top-left-radius:10px}
+/* acessibilidade: foco visivel no teclado */
+:focus-visible{outline:3px solid rgba(81,136,223,.6) !important;outline-offset:2px}
+.nav button:focus-visible{outline-offset:-3px}
+/* farol com SIMBOLO: ▲ bom · ● atencao · ▼ ruim (nao depende so da cor) */
+.ux-farol{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
+  color:#fff;font-size:9px;font-weight:900;line-height:1;vertical-align:middle;font-family:Arial,sans-serif}
+/* numero das Pendencias no menu */
+.ux-badge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:6px;border-radius:999px;background:#D64550;color:#fff;
+  font-size:10.5px;font-weight:800;text-align:center;vertical-align:1px}
+/* "como e calculado" */
+.ux-i{display:inline-block;margin-left:4px;color:var(--sky);font-size:11px;cursor:help;font-weight:700;text-transform:none}
+/* barra de estado: base, mes parcial, filtros */
+.ux-estado{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-basis:100%;font-size:11.5px;color:var(--muted)}
+.ux-tag{display:inline-flex;align-items:center;gap:5px;background:#F4F6FB;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-weight:600}
+.ux-tag.parcial{background:#FFF7D6;border-color:#EBD98A;color:#6B5000}
+.ux-limpar{border:1.5px solid var(--navy);background:#fff;color:var(--navy);border-radius:999px;padding:3px 12px;font-size:11.5px;font-weight:700;cursor:pointer}
+.ux-limpar:hover{background:#EEF2FB}
+/* botao de Excel que aparece em toda tabela */
+.ux-xls{font-size:11px;font-weight:700;color:var(--navy);background:#fff;border:1.5px solid var(--line);padding:4px 11px;cursor:pointer;white-space:nowrap}
+.ux-xls:hover{border-color:var(--navy);background:#EEF2FB}
+.ux-xls-bar{display:flex;justify-content:flex-end;margin:0 0 6px}
+/* topo: busca e menu do celular */
+.ux-top-bt{background:rgba(255,255,255,.13);color:#fff;border:none;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.ux-top-bt:hover{background:rgba(255,255,255,.25)}
+.ux-top-bt kbd{font-family:inherit;font-size:10px;opacity:.75;margin-left:6px;border:1px solid rgba(255,255,255,.45);border-radius:4px;padding:0 4px}
+#uxMenuBt,#uxFiltrosBt{display:none}
+/* menu em SECOES recolhiveis (07/11/2026) */
+.ux-grupo-h{display:flex;align-items:center;justify-content:space-between;width:100%;border:none;background:none;cursor:pointer;
+  padding:12px 14px 5px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#9AA3BC;text-align:left}
+.ux-grupo-h:hover{color:var(--navy)}
+.ux-grupo-h .ux-seta{font-size:10px;transition:transform .15s}
+.ux-grupo.fechado .ux-seta{transform:rotate(-90deg)}
+.ux-grupo.fechado .ux-grupo-itens{display:none}
+.ux-grupo-itens{display:flex;flex-direction:column;gap:1px}
+.nav > button[data-v="resumo"]{margin-bottom:6px}
+.ux-grupo-h .ux-badge{margin-left:auto;margin-right:6px}
+.ux-grupo:not(.fechado) .ux-grupo-h .ux-badge{display:none}
+/* entre 761 e 900px o menu e uma fita deitada: secoes somem, abas seguem em fila */
+@media (max-width:900px) and (min-width:761px){
+  .ux-grupo-h{display:none !important}
+  .ux-grupo,.ux-grupo-itens{display:contents !important}
+}
+/* busca global */
+#uxBusca{position:fixed;inset:0;background:rgba(20,28,55,.45);z-index:300;display:none;align-items:flex-start;justify-content:center;padding-top:12vh}
+#uxBusca.on{display:flex}
+#uxBusca .ux-caixa{background:#fff;width:min(620px,92vw);border-radius:16px;box-shadow:0 20px 50px rgba(20,28,55,.35);overflow:hidden}
+#uxBusca input{width:100%;box-sizing:border-box;border:none;border-bottom:1px solid var(--line);padding:16px 18px;font:inherit;font-size:16px;outline:none}
+#uxBusca ul{list-style:none;margin:0;padding:6px;max-height:52vh;overflow:auto}
+#uxBusca li{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;font-size:13.5px}
+#uxBusca li.on,#uxBusca li:hover{background:#EEF2FB}
+#uxBusca li small{color:var(--muted);font-size:11px;white-space:nowrap}
+#uxBusca .ux-rodape{font-size:11px;color:var(--muted);padding:8px 14px;border-top:1px solid var(--line)}
+/* ===================== CELULAR (ate 760px) ===================== */
+@media (max-width:760px){
+  #uxMenuBt,#uxFiltrosBt{display:inline-block}
+  .topbar{padding:0 10px;gap:8px}
+  .topbar .brand .role,.topbar .who .name,.topbar .who .badge,#uxBuscaBt kbd,#uxBuscaBt .ux-txt,.topbar .brand h1{display:none !important}
+  .topbar .brand,.topbar .who{gap:6px !important}
+  .ux-top-bt,.logout{padding:6px 10px !important}
+  /* menu vira gaveta */
+  .nav{display:none !important}
+  body.ux-nav-on .nav{display:flex !important;flex-direction:column !important;position:fixed !important;top:0;left:0;bottom:0;
+    width:78vw;max-width:300px;height:100vh !important;z-index:250;overflow-y:auto !important;background:#fff;
+    padding:14px 8px !important;box-shadow:8px 0 30px rgba(20,28,55,.25);border:none !important}
+  body.ux-nav-on .nav button{width:100% !important;text-align:left;border-bottom:none !important;border-left:3px solid transparent !important;padding:12px 14px !important}
+  body.ux-nav-on .nav button.on{border-left-color:var(--yellow) !important;background:#EEF2FB !important}
+  body.ux-nav-on::after{content:'';position:fixed;inset:0;background:rgba(20,28,55,.35);z-index:240}
+  /* filtros recolhidos atras de um botao */
+  .filterbar{display:none !important}
+  body.ux-filtros-on .filterbar{display:flex !important;padding:10px 12px;gap:10px}
+  .filterbar .fgroup{flex-wrap:wrap}
+  .content{padding:14px 10px !important}
+  .kpirow{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px !important}
+  .kpi{padding:11px 12px !important}
+  .kpi .val{font-size:20px !important}
+  .content .card{overflow-x:auto}
+  th,td{padding:7px 9px !important;font-size:12px !important}
+  .grid2{grid-template-columns:1fr !important}
+  .ux-estado{font-size:11px}
+}
+</style>
+<script>
+/* ===================== UX / DESEMPENHO (07/11/2026) ===================== */
+(function(){
+const uxEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uxNorm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const ux$ = id => document.getElementById(id);
+function embrulha(nome, depois, antes){
+  const f = window[nome];
+  if(typeof f !== 'function' || f.__ux) return;
+  const g = function(){
+    if(antes){ try{ antes.apply(this, arguments); }catch(e){ console.error('ux antes ' + nome, e); } }
+    const r = f.apply(this, arguments);
+    if(depois){ try{ depois.apply(this, [r].concat([].slice.call(arguments))); }catch(e){ console.error('ux ' + nome, e); } }
+    return r;
+  };
+  g.__ux = true; window[nome] = g;
+}
+
+/* ---------- 1) FAROL COM SIMBOLO (acessibilidade): ▲ bom · ● atencao · ▼ ruim */
+function uxSimbolo(cor){
+  const c = String(cor).toUpperCase();
+  return c === '#1BA466' ? '▲' : c === '#E0A800' ? '●' : c === '#D64550' ? '▼' : '';
+}
+function uxBola(cor, titulo){
+  return '<span class="ux-farol" role="img" aria-label="' + uxEsc(titulo) + '" title="' + uxEsc(titulo) + '" style="background:' + cor +
+    ';box-shadow:0 0 0 3px ' + cor + '33">' + uxSimbolo(cor) + '</span>';
+}
+if(typeof window.farolCor === 'function'){
+  window.farol = function(p, mostrarNum){
+    const cor = farolCor(p);
+    const tit = (typeof farolRotulo === 'function' ? farolRotulo(p) + ' · ' : '') + (typeof pct === 'function' ? pct(p) : '');
+    const dot = uxBola(cor, tit);
+    if(mostrarNum) return '<span style="white-space:nowrap">' + dot + ' <span class="mono" style="color:' + cor +
+      ';font-weight:700;vertical-align:middle">' + pct(p) + '</span></span>';
+    return dot;
+  };
+}
+if(typeof window.farolM === 'function' && typeof window.corM === 'function'){
+  window.farolM = function(x){ return uxBola(corM(x), 'M ' + pct(x) + (typeof M_CRITICO !== 'undefined' && x > M_CRITICO ? ' — crítico' : '')); };
+}
+
+/* ---------- 2) METAS MAIS RAPIDAS: o realizado so e recontado quando o recorte muda */
+(function(){
+  const f = window.metasRealizado;
+  if(typeof f !== 'function') return;
+  const memo = new WeakMap();
+  window.metasRealizado = function(meses){
+    if(typeof ROWS === 'undefined' || !ROWS) return f.apply(this, arguments);
+    const chave = JSON.stringify([meses, FILTER, SESSION && SESSION.user, ROWS.length,
+                                  typeof ANO_ATIVO !== 'undefined' ? ANO_ATIVO : null]);
+    let m = memo.get(ROWS);
+    if(!m){ m = new Map(); memo.set(ROWS, m); }
+    if(!m.has(chave)){ if(m.size > 40) m.clear(); m.set(chave, f.apply(this, arguments)); }
+    return m.get(chave);
+  };
+})();
+
+/* ---------- 3) TOPO: busca, menu e filtros do celular */
+function uxTopo(){
+  const tb = document.querySelector('.topbar'); if(!tb || ux$('uxBuscaBt')) return;
+  const brand = tb.querySelector('.brand'), who = tb.querySelector('.who');
+  const menu = document.createElement('button');
+  menu.id = 'uxMenuBt'; menu.className = 'ux-top-bt'; menu.type = 'button'; menu.textContent = '☰';
+  menu.setAttribute('aria-label', 'abrir o menu de abas');
+  menu.onclick = () => document.body.classList.toggle('ux-nav-on');
+  if(brand) brand.insertBefore(menu, brand.firstChild);
+  const fil = document.createElement('button');
+  fil.id = 'uxFiltrosBt'; fil.className = 'ux-top-bt'; fil.type = 'button'; fil.textContent = 'Filtros';
+  fil.onclick = () => document.body.classList.toggle('ux-filtros-on');
+  const bus = document.createElement('button');
+  bus.id = 'uxBuscaBt'; bus.className = 'ux-top-bt'; bus.type = 'button';
+  bus.innerHTML = '🔎<span class="ux-txt"> Buscar</span><kbd>Ctrl K</kbd>'; bus.setAttribute('aria-label', 'buscar cliente, vendedor ou aba');
+  bus.onclick = () => uxBuscaAbrir();
+  if(who){ who.insertBefore(bus, who.firstChild); who.insertBefore(fil, bus); }
+  /* tocar fora fecha a gaveta do menu (o fundo escuro e o ::after do body) */
+  document.addEventListener('click', ev => {
+    if(!document.body.classList.contains('ux-nav-on')) return;
+    if(ev.target.closest('.nav') || ev.target.closest('#uxMenuBt')) return;
+    document.body.classList.remove('ux-nav-on');
+  }, true);
+}
+
+/* ---------- 4) MENU: numero das Pendencias, acessibilidade, fecha a gaveta ao escolher */
+/* SECOES DO MENU (Igor, 07/11/2026: "pode fazer"). Aba que nao estiver aqui vai
+   para "Outros" no fim - aba nova nunca some. Resumo fica solto no topo. */
+const UX_GRUPOS = [
+  ['vendas',   'Vendas',   ['dre', 'canais', 'metas', 'orcamento', 'comparativos']],
+  ['clientes', 'Clientes', ['carteira', 'ranking', 'cnpj', 'penetracao', 'crm', 'geo']],
+  ['produtos', 'Produtos', ['mix', 'gestcat', 'calc']],
+  ['operacao', 'Operação', ['sla', 'degustacoes', 'links']],
+  ['admin',    'Admin',    ['premissas', 'pendencias', 'acessos']],
+];
+function uxGrupoAberto(id){
+  try{ const o = JSON.parse(localStorage.getItem('ux_menu') || '{}'); return id in o ? !!o[id] : null; }catch(e){ return null; }
+}
+function uxGrupoGuardar(id, aberto){
+  try{ const o = JSON.parse(localStorage.getItem('ux_menu') || '{}'); o[id] = aberto; localStorage.setItem('ux_menu', JSON.stringify(o)); }catch(e){}
+}
+function uxAgruparMenu(){
+  const nav = ux$('nav'); if(!nav || nav.querySelector('.ux-grupo')) return;
+  const bts = [...nav.querySelectorAll('button[data-v]')];
+  const porId = {}; bts.forEach(b => { porId[b.dataset.v] = b; });
+  const usados = new Set(['resumo']);
+  const frag = document.createDocumentFragment();
+  if(porId.resumo) frag.appendChild(porId.resumo);
+  const grupos = UX_GRUPOS.map(g => [g[0], g[1], g[2].filter(id => porId[id])]);
+  UX_GRUPOS.forEach(g => g[2].forEach(id => usados.add(id)));
+  const outros = bts.map(b => b.dataset.v).filter(id => !usados.has(id));
+  if(outros.length) grupos.push(['outros', 'Outros', outros]);
+  grupos.forEach(([gid, rot, ids]) => {
+    if(!ids.length) return;
+    const g = document.createElement('div'); g.className = 'ux-grupo'; g.dataset.g = gid;
+    const h = document.createElement('button'); h.type = 'button'; h.className = 'ux-grupo-h';
+    h.setAttribute('aria-expanded', 'true');
+    const itens = document.createElement('div'); itens.className = 'ux-grupo-itens';
+    ids.forEach(id => itens.appendChild(porId[id]));
+    const bad = itens.querySelector('.ux-badge');
+    h.innerHTML = '<span>' + uxEsc(rot) + '</span>' + (bad ? '<span class="ux-badge">' + bad.textContent + '</span>' : '') + '<span class="ux-seta">▾</span>';
+    const temAtiva = ids.indexOf(CURRENT) >= 0, lembrado = uxGrupoAberto(gid);
+    const aberto = temAtiva || (lembrado === null ? true : lembrado);
+    if(!aberto){ g.classList.add('fechado'); h.setAttribute('aria-expanded', 'false'); }
+    h.onclick = () => {
+      const fechar = !g.classList.contains('fechado');
+      g.classList.toggle('fechado', fechar); h.setAttribute('aria-expanded', String(!fechar)); uxGrupoGuardar(gid, !fechar);
+    };
+    g.appendChild(h); g.appendChild(itens); frag.appendChild(g);
+  });
+  nav.innerHTML = ''; nav.appendChild(frag);
+}
+/* a aba aberta por outro caminho (busca, Resolver) abre a secao dela */
+function uxAbrirSecaoAtiva(){
+  const b = document.querySelector('#nav button[data-v="' + CURRENT + '"]');
+  const g = b && b.closest('.ux-grupo');
+  if(g && g.classList.contains('fechado')){ g.classList.remove('fechado'); const h = g.querySelector('.ux-grupo-h'); if(h) h.setAttribute('aria-expanded', 'true'); }
+}
+embrulha('buildNav', function(){
+  const nav = ux$('nav'); if(!nav) return;
+  nav.setAttribute('role', 'navigation'); nav.setAttribute('aria-label', 'Abas do Portal');
+  nav.querySelectorAll('button[data-v]').forEach(b => {
+    const m = b.textContent.match(/^(.*)\((\d+)\)\s*$/);
+    if(m && !b.querySelector('.ux-badge')) b.innerHTML = uxEsc(m[1].trim()) + '<span class="ux-badge" aria-label="' + m[2] + ' pendências">' + m[2] + '</span>';
+    b.addEventListener('click', () => document.body.classList.remove('ux-nav-on'));
+  });
+  uxAgruparMenu();
+  uxMarcarAba();
+});
+function uxMarcarAba(){
+  const nav = ux$('nav'); if(!nav) return;
+  nav.querySelectorAll('button[data-v]').forEach(b => { if(b.classList.contains('on')) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  uxAbrirSecaoAtiva();
+}
+
+/* ---------- 5) BARRA DE ESTADO: data da base, mes parcial, filtros ativos + Limpar */
+const UX_CAMPOS = (typeof CAMPOS_CHIP !== 'undefined') ? CAMPOS_CHIP : [['admVend','vend'],['admMod','mod'],['admReg','reg'],['admUf','uf'],['admCanal','canal']];
+const UX_ROT = {vend: 'vendedor', mod: 'modelo', reg: 'região', uf: 'UF', canal: 'canal'};
+function uxSel(campo){
+  const f = FILTER[campo];
+  if(Array.isArray(f)) return f.slice();
+  return (f && f !== '(todos)') ? [f] : [];
+}
+function uxEstado(){
+  const fb = document.querySelector('.filterbar'); if(!fb) return;
+  let box = ux$('uxEstado');
+  if(!box){ box = document.createElement('div'); box.id = 'uxEstado'; box.className = 'ux-estado'; fb.appendChild(box); }
+  const partes = [];
+  try{
+    if(typeof ANO_INFO !== 'undefined' && ANO_INFO && ANO_INFO.ligado && ANO_INFO.periodo){
+      const fim = new Date(ANO_INFO.periodo[1] + 'T00:00:00'); fim.setDate(fim.getDate() - 1);
+      partes.push('<span class="ux-tag" title="base de vendas do ano (até ontem) + o dia de hoje pela faixa">📅 base até ' +
+        fim.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}) +
+        (ANO_INFO.hora ? ' · gerada ' + ANO_INFO.hora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : '') + '</span>');
+    }
+  }catch(e){}
+  try{
+    const h = new Date(), mesAtual = (typeof MESES_ORD !== 'undefined') ? MESES_ORD[h.getMonth()] : null;
+    const anoOk = (typeof ANO_ATIVO === 'undefined' || ANO_ATIVO == null || +ANO_ATIVO === h.getFullYear());
+    if(FILTER.period === 'mes' && FILTER.mes === mesAtual && anoOk)
+      partes.push('<span class="ux-tag parcial" title="o mês ainda não acabou: compare com cuidado com meses fechados">⏳ mês em andamento · dia ' + h.getDate() + '</span>');
+  }catch(e){}
+  const ativos = [];
+  UX_CAMPOS.forEach(([id, campo]) => { const s = uxSel(campo); if(s.length) ativos.push(UX_ROT[campo] + ': ' + s.join(', ')); });
+  if(ativos.length) partes.push('<span class="ux-tag" title="filtros que estão recortando os números">🔎 ' + uxEsc(ativos.join(' · ')) + '</span>' +
+    '<button type="button" class="ux-limpar" onclick="uxLimparFiltros()">Limpar filtros</button>');
+  box.innerHTML = partes.join('');
+  const fbt = ux$('uxFiltrosBt'); if(fbt) fbt.textContent = 'Filtros' + (ativos.length ? ' (' + ativos.length + ')' : '');
+}
+/* os chips do Portal vivem num bloco fechado: mexo neles pelos PROPRIOS botoes
+   (o "×" tira, o "+ adicionar" poe) - eles ja redesenham e atualizam a tela */
+function uxChipTirarTodos(id){
+  for(let n = 0; n < 60; n++){
+    const box = ux$('chip_' + id), b = box && box.querySelector('button[data-rm]');
+    if(!b) return; b.click();
+  }
+}
+function uxChipPor(id, valor){
+  const box = ux$('chip_' + id), sel = box && box.querySelector('select.chipadd');
+  if(!sel || ![...sel.options].some(o => o.value === valor)) return false;
+  sel.value = valor; sel.dispatchEvent(new Event('change')); return true;
+}
+window.uxLimparFiltros = function(){ UX_CAMPOS.forEach(([id]) => uxChipTirarTodos(id)); uxEstado(); };
+/* o filtro de quem pode filtrar fica LEMBRADO (por usuario, neste navegador) */
+function uxChaveFiltro(){ return 'ux_filtro_' + ((typeof SESSION === 'object' && SESSION && SESSION.user) || ''); }
+let UX_FILTRO_PRONTO = false;      /* so grava DEPOIS de devolver o filtro lembrado */
+function uxGuardarFiltro(){
+  try{
+    if(!UX_FILTRO_PRONTO || !(SESSION && SESSION.user)) return;
+    const o = {}; UX_CAMPOS.forEach(([id, campo]) => { o[campo] = uxSel(campo); });
+    localStorage.setItem(uxChaveFiltro(), JSON.stringify(o));
+  }catch(e){}
+}
+function uxRestaurarFiltro(){
+  try{
+    if(typeof podeFiltrar === 'function' && !podeFiltrar()) return false;
+    const o = JSON.parse(localStorage.getItem(uxChaveFiltro()) || 'null'); if(!o) return false;
+    let mudou = false;
+    UX_CAMPOS.forEach(([id, campo]) => {
+      if(!Array.isArray(o[campo])) return;
+      o[campo].forEach(v => { if(uxSel(campo).indexOf(v) < 0 && uxChipPor(id, v)) mudou = true; });
+    });
+    return mudou;
+  }catch(e){ return false; }
+}
+
+/* ---------- 6) "COMO E CALCULADO": dica em cada numero do DRE e dos cartoes */
+const UX_DICA = [
+  ['faturamento bruto', 'Soma das notas de VENDA no recorte, antes das devoluções.'],
+  ['faturamento liquido', 'Faturamento bruto menos as devoluções.'],
+  ['faturamento', 'Soma das notas de venda no recorte.'],
+  ['devolucoes', 'Notas de devolução no recorte (entram negativas).'],
+  ['impostos', 'Imposto real das notas; sem imposto na nota, a estimativa da UF.'],
+  ['receita liquida', 'Faturamento líquido menos impostos.'],
+  ['cmv bruto', 'Custo das mercadorias vendidas: quantidade × custo unitário do SKU (o da responsável; sem ele, a reserva da aba Premissas).'],
+  ['cmv devolvido', 'Custo que volta ao estoque nas devoluções (negativo).'],
+  ['cmv liquido', 'CMV bruto + CMV devolvido.'],
+  ['cmv', 'Custo das mercadorias vendidas (quantidade × custo do SKU).'],
+  ['margem bruta', 'Receita líquida menos CMV, sobre a receita líquida. Já sem imposto, antes de frete, comissão e contratos.'],
+  ['lucro bruto', 'Receita líquida menos CMV.'],
+  ['frete', 'Frete real do CT-e quando há; senão a estimativa da UF.'],
+  ['comissao', 'Faturamento líquido × % do vendedor (ou a exceção do CNPJ), no mês de cada venda.'],
+  ['contrato', 'Faturamento líquido de cada CNPJ × % do contrato dele, no mês de cada venda.'],
+  ['promotoria', 'Custo mensal da agência, inteiro para o dono da rede na carteira.'],
+  ['degustacao', 'Custo das degustações do mês, pela rede.'],
+  ['bonif', 'Bonificação (mercadoria + imposto) e amostra (só mercadoria), a custo.'],
+  ['lucro final', 'Receita líquida − CMV − frete − comissão − contratos − promotoria − degustação − bonificação.'],
+  ['lucro', 'O que sobra depois de todos os custos do DRE.'],
+  ['rentabilidade', 'Lucro final ÷ faturamento líquido. Farol: ▲ 25% ou mais · ● 22 a 25% · ▼ abaixo de 22%.'],
+  ['ticket', 'Faturamento ÷ pedidos (pedido = cliente + mês com venda).'],
+  ['pedidos', 'Clientes distintos com venda em cada mês, somados.'],
+  ['meta', 'Meta do período (aba Premissas › Metas) contra o faturamento líquido.'],
+];
+function uxDicaDe(txt){
+  const t = uxNorm(String(txt).replace(/sens[ií]vel/ig, ''));
+  if(!t || t.length > 60) return null;
+  for(const [k, d] of UX_DICA) if(t.indexOf(k) === 0) return d;
+  return null;
+}
+function uxDicas(raiz){
+  raiz.querySelectorAll('.kpi .lab, td.rowlab, table td:first-child').forEach(el => {
+    if(el.dataset.uxI) return;
+    el.dataset.uxI = '1';
+    const d = uxDicaDe(el.textContent); if(!d) return;
+    el.title = d;
+    const i = document.createElement('span'); i.className = 'ux-i'; i.textContent = 'ⓘ'; i.setAttribute('aria-hidden', 'true');
+    el.appendChild(i);
+  });
+}
+
+/* ---------- 7) "BAIXAR EM EXCEL" EM TODA TABELA */
+function uxCsv(t){
+  const cel = c => {
+    const f = c.querySelector('select, input:not([type=checkbox]), textarea');
+    if(f) return f.tagName === 'SELECT' ? ((f.options[f.selectedIndex] || {}).text || '') : f.value;
+    return [].map.call(c.childNodes, n => (n.textContent || '').replace(/[ⓘ✎×🗑]/g, '').replace(/\s+/g, ' ').trim()).filter(Boolean).join(' — ');
+  };
+  return [].filter.call(t.querySelectorAll('tr'), tr => tr.offsetParent !== null || true)
+    .map(tr => [].map.call(tr.children, cel).map(v => /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v).join(';')).join('\r\n');
+}
+function uxBaixarTabela(t, nome){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + uxCsv(t)], {type: 'text/csv;charset=utf-8'}));
+  a.download = (nome || 'tabela').replace(/[\\/:*?"<>|]+/g, ' ').trim() + ' ' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+window.uxBaixarTabela = uxBaixarTabela;
+function uxExcel(raiz){
+  raiz.querySelectorAll('table').forEach(t => {
+    if(t.dataset.uxX || t.closest('#v-premissas') || t.closest('#uxBusca')) return;
+    t.dataset.uxX = '1';
+    if(t.querySelectorAll('tr').length < 3) return;
+    const card = t.closest('.card');
+    /* a tabela ja tem exportacao propria ("Exportar", "CSV", "Excel")? nao duplico */
+    const jaTem = el => el && [].some.call(el.querySelectorAll('button, a'), x =>
+      x.classList.contains('btn-exp') || x.classList.contains('ux-xls') || /export|csv|excel|baixar/i.test(x.textContent));
+    if(jaTem(card) || (!card && jaTem(t.parentNode))) return;
+    const titulo = (card && card.querySelector('.card-h h3') ? card.querySelector('.card-h h3').textContent :
+                    ((VIEWS.find(v => v.id === CURRENT) || {}).lab || 'tabela')).replace(/ⓘ/g, '').trim();
+    const bt = document.createElement('button');
+    bt.type = 'button'; bt.className = 'ux-xls'; bt.textContent = '⬇ Excel'; bt.title = 'Baixar esta tabela (abre no Excel)';
+    bt.onclick = () => uxBaixarTabela(t, titulo);
+    const h = card && card.querySelector('.card-h');
+    if(h) h.appendChild(bt);
+    else { const bar = document.createElement('div'); bar.className = 'ux-xls-bar'; bar.appendChild(bt); t.parentNode.insertBefore(bar, t); }
+  });
+}
+
+/* ---------- 8) A CADA TELA DESENHADA: dicas, Excel, aba marcada, estado */
+function uxPosTela(){
+  const v = document.querySelector('.view.on'); if(v){ uxDicas(v); uxExcel(v); }
+  uxMarcarAba(); uxEstado(); uxGuardarFiltro();
+}
+embrulha('showView', uxPosTela);
+/* telas que desenham depois (graficos, abas que buscam arquivo): olho o conteudo */
+(function(){
+  const c = document.querySelector('.content'); if(!c || typeof MutationObserver === 'undefined') return;
+  let t = null;
+  new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { const v = document.querySelector('.view.on'); if(v){ uxDicas(v); uxExcel(v); } }, 250); })
+    .observe(c, {childList: true, subtree: true});
+})();
+/* login: depois de entrar, volta o filtro lembrado */
+embrulha('doLogin', function(){
+  if(!(SESSION && SESSION.user)) return;
+  uxTopo();
+  uxRestaurarFiltro(); UX_FILTRO_PRONTO = true; uxGuardarFiltro(); uxEstado();
+}, function(){ UX_FILTRO_PRONTO = false; });
+/* aviso da conferencia: "fechamento ainda nao atualizou" vira uma nota cinza (nao alarme) */
+(function(){
+  const f = window.faixaAviso; if(typeof f !== 'function') return;
+  window.faixaAviso = function(d){
+    const r = f.apply(this, arguments);
+    const c = d && d.conferencia;
+    if(!r && c && c.ok && c.nota && (typeof faixaEhCasa !== 'function' || faixaEhCasa()))
+      return '<div style="flex-basis:100%;margin-top:8px;font-size:11.5px;color:var(--muted)">⏳ ' + uxEsc(c.nota) + '</div>';
+    return r;
+  };
+})();
+
+/* ---------- 9) BUSCA GLOBAL (Ctrl+K): aba, cliente ou vendedor */
+let UX_B = {itens: [], sel: 0};
+function uxBuscaMontar(){
+  if(ux$('uxBusca')) return;
+  const d = document.createElement('div'); d.id = 'uxBusca';
+  d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Busca');
+  d.innerHTML = '<div class="ux-caixa"><input id="uxBuscaIn" placeholder="Buscar aba, cliente (nome ou CNPJ) ou vendedor…" autocomplete="off" aria-label="buscar">' +
+    '<ul id="uxBuscaLista" role="listbox"></ul><div class="ux-rodape">↑ ↓ para escolher · Enter abre · Esc fecha</div></div>';
+  document.body.appendChild(d);
+  d.addEventListener('click', ev => { if(ev.target === d) uxBuscaFechar(); });
+  ux$('uxBuscaIn').addEventListener('input', uxBuscaFiltrar);
+  ux$('uxBuscaIn').addEventListener('keydown', ev => {
+    if(ev.key === 'ArrowDown'){ UX_B.sel = Math.min(UX_B.sel + 1, UX_B.itens.length - 1); uxBuscaPintar(); ev.preventDefault(); }
+    else if(ev.key === 'ArrowUp'){ UX_B.sel = Math.max(UX_B.sel - 1, 0); uxBuscaPintar(); ev.preventDefault(); }
+    else if(ev.key === 'Enter'){ const it = UX_B.itens[UX_B.sel]; if(it) uxBuscaIr(it); }
+    else if(ev.key === 'Escape') uxBuscaFechar();
+  });
+}
+function uxBuscaUniverso(){
+  const out = [];
+  try{ abasPermitidas().forEach(v => out.push({tipo: 'aba', rot: String(v.lab).replace(/\s*\(\d+\)\s*$/, ''), sub: 'aba', id: v.id})); }catch(e){}
+  try{
+    const vis = (SESSION && SESSION.isAdmin) ? null : (typeof VEND_VIS !== 'undefined' ? VEND_VIS : null);
+    (typeof CARTEIRA !== 'undefined' ? CARTEIRA : []).forEach(c => {
+      if(vis && vis.size && !vis.has(c.v)) return;
+      out.push({tipo: 'cli', rot: c.rz || c.cn, sub: (c.ci ? c.ci + '/' : '') + (c.uf || '') + ' · ' + (c.v || ''), cn: c.cn});
+    });
+  }catch(e){}
+  try{
+    if(typeof podeFiltrar === 'function' ? podeFiltrar() : (SESSION && SESSION.isAdmin)){
+      const s = ux$('admVend');
+      if(s) [...s.options].map(o => o.value).filter(v => v && v !== '(todos)').forEach(v => out.push({tipo: 'vend', rot: v, sub: 'vendedor · filtrar'}));
+    }
+  }catch(e){}
+  return out;
+}
+function uxBuscaFiltrar(){
+  const q = uxNorm(ux$('uxBuscaIn').value), qd = ux$('uxBuscaIn').value.replace(/\D/g, '');
+  const U = UX_B.universo || [];
+  let r = !q ? U.filter(x => x.tipo === 'aba') : U.filter(x => {
+    const t = uxNorm(x.rot) + ' ' + uxNorm(x.sub);
+    return q.split(' ').every(w => t.indexOf(w) >= 0) || (qd.length >= 4 && x.cn && String(x.cn).indexOf(qd) >= 0);
+  });
+  const ordem = {aba: 0, vend: 1, cli: 2};
+  r.sort((a, b) => (ordem[a.tipo] - ordem[b.tipo]) || (uxNorm(a.rot).indexOf(q) - uxNorm(b.rot).indexOf(q)));
+  UX_B.itens = r.slice(0, 40); UX_B.sel = 0; uxBuscaPintar();
+}
+function uxBuscaPintar(){
+  const ic = {aba: '📑', cli: '🏪', vend: '👤'};
+  ux$('uxBuscaLista').innerHTML = UX_B.itens.map((x, i) => '<li role="option" data-i="' + i + '" class="' + (i === UX_B.sel ? 'on' : '') + '">' +
+    '<span>' + ic[x.tipo] + ' ' + uxEsc(x.rot) + '</span><small>' + uxEsc(x.sub) + '</small></li>').join('') ||
+    '<li style="cursor:default;color:var(--muted)">nada encontrado</li>';
+  ux$('uxBuscaLista').querySelectorAll('li[data-i]').forEach(li => { li.onclick = () => uxBuscaIr(UX_B.itens[+li.dataset.i]); });
+  const on = ux$('uxBuscaLista').querySelector('li.on'); if(on) on.scrollIntoView({block: 'nearest'});
+}
+function uxBuscaIr(x){
+  uxBuscaFechar();
+  if(x.tipo === 'aba'){ CURRENT = x.id; showView(); window.scrollTo(0, 0); return; }
+  if(x.tipo === 'cli'){
+    try{ CART_BUSCA = String(x.cn); CART_PAGE = 0; }catch(e){}
+    CURRENT = 'carteira'; showView(); window.scrollTo(0, 0);
+    try{ const inp = document.querySelector('#v-carteira input[type=search], #v-carteira input[placeholder*="CNPJ"], #v-carteira input[placeholder*="Buscar"]'); if(inp) inp.value = String(x.cn); }catch(e){}
+    return;
+  }
+  if(x.tipo === 'vend'){ uxChipTirarTodos('admVend'); uxChipPor('admVend', x.rot); }
+}
+function uxBuscaAbrir(){
+  if(!(SESSION && SESSION.user)) return;
+  uxBuscaMontar(); UX_B.universo = uxBuscaUniverso();
+  ux$('uxBusca').classList.add('on'); ux$('uxBuscaIn').value = ''; uxBuscaFiltrar();
+  setTimeout(() => ux$('uxBuscaIn').focus(), 20);
+}
+function uxBuscaFechar(){ const b = ux$('uxBusca'); if(b) b.classList.remove('on'); }
+window.uxBuscaAbrir = uxBuscaAbrir;
+document.addEventListener('keydown', ev => {
+  if((ev.ctrlKey || ev.metaKey) && (ev.key === 'k' || ev.key === 'K')){ ev.preventDefault(); uxBuscaAbrir(); }
+});
+
+/* se a pessoa ja estava logada quando este bloco carregou */
+try{ if(typeof SESSION === 'object' && SESSION && SESSION.user){ uxTopo(); uxEstado(); } }catch(e){}
+})();
 </script>
 
 </body>
