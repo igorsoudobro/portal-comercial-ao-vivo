@@ -17578,6 +17578,9 @@ window.vComparativos = vComparativos;
 #v-premissas .pm-login input:focus{outline:none;border-color:var(--sky);box-shadow:0 0 0 3px rgba(81,136,223,.16)}
 #v-premissas .pm-login .pm-btn{width:100%;margin-top:20px;padding:12px;font-size:14px;border-radius:12px}
 #v-premissas td.pm-omie{text-align:left;min-width:220px}
+#v-premissas .pm-ren{border:none;background:none;color:var(--muted);font-size:13px;padding:0 4px;opacity:.5}
+#v-premissas tr:hover .pm-ren{opacity:1}
+#v-premissas .pm-ren:hover{color:var(--navy)}
 #v-premissas select.pm-link{width:auto;max-width:190px;display:inline-block;border:none;background:none;color:var(--sky);font-size:12px;font-weight:600;padding:3px 2px;cursor:pointer}
 #v-premissas select.pm-link:hover{text-decoration:underline;background:none}
 #v-premissas td.pm-mod{min-width:190px}
@@ -17861,14 +17864,27 @@ function premPerfilMudou(sel){
   const s = document.getElementById(sel.id.replace('pvP', 'pvS'));
   if(s) s.placeholder = sel.value && !sel.dataset.orig ? 'senha (obrigatória)' : 'só p/ trocar';
 }
+function premDonoOmie(o){
+  /* de quem e hoje (na tela, ja contando o que foi mexido e nao salvo) */
+  const ed = premOmieEdit();
+  return Object.keys(ed).find(n => ed[n].indexOf(o) >= 0) ||
+    ((PREM.dados.depara || []).find(x => x.nome_omie === o) || {}).vendedor || null;
+}
 function premChips(nome, i){
   const lista = premOmieEdit()[nome] || [];
-  const livres = (PREM.dados.nomes_omie || []).filter(x => !x.tem_depara && !Object.values(premOmieEdit()).some(l => l.indexOf(x.nome) >= 0));
+  /* TODOS os nomes do OMIE: os com venda nos 12 meses + os que ja estao no de-para.
+     Ja ligado a outro? Aparece com "(hoje de X)" e, escolhido, MUDA de dono
+     (07/11/2026: "Igor Supino" estava ligado a "Trade - Igor" e nao aparecia). */
+  const todos = [...new Set((PREM.dados.nomes_omie || []).map(x => x.nome)
+                  .concat((PREM.dados.depara || []).map(x => x.nome_omie)))]
+                .filter(o => lista.indexOf(o) < 0).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const livres = todos.map(o => ({nome: o, dono: premDonoOmie(o)}));
   /* o nome vai num data-*, nao dentro do onclick: um apostrofo no nome do OMIE quebraria o JS */
   return lista.map(o => '<span class="pm-chip">' + premEsc(o) + '<button title="desligar" data-o="' + premEsc(o) +
       '" onclick="premChipRm(' + i + ',this.dataset.o)">×</button></span>').join('') +
     (livres.length ? '<select class="pm-link" onchange="premChipAdd(' + i + ',this.value)">' +
-      '<option value="">+ vincular nome do OMIE</option>' + livres.map(x => '<option>' + premEsc(x.nome) + '</option>').join('') + '</select>' : '');
+      '<option value="">+ vincular nome do OMIE</option>' + livres.map(x => '<option value="' + premEsc(x.nome) + '">' + premEsc(x.nome) +
+        (x.dono ? ' (hoje de ' + premEsc(x.dono) + ')' : ' (sem dono)') + '</option>').join('') + '</select>' : '');
 }
 function premChipRm(i, o){
   const v = PREM.dados.vendedores[i]; const l = premOmieEdit()[v.nome];
@@ -17876,7 +17892,11 @@ function premChipRm(i, o){
 }
 function premChipAdd(i, o){
   if(!o) return; const v = PREM.dados.vendedores[i];
-  premOmieEdit()[v.nome].push(o); document.getElementById('pvO' + i).innerHTML = premChips(v.nome, i);
+  const ed = premOmieEdit();
+  /* tira de quem tinha (na tela) - o nome do OMIE so pode ter um dono */
+  Object.keys(ed).forEach(n => { const k = ed[n].indexOf(o); if(k >= 0 && n !== v.nome) ed[n].splice(k, 1); });
+  ed[v.nome].push(o);
+  (PREM.dados.vendedores || []).forEach((x, j) => { const el = document.getElementById('pvO' + j); if(el) el.innerHTML = premChips(x.nome, j); });
 }
 /* ordem de exibicao (Igor, 07/11/2026): ativos primeiro, por MODELO e nome;
    inativos no fim, apagados. Devolve os INDICES de PREM.dados.vendedores - os ids
@@ -17904,7 +17924,8 @@ function premVendedores(){
     modeloAnt = grupo;
     const u = premUsuario(v.nome);
     const pct = v.comissao_pct == null ? '' : String(+(Number(v.comissao_pct) * 100).toFixed(4)).replace('.', ',');
-    return sep + '<tr' + (v.ativo ? '' : ' class="pm-off"') + '><td><b>' + premEsc(v.nome) + '</b></td>' +
+    return sep + '<tr' + (v.ativo ? '' : ' class="pm-off"') + '><td style="white-space:nowrap"><b>' + premEsc(v.nome) + '</b>' +
+      ' <button class="pm-ren" title="renomear no Portal" onclick="premRenomear(' + i + ')">✎</button></td>' +
       '<td id="pvO' + i + '" class="pm-omie">' + premChips(v.nome, i) + '</td>' +
       '<td class="pm-mod">' + premSelModelo('pvM' + i, v.modeloTela || v.modelo) + '</td>' +
       '<td><input ' + premAttr('pvC' + i, pct, 'class="pm-in pm-num"') + '></td>' +
@@ -17949,10 +17970,15 @@ function premItensVendedor(nome, novo, antes){
   /* nomes do OMIE: cada um e uma linha do de-para; o modelo fica so no cadastro */
   const velhos = premApelidos(nome);
   novo.omie.filter(o => velhos.indexOf(o) < 0).forEach(o => {
+    const era = ((PREM.dados.depara || []).find(x => x.nome_omie === o) || {}).vendedor;
     itens.push({tabela: 'depara_vendedor', op: 'upsert', chave: {nome_omie: o}, valores: {vendedor: nome, modelo: null}});
-    txt.push(nome + ': passa a receber as vendas de "' + o + '" (OMIE)');
+    txt.push(nome + ': passa a receber as vendas de "' + o + '" (OMIE)' + (era ? ' — antes eram de ' + era : ''));
   });
-  velhos.filter(o => novo.omie.indexOf(o) < 0).forEach(o => {
+  /* desligado daqui E ligado a outro na tela = mudou de dono: quem recebe ja
+     grava; apagar aqui depois apagaria a ligacao nova */
+  const ed = premOmieEdit();
+  const foiPraOutro = o => Object.keys(ed).some(n => n !== nome && ed[n].indexOf(o) >= 0);
+  velhos.filter(o => novo.omie.indexOf(o) < 0 && !foiPraOutro(o)).forEach(o => {
     itens.push({tabela: 'depara_vendedor', op: 'delete', chave: {nome_omie: o}});
     txt.push(nome + ': deixa de receber as vendas de "' + o + '" (OMIE) — ficam sem dono até alguém ser escolhido');
   });
@@ -17987,6 +18013,34 @@ async function premSalvarVendedores(){
       itens = itens.concat(r.itens); txt = txt.concat(r.txt);
     });
     await premConfirmarESalvar(itens, txt);
+  }catch(e){ PREM.erro = e.message; vPremissas(); }
+}
+
+/* renomear: troca o nome em todas as tabelas de uma vez, no porteiro (vendedor,
+   nomes do OMIE, metas, supervisao e login). Quem tem acesso precisa de senha
+   nova - o codigo da senha depende do nome. */
+async function premRenomear(i){
+  const v = PREM.dados.vendedores[i];
+  const para = (prompt('Novo nome no Portal para "' + v.nome + '":', v.nome) || '').trim();
+  if(!para || para === v.nome) return;
+  const u = premUsuario(v.nome);
+  let senha = '';
+  if(u){
+    senha = (prompt(v.nome + ' entra no Portal (' + u.perfil + '). O login passa a ser "' + para +
+                    '" e precisa de uma SENHA NOVA (a antiga depende do nome). Senha nova:') || '').trim();
+    if(!senha) return;
+  }
+  const metas = (PREM.dados.metas_vendedor || []).filter(m => m.vendedor === v.nome).length;
+  if(!confirm('Renomear "' + v.nome + '" para "' + para + '"?\n\n' +
+      '• nomes do OMIE, metas (' + metas + '), supervisão e histórico do Portal passam para o nome novo\n' +
+      (u ? '• o login vira "' + para + '", com a senha nova\n' : '') +
+      '• a CARTEIRA do SharePoint continua com o nome antigo até alguém trocar lá')) return;
+  try{
+    const r = await premChamar({acao: 'renomear', de: v.nome, para, senha});
+    PREM.omie = null;
+    await premRecarregar('Renomeado: ' + r.de + ' → ' + r.para + '.' +
+      (r.carteira_nome_antigo ? ' ATENÇÃO: ' + r.carteira_nome_antigo + ' cliente(s) da carteira do SharePoint ainda estão com "' + r.de +
+       '" — troque lá também, senão eles aparecem sem dono.' : '') + ' O Portal atualiza em até ~10 minutos.');
   }catch(e){ PREM.erro = e.message; vPremissas(); }
 }
 
@@ -18226,7 +18280,7 @@ function premHistorico(){
   const linhas = as.map(a => '<tr' + (a.desfeita_em ? ' class="pm-off"' : '') + '><td style="white-space:nowrap">' +
     new Date(a.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) + '</td><td>' + premEsc(a.usuario) + '</td><td class="pm-hint">' + premEsc(a.tabela) +
     '</td><td>' + desc(a) + (a.desfaz ? ' <i class="pm-hint">(desfez #' + a.desfaz + ')</i>' : '') + '</td><td style="text-align:right">' +
-    (a.desfeita_em ? '<span class="pm-hint">desfeita</span>' : (a.tabela === 'portal_usuario' ? '' : '<button class="pm-btn pm-sm" onclick="premDesfazer(' + a.id + ')">Desfazer</button>')) + '</td></tr>').join('');
+    (a.desfeita_em ? '<span class="pm-hint">desfeita</span>' : (a.tabela === 'portal_usuario' || a.tabela === 'renomear' ? '' : '<button class="pm-btn pm-sm" onclick="premDesfazer(' + a.id + ')">Desfazer</button>')) + '</td></tr>').join('');
   return premCard('Últimas alterações', 'as 40 mais recentes · cada uma pode ser desfeita',
     '<table class="pm-tab"><tr><th>Quando</th><th>Quem</th><th>Tabela</th><th>O que mudou</th><th></th></tr>' + linhas + '</table>');
 }
@@ -18247,7 +18301,7 @@ async function premConfirmarESalvar(itens, txt){
   }catch(e){ PREM.erro = 'Não salvei nada: ' + e.message; vPremissas(); }
 }
 Object.assign(window, {premEntrar, premSair, premRecarregar, premNovoModo, premSalvarNovo, premSalvarVendedores,
-  premChipRm, premChipAdd, premPerfilMudou, premAvisoSup, premSalvarSupervisao, premColarMetas, premSalvarMetas,
+  premChipRm, premChipAdd, premPerfilMudou, premRenomear, premAvisoSup, premSalvarSupervisao, premColarMetas, premSalvarMetas,
   premBuscarCnpj, premSalvarPromotoria, premDesfazer});
 
 try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
