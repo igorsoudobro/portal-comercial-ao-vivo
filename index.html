@@ -17886,7 +17886,7 @@ function premUrgCount(id){
 function premPaneHtml(id){
   const parte = (PREM_ABAS.find(a => a.id === id) || {}).parte;
   if(parte && !PREM.partes[parte]) return '<p class="pm-hint" style="padding:24px 4px">Carregando do banco…</p>';
-  if(id === 'vend') return premVendedores() + premSupervisao();
+  if(id === 'vend') return premVendedores() + premUsuarios() + premSupervisao();
   if(id === 'com') return premComercial();
   if(id === 'calc') return premCalc();
   if(id === 'cmv') return premCmv();
@@ -18098,7 +18098,7 @@ function premSelPerfil(id, atual){
     '<option value="' + p + '"' + (p === (atual || '') ? ' selected' : '') + '>' + (p || 'sem acesso') + '</option>').join('') + '</select>';
 }
 function premPerfilMudou(sel){
-  const s = document.getElementById(sel.id.replace('pvP', 'pvS'));
+  const s = document.getElementById(sel.id.replace(/P(?=\d)/, 'S'));
   if(s) s.placeholder = sel.value && !sel.dataset.orig ? 'senha (obrigatória)' : 'só p/ trocar';
 }
 function premDonoOmie(o){
@@ -18258,6 +18258,67 @@ function premItensVendedores(){
   }
 }
 
+/* ---------- USUARIOS SEM MODELO (Igor, 07/11/2026): quem entra no Portal mas nao e
+   vendedor (marketing, financeiro, socios...) nao aparecia em lugar nenhum da aba -
+   so na tela de login. Aqui: acesso, senha, tirar o acesso, ou virar vendedor. */
+function premUsuariosSoltos(){
+  const vs = new Set((PREM.dados.vendedores || []).map(v => v.nome));
+  return (PREM.dados.usuarios || []).filter(u => !vs.has(u.usuario));
+}
+function premUsuarios(){
+  const us = premUsuariosSoltos();
+  const linhas = us.map((u, j) => '<tr' + premB(u.usuario, u.perfil) + '><td><b>' + premEsc(u.usuario) + '</b>' +
+      (u.perfil === 'vendedor' ? '<div class="pm-hint" style="color:var(--neg)">perfil vendedor sem cadastro: não vê venda nenhuma</div>' : '') + '</td>' +
+    '<td>' + premSelPerfil('puP' + j, u.perfil) + '</td>' +
+    '<td style="width:130px"><input id="puS' + j + '" type="password" class="pm-in" placeholder="só p/ trocar" autocomplete="new-password"></td>' +
+    '<td class="pm-mod">' + premSelModelo('puM' + j, '') + '</td>' +
+    '<td style="width:84px"><input id="puC' + j + '" class="pm-in pm-num" placeholder="%"></td></tr>').join('');
+  const novo = '<tr style="background:#F7F9FE"><td><input id="puNn" class="pm-in pm-box" placeholder="+ novo usuário (nome de login)"></td>' +
+    '<td><select id="puNp" class="pm-in pm-box"><option value="moderador">moderador</option><option value="admin">admin</option>' +
+    '<option value="vendedor">vendedor</option></select></td>' +
+    '<td><input id="puNs" type="password" class="pm-in pm-box" placeholder="senha" autocomplete="new-password"></td>' +
+    '<td colspan="2" class="pm-hint">quem não vende: marketing, financeiro, sócios…</td></tr>';
+  return premCard('Usuários sem modelo', us.length + ' entram no Portal mas não são vendedores' + premBtnXls('puTab', 'Usuarios sem modelo'),
+    '<table class="pm-tab" id="puTab"><tr><th>Usuário</th><th>Acesso ao Portal</th><th>Senha</th><th>Modelo (vira vendedor)</th><th>Comissão %</th></tr>' +
+    linhas + novo + '</table>' +
+    '<div class="pm-foot"><span class="pm-hint">“sem acesso” tira o login. Escolher um modelo transforma em vendedor (comissão obrigatória, 0 se não tiver) — ' +
+    'depois ligue os nomes do OMIE dele na lista de cima.</span><button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
+}
+function premItensUsuarios(){
+  const itens = [], txt = [];
+  premUsuariosSoltos().forEach((u, j) => {
+    const p = document.getElementById('puP' + j); if(!p) return;
+    const perfil = p.value || null, senha = document.getElementById('puS' + j).value;
+    const modelo = document.getElementById('puM' + j).value, cT = document.getElementById('puC' + j).value.trim();
+    if(!perfil){
+      itens.push({tabela: 'portal_usuario', op: 'delete', chave: {usuario: u.usuario}});
+      txt.push(u.usuario + ': PERDE o acesso ao Portal');
+    } else if(perfil !== u.perfil || senha){
+      const val = {perfil}; if(senha) val.senha = senha;
+      itens.push({tabela: 'portal_usuario', op: 'upsert', chave: {usuario: u.usuario}, valores: val});
+      txt.push(u.usuario + ': acesso ' + (perfil !== u.perfil ? u.perfil + ' → ' + perfil : '') + (senha ? ' (senha nova)' : ''));
+    }
+    if(modelo){
+      if(cT === '') throw new Error(u.usuario + ': para virar vendedor, informe a comissão em % (0 se não tiver)');
+      const n = premNum(cT);
+      if(n === null || n < 0 || n > 50) throw new Error(u.usuario + ': comissão inválida (' + cT + ')');
+      itens.push({tabela: 'vendedor', op: 'upsert', chave: {nome: u.usuario}, valores: {modelo, ativo: true, comissao_pct: Math.round(n * 10000) / 1000000}});
+      txt.push(u.usuario + ': passa a ser VENDEDOR (' + modelo + ', comissão ' + n.toLocaleString('pt-BR') + '%) — ligue os nomes do OMIE dele na lista de vendedores');
+    }
+  });
+  const g = id => (document.getElementById(id) || {value: ''}).value.trim();
+  const nome = g('puNn');
+  if(nome){
+    if((PREM.dados.usuarios || []).some(u => u.usuario.toLowerCase() === nome.toLowerCase()))
+      throw new Error('já existe o login "' + nome + '"');
+    const senha = (document.getElementById('puNs') || {value: ''}).value;
+    if(!senha) throw new Error(nome + ': defina a senha do novo usuário');
+    itens.push({tabela: 'portal_usuario', op: 'upsert', chave: {usuario: nome}, valores: {perfil: g('puNp') || 'moderador', senha}});
+    txt.push('NOVO usuário do Portal: ' + nome + ' (' + (g('puNp') || 'moderador') + ')');
+  }
+  return {itens, txt};
+}
+
 /* renomear: troca o nome em todas as tabelas de uma vez, no porteiro (vendedor,
    nomes do OMIE, metas, supervisao e login). Quem tem acesso precisa de senha
    nova - o codigo da senha depende do nome. */
@@ -18266,6 +18327,21 @@ async function premRenomear(i){
   const para = (prompt('Novo nome no Portal para "' + v.nome + '":', v.nome) || '').trim();
   if(!para || para === v.nome) return;
   const u = premUsuario(v.nome);
+  /* o nome novo ja tem login (ex.: "Pedro" -> "Pedro Chuluck"): e a mesma pessoa -
+     UNIFICA: fica o login de la, com a senha de la; o deste nome e apagado */
+  const loginDestino = (PREM.dados.usuarios || []).find(x => x.usuario.toLowerCase() === para.toLowerCase());
+  if(loginDestino){
+    if(!confirm('UNIFICAR "' + v.nome + '" com "' + loginDestino.usuario + '"?\n\n' +
+        '• o cadastro de vendedor, os nomes do OMIE, metas e supervisão passam para "' + loginDestino.usuario + '"\n' +
+        '• fica o login de "' + loginDestino.usuario + '" (' + loginDestino.perfil + '), com a senha dele' +
+        (u ? '\n• o login "' + v.nome + '" é APAGADO' : ''))) return;
+    try{
+      const r = await premChamar({acao: 'renomear', de: v.nome, para: loginDestino.usuario, senha: ''});
+      PREM.omie = null;
+      await premRecarregar('Unificado: ' + r.de + ' → ' + r.para + '. O Portal atualiza em até ~10 minutos.');
+    }catch(e){ PREM.erro = e.message; vPremissas(); }
+    return;
+  }
   let senha = '';
   if(u){
     senha = (prompt(v.nome + ' entra no Portal (' + u.perfil + '). O login passa a ser "' + para +
@@ -18996,7 +19072,7 @@ function premItensCmv(){
 async function premSalvarTudo(){
   try{
     let itens = [], txt = [];
-    for(const f of [premItensNovos, premItensVendedores, premItensSupervisao, premItensMetas, premItensPromotoria,
+    for(const f of [premItensNovos, premItensVendedores, premItensUsuarios, premItensSupervisao, premItensMetas, premItensPromotoria,
                     premItensComercial, premItensCalc, premItensCmv]){
       const r = f(); itens = itens.concat(r.itens); txt = txt.concat(r.txt);
     }
