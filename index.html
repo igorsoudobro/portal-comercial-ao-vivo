@@ -17844,7 +17844,7 @@ const PREM_NOME_TAB = {vendedor: 'Vendedores', depara_vendedor: 'Nomes do OMIE',
   comissao_excecao_cnpj: 'Exceções de comissão', contrato_cnpj: 'Contratos', calc_sku: 'SKUs da Calculadora',
   calc_tabela_canal: 'Tabelas de preço', cmv_parametros: 'CMV reserva', sku_categoria: 'Categoria do SKU', supervisao: 'Supervisão',
   meta_vendedor: 'Metas', meta_bloco: 'Metas (bloco)', promotoria: 'Promotoria', promotoria_rede_cnpj: 'CNPJ da rede',
-  renomear: 'Renomear'};
+  renomear: 'Renomear', excluir: 'Excluir'};
 
 function premTela(){
   const d = PREM.dados;
@@ -18164,7 +18164,7 @@ function premVendedores(){
     const fat = (PREM.dados.fat_vend_mes_ant || {})[v.nome] || 0;
     return sep + '<tr' + (v.ativo ? '' : ' class="pm-off"') + premB(v.nome, v.modeloTela || v.modelo, (premOmieEdit()[v.nome] || []).join(' '), u && u.perfil, v.ativo ? 'ativo' : 'inativo') +
       '><td style="white-space:nowrap"><b>' + premEsc(v.nome) + '</b>' +
-      ' <button class="pm-ren" title="renomear no Portal" onclick="premRenomear(' + i + ')">✎</button></td>' +
+      ' <button class="pm-ren" title="renomear no Portal" onclick="premRenomear(' + i + ')">✎</button>' + premBtnExcluir(v.nome) + '</td>' +
       '<td id="pvO' + i + '" class="pm-omie">' + premChips(v.nome, i) + '</td>' +
       '<td class="pm-mod">' + premSelModelo('pvM' + i, v.modeloTela || v.modelo) + '</td>' +
       '<td><input ' + premAttr('pvC' + i, pct, 'class="pm-in pm-num" data-fat="' + fat + '" data-prev="pvPv' + i + '"') + '>' +
@@ -18258,6 +18258,39 @@ function premItensVendedores(){
   }
 }
 
+/* ---------- EXCLUIR (Igor, 07/11/2026): so ele ve a lixeira - e o porteiro confere de novo.
+   Antes de excluir, o porteiro calcula o IMPACTO (venda do ano pelos nomes do OMIE,
+   carteira, metas, supervisao, login) e a tela mostra, com a pergunta de confirmacao. */
+function premBtnExcluir(nome){
+  if(!PREM.dados || !PREM.dados.pode_excluir) return '';
+  return ' <button class="pm-ren" title="excluir" data-n="' + premEsc(nome) + '" onclick="premExcluir(this.dataset.n)">🗑</button>';
+}
+async function premExcluir(nome){
+  if(document.querySelectorAll('#v-premissas .pm-mud').length){
+    alert('Há alterações não salvas na tela. Salve ou descarte antes de excluir.'); return;
+  }
+  let r;
+  try{ r = await premChamar({acao: 'impacto_excluir', nome}); }
+  catch(e){ PREM.erro = e.message; vPremissas(); return; }
+  const L = [];
+  if(r.vendedor) L.push('• o cadastro de vendedor (' + (r.vendedor.modelo || 'sem modelo') + (r.vendedor.ativo ? '' : ', inativo') + ') é apagado');
+  if(r.nomes_omie.length) L.push('• ' + r.nomes_omie.length + ' nome(s) do OMIE ficam SEM DONO: ' + r.nomes_omie.join(', ') +
+    (Math.abs(r.vendas_ano) >= 0.01 ? '\n   → ' + premBRL(Math.round(r.vendas_ano)) + ' de vendas em ' + r.ano + ' (última em ' + r.ultima_venda + ') ' +
+      'ficam sem vendedor no Portal' : ' (sem venda em ' + r.ano + ')'));
+  if(r.carteira) L.push('• ' + r.carteira + ' cliente(s) da CARTEIRA (SharePoint) estão com ' + nome + ' como dono — continuam assim até alguém trocar lá');
+  if(r.metas.length) L.push('• ' + r.metas.length + ' meta(s) apagada(s): ' + r.metas.map(m => m.mes + ' ' + premBRL(m.meta)).join(', '));
+  if(r.supervisor) L.push('• é SUPERVISOR: a equipe fica sem supervisor');
+  if(r.avulso_em.length) L.push('• sai da equipe de ' + r.avulso_em.join(', '));
+  if(r.login) L.push('• o login (' + r.login.perfil + ') é apagado — não entra mais no Portal');
+  const cab = r.tem_impacto ? '⚠️ EXCLUIR "' + nome + '" TEM IMPACTO:' : 'Excluir "' + nome + '" NÃO tem impacto nos números:';
+  if(!confirm(cab + '\n\n' + L.join('\n') + '\n\nNão dá para desfazer com um clique. Excluir mesmo?')) return;
+  try{
+    await premChamar({acao: 'excluir', nome});
+    PREM.omie = null;
+    await premRecarregar('Excluído: ' + nome + '. O Portal atualiza em até ~10 minutos.');
+  }catch(e){ PREM.erro = e.message; vPremissas(); }
+}
+
 /* ---------- USUARIOS SEM MODELO (Igor, 07/11/2026): quem entra no Portal mas nao e
    vendedor (marketing, financeiro, socios...) nao aparecia em lugar nenhum da aba -
    so na tela de login. Aqui: acesso, senha, tirar o acesso, ou virar vendedor. */
@@ -18267,7 +18300,7 @@ function premUsuariosSoltos(){
 }
 function premUsuarios(){
   const us = premUsuariosSoltos();
-  const linhas = us.map((u, j) => '<tr' + premB(u.usuario, u.perfil) + '><td><b>' + premEsc(u.usuario) + '</b>' +
+  const linhas = us.map((u, j) => '<tr' + premB(u.usuario, u.perfil) + '><td style="white-space:nowrap"><b>' + premEsc(u.usuario) + '</b>' + premBtnExcluir(u.usuario) +
       (u.perfil === 'vendedor' ? '<div class="pm-hint" style="color:var(--neg)">perfil vendedor sem cadastro: não vê venda nenhuma</div>' : '') + '</td>' +
     '<td>' + premSelPerfil('puP' + j, u.perfil) + '</td>' +
     '<td style="width:130px"><input id="puS' + j + '" type="password" class="pm-in" placeholder="só p/ trocar" autocomplete="new-password"></td>' +
@@ -18609,7 +18642,7 @@ function premHistorico(){
     premB(nomeTab(a.tabela), a.usuario, JSON.stringify(a.chave), JSON.stringify(a.depois || a.antes)) + (a.desfeita_em ? ' class="pm-off"' : '') + '><td style="white-space:nowrap">' +
     new Date(a.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) + '</td><td>' + premEsc(a.usuario) + '</td><td class="pm-hint">' + premEsc(nomeTab(a.tabela)) +
     '</td><td>' + desc(a) + (a.desfaz ? ' <i class="pm-hint">(desfez #' + a.desfaz + ')</i>' : '') + '</td><td style="text-align:right">' +
-    (a.desfeita_em ? '<span class="pm-hint">desfeita</span>' : (a.tabela === 'portal_usuario' || a.tabela === 'renomear' ? '' : '<button class="pm-btn pm-sm" onclick="premDesfazer(' + a.id + ')">Desfazer</button>')) + '</td></tr>').join('');
+    (a.desfeita_em ? '<span class="pm-hint">desfeita</span>' : (a.tabela === 'portal_usuario' || a.tabela === 'renomear' || a.tabela === 'excluir' ? '' : '<button class="pm-btn pm-sm" onclick="premDesfazer(' + a.id + ')">Desfazer</button>')) + '</td></tr>').join('');
   return premCard('Histórico', 'as ' + as.length + ' mais recentes · cada uma pode ser desfeita' + premBtnXls('phTab', 'Historico premissas'),
     filtros + '<table class="pm-tab" id="phTab"><tr><th>Quando</th><th>Quem</th><th>Tabela</th><th>O que mudou</th><th></th></tr>' + linhas + '</table>');
 }
@@ -19093,7 +19126,7 @@ async function premConfirmarESalvar(itens, txt){
     await premRecarregar('Salvo (' + r.alteracoes.length + ' alteração(ões)). O Portal atualiza em até ~10 minutos.');
   }catch(e){ PREM.erro = 'Não salvei nada: ' + e.message; vPremissas(); }
 }
-Object.assign(window, {premCatNova, premDescartar, premVoltarCampo, premResolver, premAba, premBuscar, premBaixar, premHistFiltro, premMetasMes, premBuscarCnpjCom, premMarcarRaiz,
+Object.assign(window, {premExcluir, premCatNova, premDescartar, premVoltarCampo, premResolver, premAba, premBuscar, premBaixar, premHistFiltro, premMetasMes, premBuscarCnpjCom, premMarcarRaiz,
   premCalcVista, premMassaPrevia, premMassaAplicar, premColarPrecos, premCmvVista, premUsarResp,
   premSalvarTudo, premEntrar, premSair, premRecarregar, premNovoModo, premSalvarNovo, premSalvarVendedores,
   premChipRm, premChipAdd, premPerfilMudou, premRenomear, premAvisoSup, premSalvarSupervisao, premColarMetas, premSalvarMetas,
