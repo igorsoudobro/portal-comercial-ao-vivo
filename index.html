@@ -16479,6 +16479,8 @@ async function anoSubstituirBase(){
     /* a promotoria e premissa, nao venda: vale mesmo se a base for recusada */
     if(d && d.PROMOTORIA) PROMO = d.PROMOTORIA;
     if(d && d.DEGUSTACAO && d.DEGUSTACAO.meses) DEGUST = d.DEGUSTACAO;
+    /* supervisao (07/11/2026): a do banco (aba Premissas) troca a do codigo */
+    if(d && d.SUPERVISAO && typeof aovivoAplicarSupervisao === 'function') aovivoAplicarSupervisao(d.SUPERVISAO);
     /* contratos (30/10/2026): os do banco por cima dos da rodada. Mesmo formato
        {cnpj: fracao}; o contratoIndex() refaz o indice sozinho porque o cache
        dele e por identidade do objeto. Sem o bloco, fica o da rodada. */
@@ -17505,6 +17507,536 @@ window.vComparativos = vComparativos;
     }
   }catch(e){ console.error('comparativos: registrar aba', e); }
 })();
+</script>
+
+<script>
+/* ==========================================================================
+   SUPERVISAO DO BANCO (07/11/2026) - aba Premissas
+   ==========================================================================
+   A regra saiu do codigo (const EQUIPES) e foi para premissas_comerciais.
+   supervisao, publicada no ano_ao_vivo.json (chave SUPERVISAO). Cada
+   supervisor ve: os vendedores dos MODELOS dele + AVULSOS; resto = os RCAs que
+   ninguem mais supervisiona. equipeDe() e trocada para entender esse formato. */
+function aovivoAplicarSupervisao(sup){
+  try{
+    if(!sup || typeof sup !== 'object' || typeof EQUIPES === 'undefined') return;
+    Object.keys(EQUIPES).forEach(k => { delete EQUIPES[k]; });
+    Object.keys(sup).forEach(k => {
+      const s = sup[k] || {};
+      EQUIPES[k] = {modelos: s.modelos || [], resto: !!s.resto, avulsos: s.avulsos || []};
+    });
+  }catch(e){ console.error('premissas: supervisao', e); }
+}
+function _equipeMembros(cfg){
+  const set = new Set();
+  if(!cfg) return set;
+  if(Array.isArray(cfg)){ cfg.forEach(v => set.add(v)); return set; }
+  const ms = cfg.modelos || (cfg.modelo ? [cfg.modelo] : []);
+  ms.forEach(m => membrosDoModelo(m).forEach(v => set.add(v)));
+  (cfg.avulsos || []).forEach(v => set.add(v));
+  return set;
+}
+window.equipeDe = function(u){
+  if(!(u in EQUIPES)) return null;
+  const cfg = EQUIPES[u];
+  const set = _equipeMembros(cfg);
+  set.add(u);
+  const ehResto = cfg === null || (cfg && cfg.resto);
+  if(!ehResto) return set;
+  /* time do RESTO: todos os 'RCA - ' que nenhum outro supervisor tem */
+  const comDono = new Set();
+  Object.keys(EQUIPES).forEach(k => {
+    const t = EQUIPES[k];
+    if(k !== u && t && !t.resto) _equipeMembros(t).forEach(v => comDono.add(v));
+  });
+  [...new Set(ROWS.map(r => r.v))].forEach(v => {
+    if(v && v.indexOf('RCA - ') === 0 && !comDono.has(v)) set.add(v);
+  });
+  return set;
+};
+
+/* ==========================================================================
+   ABA "PREMISSAS" (07/11/2026)
+   ========================================================================== */
+const PREM_URL = 'https://ovvtdzpbmdtipeoewnle.supabase.co/functions/v1/premissas-portal';
+let PREM = {token: null, usuario: null, dados: null, mes: null, msg: '', erro: '', ocupado: false};
+let PREM_PATCH = false;
+
+function premEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function premBRL(v){ return v == null || v === '' ? '' :
+  'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 2}); }
+function premNum(txt){
+  /* "1.234,56" / "R$ 20,000.00" / "20000" -> numero. Com virgula E ponto, o
+     ultimo separador e o decimal. */
+  let t = String(txt == null ? '' : txt).replace(/[R$\s]/g, '').trim();
+  if(!t || t === '-') return null;
+  const v = t.lastIndexOf(','), p = t.lastIndexOf('.');
+  if(v >= 0 && p >= 0){ t = v > p ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, ''); }
+  else if(v >= 0){ t = t.replace(',', '.'); }
+  else if(p >= 0 && /\.\d{3}$/.test(t) && t.split('.').length > 2){ t = t.replace(/\./g, ''); }
+  const n = Number(t);
+  return isFinite(n) ? n : null;
+}
+function premChave(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().replace(/^rca\s*-\s*/, '').replace(/\s+/g, ' ').trim(); }
+
+async function premChamar(corpo){
+  const h = {'content-type': 'application/json'};
+  if(PREM.token) h['x-premissas-token'] = PREM.token;
+  const r = await fetch(PREM_URL, {method: 'POST', headers: h, body: JSON.stringify(corpo)});
+  const j = await r.json().catch(() => ({erro: 'resposta invalida (' + r.status + ')'}));
+  if(r.status === 401 && corpo.acao !== 'entrar'){
+    PREM.token = null; try{ sessionStorage.removeItem('premToken'); }catch(e){}
+  }
+  if(!r.ok || j.erro) throw new Error(j.erro || ('erro ' + r.status));
+  return j;
+}
+
+function premRegistrar(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  if(!VIEWS.find(x => x.id === 'premissas')) VIEWS.push({id: 'premissas', lab: 'Premissas', fn: vPremissas});
+  if(!document.getElementById('v-premissas')){
+    const irmao = document.querySelector('.view');
+    if(irmao && irmao.parentNode){
+      const div = document.createElement('div');
+      div.className = 'view'; div.id = 'v-premissas';
+      irmao.parentNode.appendChild(div);
+    }
+  }
+  if(!PREM_PATCH && typeof abasPermitidas === 'function'){
+    const orig = abasPermitidas;
+    abasPermitidas = function(){
+      const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin);
+      return orig().filter(x => x.id !== 'premissas' || adm);
+    };
+    PREM_PATCH = true;
+  }
+  const nav = document.getElementById('nav');
+  if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
+}
+
+/* ---------------------------------------------------------------- tela */
+function premCard(titulo, corpo, sub){
+  return '<div class="card" style="margin-bottom:14px"><div class="card-h"><h3>' + titulo + '</h3>' +
+    (sub ? '<span style="font-size:12px;color:var(--muted)">' + sub + '</span>' : '') + '</div>' +
+    '<div style="padding:10px 16px;overflow-x:auto">' + corpo + '</div></div>';
+}
+const PREM_TAB = 'style="width:100%;border-collapse:collapse;font-size:12.5px"';
+const PREM_TH = 'style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);color:var(--muted);font-weight:600"';
+const PREM_TD = 'style="padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle"';
+const PREM_IN = 'style="width:100%;box-sizing:border-box;padding:3px 5px;font-size:12.5px"';
+const PREM_BT = 'style="padding:6px 12px;cursor:pointer"';
+
+function vPremissas(){
+  const alvo = document.getElementById('v-premissas');
+  if(!alvo) return;
+  if(!PREM.token){ try{ PREM.token = sessionStorage.getItem('premToken'); PREM.usuario = sessionStorage.getItem('premUser'); }catch(e){} }
+  if(!PREM.token){ alvo.innerHTML = premTelaLogin(); return; }
+  if(!PREM.dados){ alvo.innerHTML = premCard('Premissas', 'Carregando…'); premRecarregar(); return; }
+  alvo.innerHTML = premTela();
+}
+function premTelaLogin(){
+  const u = (typeof SESSION === 'object' && SESSION && SESSION.user) || '';
+  return premCard('Premissas — entrar',
+    '<p style="margin:0 0 10px">Edite aqui vendedores, supervisão, metas e promotoria. A gravação vai direto para o banco ' +
+    'e aparece no Portal em até ~10 minutos. Só admin.</p>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;max-width:640px">' +
+    '<label>Usuário<br><input id="premU" ' + PREM_IN + ' value="' + premEsc(u) + '"></label>' +
+    '<label>Senha do Portal<br><input id="premS" type="password" ' + PREM_IN + '></label>' +
+    '<label>Senha da aba<br><input id="premA" type="password" ' + PREM_IN + '></label></div>' +
+    '<p><button ' + PREM_BT + ' onclick="premEntrar()">Entrar</button> ' +
+    '<span style="color:var(--neg)">' + premEsc(PREM.erro) + '</span></p>');
+}
+async function premEntrar(){
+  PREM.erro = '';
+  try{
+    const j = await premChamar({acao: 'entrar', usuario: document.getElementById('premU').value,
+      senha_login: document.getElementById('premS').value, senha_aba: document.getElementById('premA').value});
+    PREM.token = j.token; PREM.usuario = j.usuario;
+    try{ sessionStorage.setItem('premToken', j.token); sessionStorage.setItem('premUser', j.usuario); }catch(e){}
+    PREM.dados = null; vPremissas();
+  }catch(e){ PREM.erro = e.message; vPremissas(); }
+}
+async function premSair(){
+  try{ await premChamar({acao: 'sair'}); }catch(e){}
+  PREM.token = null; PREM.dados = null;
+  try{ sessionStorage.removeItem('premToken'); sessionStorage.removeItem('premUser'); }catch(e){}
+  vPremissas();
+}
+async function premRecarregar(msg){
+  try{
+    PREM.dados = await premChamar({acao: 'ler'});
+    if(!PREM.mes) PREM.mes = PREM.dados.meses[0];
+    PREM.msg = msg || ''; PREM.erro = '';
+  }catch(e){ PREM.erro = e.message; if(!PREM.token){ vPremissas(); return; } }
+  vPremissas();
+}
+
+function premTela(){
+  const d = PREM.dados;
+  const fonteVend = (d.fontes || []).find(f => f.tabela === 'vendedor');
+  const aviso = (fonteVend && fonteVend.fonte === 'parametros')
+    ? '<div class="avisobox" style="margin-bottom:12px"><b>Vendedores ainda copiados da Parametros.</b> Enquanto isso, ' +
+      'uma edição de vendedor, nome do OMIE ou acesso feita aqui é sobrescrita na próxima vez que o V8 for salvo. ' +
+      'Supervisão, metas e promotoria já valem só aqui.</div>' : '';
+  const topo = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
+    '<div>Conectado como <b>' + premEsc(PREM.usuario) + '</b> · sessão de 30 min, renovada a cada uso</div>' +
+    '<div><button ' + PREM_BT + ' onclick="premRecarregar()">Atualizar</button> <button ' + PREM_BT + ' onclick="premSair()">Sair</button></div></div>' +
+    (PREM.msg ? '<div class="avisobox" style="margin-bottom:12px;border-color:var(--pos)">' + premEsc(PREM.msg) + '</div>' : '') +
+    (PREM.erro ? '<div class="avisobox" style="margin-bottom:12px;border-color:var(--neg)">' + premEsc(PREM.erro) + '</div>' : '');
+  return topo + aviso + premNovos() + premVendedores() + premSupervisao() + premMetas() + premPromotoria() + premHistorico();
+}
+
+/* ---------- vendedores novos do OMIE */
+function premNovos(){
+  const n = (PREM.dados.novos_omie || []).filter(x => !x.erro);
+  if(!n.length) return '';
+  const linhas = n.map((x, i) => '<tr><td ' + PREM_TD + '>' + premEsc(x.nome) + '</td><td ' + PREM_TD + '>' + x.nfs +
+    '</td><td ' + PREM_TD + '>' + premBRL(x.valor) + '</td><td ' + PREM_TD + '>' + premEsc(x.ultima) +
+    '</td><td ' + PREM_TD + '><button onclick="premNovoDoOmie(' + i + ')">Cadastrar</button></td></tr>').join('');
+  return premCard('Vendedores novos do OMIE', '<table ' + PREM_TAB + '><tr><th ' + PREM_TH + '>Nome no OMIE</th><th ' + PREM_TH +
+    '>Notas (90 dias)</th><th ' + PREM_TH + '>Venda</th><th ' + PREM_TH + '>Última</th><th ' + PREM_TH + '></th></tr>' + linhas + '</table>',
+    'venderam e ainda não têm cadastro');
+}
+function premNovoDoOmie(i){
+  const x = PREM.dados.novos_omie[i];
+  PREM.novo = {nome: x.nome, omie: x.nome};
+  vPremissas();
+  const el = document.getElementById('premNovoNome'); if(el){ el.scrollIntoView({block: 'center'}); el.focus(); }
+}
+
+/* ---------- cadastro unico de vendedor */
+function premApelidos(nome){
+  return (PREM.dados.depara || []).filter(x => x.vendedor === nome).map(x => x.nome_omie);
+}
+function premUsuario(nome){ return (PREM.dados.usuarios || []).find(x => x.usuario === nome); }
+function premSelModelo(id, atual){
+  const ms = [...new Set((PREM.dados.modelos || []).map(m => m))];
+  if(atual && ms.indexOf(atual) < 0) ms.push(atual);
+  return '<select id="' + id + '" ' + PREM_IN + '><option value=""></option>' +
+    ms.map(m => '<option' + (m === atual ? ' selected' : '') + '>' + premEsc(m) + '</option>').join('') + '</select>';
+}
+function premSelPerfil(id, atual){
+  return '<select id="' + id + '" ' + PREM_IN + '>' + ['', 'vendedor', 'moderador', 'admin'].map(p =>
+    '<option value="' + p + '"' + (p === (atual || '') ? ' selected' : '') + '>' + (p || '— sem acesso') + '</option>').join('') + '</select>';
+}
+function premVendedores(){
+  const vs = PREM.dados.vendedores || [];
+  const cab = '<tr>' + ['Nome no Portal', 'Modelo', 'Ativo', 'Comissão %', 'Nomes no OMIE (separe com ;)', 'Acesso', 'Nova senha']
+    .map(t => '<th ' + PREM_TH + '>' + t + '</th>').join('') + '</tr>';
+  const linha = (v, i) => {
+    const u = premUsuario(v.nome);
+    const pct = v.comissao_pct == null ? '' : String(+(Number(v.comissao_pct) * 100).toFixed(4)).replace('.', ',');
+    return '<tr><td ' + PREM_TD + '><b>' + premEsc(v.nome) + '</b></td>' +
+      '<td ' + PREM_TD + '>' + premSelModelo('pvM' + i, v.modelo) + '</td>' +
+      '<td ' + PREM_TD + '><input type="checkbox" id="pvA' + i + '"' + (v.ativo ? ' checked' : '') + '></td>' +
+      '<td ' + PREM_TD + ' style="width:80px"><input id="pvC' + i + '" ' + PREM_IN + ' value="' + pct + '"></td>' +
+      '<td ' + PREM_TD + '><input id="pvO' + i + '" ' + PREM_IN + ' value="' + premEsc(premApelidos(v.nome).join('; ')) + '"></td>' +
+      '<td ' + PREM_TD + '>' + premSelPerfil('pvP' + i, u && u.perfil) + '</td>' +
+      '<td ' + PREM_TD + '><input id="pvS' + i + '" type="password" ' + PREM_IN + ' placeholder="só p/ trocar"></td></tr>';
+  };
+  const nv = PREM.novo || {};
+  const novo = '<tr style="background:var(--bg2,#f6f8fc)"><td ' + PREM_TD + '><input id="premNovoNome" ' + PREM_IN + ' placeholder="+ novo vendedor" value="' + premEsc(nv.nome || '') + '"></td>' +
+    '<td ' + PREM_TD + '>' + premSelModelo('pvMn', '') + '</td><td ' + PREM_TD + '><input type="checkbox" id="pvAn" checked></td>' +
+    '<td ' + PREM_TD + '><input id="pvCn" ' + PREM_IN + '></td><td ' + PREM_TD + '><input id="pvOn" ' + PREM_IN + ' value="' + premEsc(nv.omie || '') + '"></td>' +
+    '<td ' + PREM_TD + '>' + premSelPerfil('pvPn', '') + '</td><td ' + PREM_TD + '><input id="pvSn" type="password" ' + PREM_IN + '></td></tr>';
+  return premCard('Vendedores', '<table ' + PREM_TAB + '>' + cab + vs.map(linha).join('') + novo + '</table>' +
+    '<p><button ' + PREM_BT + ' onclick="premSalvarVendedores()">Salvar vendedores</button> ' +
+    '<span style="color:var(--muted);font-size:12px">Comissão em % (7 = 7%; 0,5 = meio por cento). O modelo define a equipe do supervisor.</span></p>',
+    'cadastro único: modelo, comissão, nomes no OMIE e acesso ao Portal');
+}
+function premColetarVendedor(nome, sufixo, antes){
+  const g = id => document.getElementById(id + sufixo);
+  const pctTxt = g('pvC').value.trim();
+  let pct = null;
+  if(pctTxt !== ''){
+    const n = premNum(pctTxt);
+    if(n === null || n < 0 || n > 50) throw new Error(nome + ': comissão inválida (' + pctTxt + ')');
+    pct = Math.round(n * 10000) / 1000000;          /* % -> fracao, sem lixo de ponto flutuante */
+  }
+  return {modelo: g('pvM').value || null, ativo: g('pvA').checked, comissao_pct: pct,
+          omie: g('pvO').value.split(';').map(s => s.trim()).filter(Boolean),
+          perfil: g('pvP').value || null, senha: g('pvS').value};
+}
+function premItensVendedor(nome, novo, antes){
+  const itens = [], txt = [];
+  const ant = antes || {};
+  const camposV = {};
+  if(novo.modelo !== (ant.modelo || null)){ camposV.modelo = novo.modelo; txt.push(nome + ': modelo ' + (ant.modelo || '—') + ' → ' + (novo.modelo || '—')); }
+  if(!!novo.ativo !== !!ant.ativo){ camposV.ativo = novo.ativo; txt.push(nome + ': ' + (novo.ativo ? 'ativado' : 'desativado')); }
+  const pa = ant.comissao_pct == null ? null : Number(ant.comissao_pct);
+  if((novo.comissao_pct == null) !== (pa == null) || (pa != null && Math.abs(novo.comissao_pct - pa) > 1e-9)){
+    camposV.comissao_pct = novo.comissao_pct;
+    txt.push(nome + ': comissão ' + (pa == null ? '—' : (pa * 100).toLocaleString('pt-BR') + '%') + ' → ' +
+             (novo.comissao_pct == null ? '—' : (novo.comissao_pct * 100).toLocaleString('pt-BR') + '%'));
+  }
+  if(!antes || Object.keys(camposV).length) itens.push({tabela: 'vendedor', op: 'upsert', chave: {nome}, valores: camposV});
+  /* nomes no OMIE: cada um e uma linha do de-para; o modelo fica so no cadastro */
+  const velhos = antes ? premApelidos(nome) : [];
+  novo.omie.filter(o => velhos.indexOf(o) < 0).forEach(o => {
+    const dono = (PREM.dados.depara || []).find(x => x.nome_omie === o);
+    itens.push({tabela: 'depara_vendedor', op: 'upsert', chave: {nome_omie: o}, valores: {vendedor: nome, modelo: null}});
+    txt.push(nome + ': nome no OMIE "' + o + '"' + (dono && dono.vendedor ? ' (era de ' + dono.vendedor + ')' : ''));
+  });
+  velhos.filter(o => novo.omie.indexOf(o) < 0).forEach(o => {
+    itens.push({tabela: 'depara_vendedor', op: 'delete', chave: {nome_omie: o}});
+    txt.push(nome + ': tira o nome no OMIE "' + o + '"');
+  });
+  if(camposV.modelo !== undefined) velhos.filter(o => novo.omie.indexOf(o) >= 0).forEach(o => {
+    const dp = (PREM.dados.depara || []).find(x => x.nome_omie === o);
+    if(dp && dp.modelo) itens.push({tabela: 'depara_vendedor', op: 'upsert', chave: {nome_omie: o}, valores: {modelo: null}});
+  });
+  /* acesso ao Portal */
+  const u = premUsuario(nome);
+  if(novo.perfil && !u){
+    if(!novo.senha) throw new Error(nome + ': para dar acesso, defina uma senha');
+    itens.push({tabela: 'portal_usuario', op: 'upsert', chave: {usuario: nome}, valores: {perfil: novo.perfil, senha: novo.senha}});
+    txt.push(nome + ': ganha acesso ao Portal (' + novo.perfil + ')');
+  } else if(u && !novo.perfil){
+    itens.push({tabela: 'portal_usuario', op: 'delete', chave: {usuario: nome}});
+    txt.push(nome + ': PERDE o acesso ao Portal');
+  } else if(u && (novo.perfil !== u.perfil || novo.senha)){
+    const val = {perfil: novo.perfil}; if(novo.senha) val.senha = novo.senha;
+    itens.push({tabela: 'portal_usuario', op: 'upsert', chave: {usuario: nome}, valores: val});
+    txt.push(nome + ': acesso ' + (novo.perfil !== u.perfil ? u.perfil + ' → ' + novo.perfil : '') + (novo.senha ? ' (senha nova)' : ''));
+  }
+  return {itens, txt};
+}
+async function premSalvarVendedores(){
+  try{
+    let itens = [], txt = [];
+    (PREM.dados.vendedores || []).forEach((v, i) => {
+      const r = premItensVendedor(v.nome, premColetarVendedor(v.nome, i, v), v);
+      itens = itens.concat(r.itens); txt = txt.concat(r.txt);
+    });
+    const nomeNovo = document.getElementById('premNovoNome').value.trim();
+    if(nomeNovo){
+      if((PREM.dados.vendedores || []).some(v => v.nome.toLowerCase() === nomeNovo.toLowerCase()))
+        throw new Error('já existe um vendedor "' + nomeNovo + '"');
+      const r = premItensVendedor(nomeNovo, premColetarVendedor(nomeNovo, 'n', null), null);
+      txt.unshift('NOVO vendedor: ' + nomeNovo);
+      itens = itens.concat(r.itens); txt = txt.concat(r.txt);
+    }
+    await premConfirmarESalvar(itens, txt);
+    PREM.novo = null;
+  }catch(e){ PREM.erro = e.message; vPremissas(); }
+}
+
+/* ---------- supervisao */
+function premSupervisao(){
+  const sup = PREM.dados.supervisao || [];
+  const ms = PREM.dados.modelos || [];
+  const linhas = sup.map((s, i) => '<tr><td ' + PREM_TD + '><b>' + premEsc(s.supervisor) + '</b></td><td ' + PREM_TD + '>' +
+    ms.map((m, j) => '<label style="margin-right:10px;white-space:nowrap"><input type="checkbox" id="psM' + i + '_' + j + '"' +
+      ((s.modelos || []).indexOf(m) >= 0 ? ' checked' : '') + '> ' + premEsc(m) + '</label>').join('') +
+    '</td><td ' + PREM_TD + '><input type="checkbox" id="psR' + i + '"' + (s.resto_rca ? ' checked' : '') + '></td>' +
+    '<td ' + PREM_TD + '><input id="psV' + i + '" ' + PREM_IN + ' value="' + premEsc((s.avulsos || []).join('; ')) + '"></td></tr>').join('');
+  const novo = '<tr><td ' + PREM_TD + '><input id="psNovo" ' + PREM_IN + ' placeholder="+ novo supervisor (nome de login)"></td><td ' + PREM_TD + ' colspan="3" style="color:var(--muted)">' +
+    'depois de salvar, marque os modelos dele</td></tr>';
+  return premCard('Supervisão', '<table ' + PREM_TAB + '><tr><th ' + PREM_TH + '>Supervisor</th><th ' + PREM_TH + '>Vê os modelos</th><th ' + PREM_TH +
+    '>RCAs restantes</th><th ' + PREM_TH + '>Vê também (avulso, separe com ;)</th></tr>' + linhas + novo + '</table>' +
+    '<div id="psAviso" style="font-size:12px;color:var(--muted);margin-top:6px">' + premConferirSupervisao(false) + '</div>' +
+    '<p><button ' + PREM_BT + ' onclick="premSalvarSupervisao()">Salvar supervisão</button></p>',
+    'quem cada supervisor enxerga — mudar o modelo do vendedor já muda a equipe');
+}
+function premLerSupervisao(){
+  const ms = PREM.dados.modelos || [];
+  return (PREM.dados.supervisao || []).map((s, i) => ({
+    supervisor: s.supervisor,
+    modelos: ms.filter((m, j) => { const el = document.getElementById('psM' + i + '_' + j); return el ? el.checked : (s.modelos || []).indexOf(m) >= 0; }),
+    resto_rca: (document.getElementById('psR' + i) || {checked: s.resto_rca}).checked,
+    avulsos: ((document.getElementById('psV' + i) || {value: (s.avulsos || []).join(';')}).value).split(';').map(x => x.trim()).filter(Boolean)
+  }));
+}
+function premConferirSupervisao(daTela){
+  /* RCA ativo: em quantas equipes (sem contar o "resto") ele cai? */
+  const sup = daTela ? premLerSupervisao() : (PREM.dados.supervisao || []);
+  const rcas = (PREM.dados.vendedores || []).filter(v => v.ativo && /^RCA - /.test(v.nome));
+  const temResto = sup.some(s => s.resto_rca);
+  const duplos = [], orfaos = [];
+  rcas.forEach(v => {
+    const n = sup.filter(s => !s.resto_rca && ((s.modelos || []).indexOf(v.modelo) >= 0 || (s.avulsos || []).indexOf(v.nome) >= 0)).length;
+    if(n > 1) duplos.push(v.nome);
+    if(n === 0 && !temResto) orfaos.push(v.nome);
+  });
+  return (duplos.length ? '⚠️ Em duas equipes: ' + duplos.join(', ') + '. ' : '') +
+    (orfaos.length ? '⚠️ Sem supervisor: ' + orfaos.join(', ') + '. ' : '') +
+    (!duplos.length && !orfaos.length ? '✅ Todo RCA ativo tem exatamente um supervisor.' : '');
+}
+async function premSalvarSupervisao(){
+  try{
+    const atual = PREM.dados.supervisao || [];
+    const itens = [], txt = [];
+    premLerSupervisao().forEach((s, i) => {
+      const a = atual[i];
+      const igual = (x, y) => JSON.stringify((x || []).slice().sort()) === JSON.stringify((y || []).slice().sort());
+      if(!igual(s.modelos, a.modelos) || !!s.resto_rca !== !!a.resto_rca || !igual(s.avulsos, a.avulsos)){
+        itens.push({tabela: 'supervisao', op: 'upsert', chave: {supervisor: s.supervisor},
+                    valores: {modelos: s.modelos, resto_rca: s.resto_rca, avulsos: s.avulsos}});
+        txt.push(s.supervisor + ': vê ' + (s.modelos.join(', ') || '—') + (s.resto_rca ? ' + RCAs restantes' : '') +
+                 (s.avulsos.length ? ' + ' + s.avulsos.join(', ') : ''));
+      }
+    });
+    const novo = document.getElementById('psNovo').value.trim();
+    if(novo){ itens.push({tabela: 'supervisao', op: 'upsert', chave: {supervisor: novo}, valores: {modelos: [], resto_rca: false, avulsos: []}});
+              txt.push('NOVO supervisor: ' + novo); }
+    const aviso = premConferirSupervisao(true);
+    if(aviso.indexOf('⚠️') >= 0) txt.push('ATENÇÃO — ' + aviso);
+    await premConfirmarESalvar(itens, txt);
+  }catch(e){ PREM.erro = e.message; vPremissas(); }
+}
+
+/* ---------- metas do mes */
+function premMetas(){
+  const d = PREM.dados, mes = PREM.mes;
+  const metas = (d.metas_vendedor || []).filter(m => m.mes === mes);
+  const porV = {}; metas.forEach(m => { porV[m.vendedor] = m; });
+  const vs = (d.vendedores || []).filter(v => v.ativo || porV[v.nome]);
+  const total = metas.reduce((s, m) => s + Number(m.meta || 0), 0);
+  const linhas = vs.map((v, i) => '<tr><td ' + PREM_TD + '>' + premEsc(v.nome) + '</td><td ' + PREM_TD + ' style="color:var(--muted)">' + premEsc(v.modelo || '') +
+    '</td><td ' + PREM_TD + ' style="width:160px"><input id="pmV' + i + '" ' + PREM_IN + ' value="' +
+    (porV[v.nome] ? String(Number(porV[v.nome].meta)).replace('.', ',') : '') + '"></td></tr>').join('');
+  const seletor = d.meses.map(m => '<button ' + PREM_BT + (m === mes ? ' disabled' : '') + ' onclick="PREM.mes=\'' + m + '\';vPremissas()">' + m + '</button>').join(' ');
+  return premCard('Metas — ' + mes, '<p>' + seletor + ' <span style="color:var(--muted)">total gravado: ' + premBRL(total) + '</span></p>' +
+    '<details style="margin-bottom:8px"><summary style="cursor:pointer">Colar do Excel</summary>' +
+    '<textarea id="pmCola" rows="6" style="width:100%;font-size:12px" placeholder="RCA - Alberto\tR$ 20,000.00\n…"></textarea>' +
+    '<button ' + PREM_BT + ' onclick="premColarMetas()">Preencher a tabela</button> <span id="pmColaMsg" style="font-size:12px"></span></details>' +
+    '<table ' + PREM_TAB + '><tr><th ' + PREM_TH + '>Vendedor</th><th ' + PREM_TH + '>Modelo</th><th ' + PREM_TH + '>Meta (R$)</th></tr>' + linhas + '</table>' +
+    '<p><button ' + PREM_BT + ' onclick="premSalvarMetas()">Salvar metas de ' + mes + '</button> ' +
+    '<span style="color:var(--muted);font-size:12px">Vazio = sem meta. "Comercial total" e "Key Account" são recalculados ao salvar.</span></p>',
+    'meta por vendedor; o modelo vem do cadastro');
+}
+function premColarMetas(){
+  const vs = (PREM.dados.vendedores || []).filter(v => v.ativo || (PREM.dados.metas_vendedor || []).some(m => m.vendedor === v.nome));
+  const idx = {}; vs.forEach((v, i) => { idx[premChave(v.nome)] = i; });
+  const naoAchei = []; let ok = 0;
+  document.getElementById('pmCola').value.split(/\r?\n/).forEach(l => {
+    const partes = l.split(/\t| {2,}/).map(s => s.trim()).filter(Boolean);
+    if(partes.length < 2) return;
+    const nome = partes[0], valor = premNum(partes[partes.length - 1]);
+    let i = idx[premChave(nome)];
+    if(i === undefined){            /* "RCA - Gabriela Micheli" -> "RCA - Gabriela"; "Fellipe" -> "Fellipe Argentati" */
+      const k = premChave(nome);
+      const cand = Object.keys(idx).filter(c => k.indexOf(c + ' ') === 0 || c.indexOf(k + ' ') === 0);
+      if(cand.length === 1) i = idx[cand[0]];
+    }
+    if(i === undefined){ naoAchei.push(nome); return; }
+    const el = document.getElementById('pmV' + i);
+    if(el){ el.value = valor == null ? '' : String(valor).replace('.', ','); ok++; }
+  });
+  document.getElementById('pmColaMsg').innerHTML = ok + ' preenchidas' +
+    (naoAchei.length ? ' · <b style="color:var(--neg)">não achei: ' + premEsc(naoAchei.join(', ')) + '</b>' : '') + ' — confira e salve.';
+}
+async function premSalvarMetas(){
+  try{
+    const d = PREM.dados, mes = PREM.mes;
+    const metas = (d.metas_vendedor || []).filter(m => m.mes === mes);
+    const porV = {}; metas.forEach(m => { porV[m.vendedor] = m; });
+    const vs = (d.vendedores || []).filter(v => v.ativo || porV[v.nome]);
+    const itens = [], txt = [];
+    let total = 0, ka = 0;
+    vs.forEach((v, i) => {
+      const t = document.getElementById('pmV' + i).value.trim();
+      const n = t === '' ? null : premNum(t);
+      if(t !== '' && n === null) throw new Error(v.nome + ': meta inválida (' + t + ')');
+      if(n != null){ total += n; if(v.modelo === 'Key Account') ka += n; }
+      const a = porV[v.nome] ? Number(porV[v.nome].meta) : null;
+      if(n === a) return;
+      if(n === null){ itens.push({tabela: 'meta_vendedor', op: 'delete', chave: {mes, vendedor: v.nome}}); txt.push(v.nome + ': sem meta'); }
+      else { itens.push({tabela: 'meta_vendedor', op: 'upsert', chave: {mes, vendedor: v.nome}, valores: {meta: n, modelo: v.modelo}});
+             txt.push(v.nome + ': ' + (a == null ? '—' : premBRL(a)) + ' → ' + premBRL(n)); }
+    });
+    if(itens.length){
+      itens.push({tabela: 'meta_bloco', op: 'upsert', chave: {bloco: 'Comercial total', mes}, valores: {modelo: '', meta: total}});
+      itens.push({tabela: 'meta_bloco', op: 'upsert', chave: {bloco: 'Key Account (bloco)', mes}, valores: {modelo: 'Key Account', meta: ka}});
+      txt.push('Comercial total de ' + mes + ': ' + premBRL(total) + ' · Key Account: ' + premBRL(ka));
+    }
+    await premConfirmarESalvar(itens, txt);
+  }catch(e){ PREM.erro = e.message; vPremissas(); }
+}
+
+/* ---------- promotoria */
+function premPromotoria(){
+  const ps = PREM.dados.promotoria || [];
+  const cab = '<tr>' + ['Rede', 'Agência', 'Valor/mês', 'Desde', 'Até', 'Conta na rede', ''].map(t => '<th ' + PREM_TH + '>' + t + '</th>').join('') + '</tr>';
+  const inp = (id, v, tipo) => '<input id="' + id + '" ' + (tipo ? 'type="' + tipo + '" ' : '') + PREM_IN + ' value="' + premEsc(v == null ? '' : v) + '">';
+  const linhas = ps.map((p, i) => '<tr' + (p.vigente_ate ? ' style="opacity:.55"' : '') + '><td ' + PREM_TD + '>' + inp('ppR' + i, p.rede) + '</td><td ' + PREM_TD + '>' + inp('ppA' + i, p.promotoria) +
+    '</td><td ' + PREM_TD + '>' + inp('ppV' + i, String(Number(p.valor_mensal)).replace('.', ',')) + '</td><td ' + PREM_TD + '>' + inp('ppD' + i, p.vigente_desde, 'date') +
+    '</td><td ' + PREM_TD + '>' + inp('ppT' + i, p.vigente_ate || '', 'date') + '</td><td ' + PREM_TD + '>' + inp('ppC' + i, p.rede_venda) + '</td><td ' + PREM_TD + '></td></tr>').join('');
+  const novo = '<tr style="background:var(--bg2,#f6f8fc)"><td ' + PREM_TD + '>' + inp('ppRn', '') + '</td><td ' + PREM_TD + '>' + inp('ppAn', '') + '</td><td ' + PREM_TD + '>' + inp('ppVn', '') +
+    '</td><td ' + PREM_TD + '>' + inp('ppDn', '', 'date') + '</td><td ' + PREM_TD + '>' + inp('ppTn', '', 'date') + '</td><td ' + PREM_TD + '>' + inp('ppCn', '') + '</td><td ' + PREM_TD + '>+ nova</td></tr>';
+  return premCard('Promotoria', '<table ' + PREM_TAB + '>' + cab + linhas + novo + '</table>' +
+    '<p><button ' + PREM_BT + ' onclick="premSalvarPromotoria()">Salvar promotoria</button> ' +
+    '<span style="color:var(--muted);font-size:12px">Valor mudou? Preencha "Até" na linha antiga e crie uma nova — assim o histórico fica certo. Datas sempre no dia 1º.</span></p>',
+    'custo mensal por rede, inteiro para o dono da rede na carteira');
+}
+async function premSalvarPromotoria(){
+  try{
+    const ps = PREM.dados.promotoria || [];
+    const itens = [], txt = [];
+    const g = id => (document.getElementById(id) || {value: ''}).value.trim();
+    const dia1 = (s, rot) => { if(s && !/-01$/.test(s)) throw new Error(rot + ': a data tem de ser dia 1º (' + s + ')'); return s || null; };
+    ps.forEach((p, i) => {
+      const v = {rede: g('ppR' + i), promotoria: g('ppA' + i), valor_mensal: premNum(g('ppV' + i)),
+                 vigente_desde: dia1(g('ppD' + i), p.rede), vigente_ate: dia1(g('ppT' + i), p.rede), rede_venda: g('ppC' + i) || null};
+      const mud = Object.keys(v).filter(k => String(v[k] == null ? '' : v[k]) !== String(p[k] == null ? '' : (k === 'valor_mensal' ? Number(p[k]) : p[k])));
+      if(mud.length){ itens.push({tabela: 'promotoria', op: 'upsert', chave: {id: p.id}, valores: v});
+                      txt.push(p.rede + ' / ' + p.promotoria + ': ' + mud.map(k => k + ' → ' + (v[k] == null ? '—' : v[k])).join(', ')); }
+    });
+    if(g('ppRn')){
+      const v = {rede: g('ppRn'), promotoria: g('ppAn'), valor_mensal: premNum(g('ppVn')),
+                 vigente_desde: dia1(g('ppDn'), 'nova'), vigente_ate: dia1(g('ppTn'), 'nova'), rede_venda: g('ppCn') || null};
+      if(!v.promotoria || v.valor_mensal == null || !v.vigente_desde) throw new Error('nova promotoria: preencha agência, valor e desde');
+      itens.push({tabela: 'promotoria', op: 'upsert', chave: {}, valores: v});
+      txt.push('NOVA promotoria: ' + v.rede + ' / ' + v.promotoria + ' ' + premBRL(v.valor_mensal) + '/mês desde ' + v.vigente_desde);
+    }
+    await premConfirmarESalvar(itens, txt);
+  }catch(e){ PREM.erro = e.message; vPremissas(); }
+}
+
+/* ---------- historico */
+function premHistorico(){
+  const as = PREM.dados.alteracoes || [];
+  if(!as.length) return premCard('Últimas alterações', '<p style="color:var(--muted)">Nenhuma ainda.</p>');
+  const desc = a => {
+    const c = a.chave || {}, an = a.antes || {}, de = a.depois || {};
+    const id = Object.values(c).join(' · ');
+    if(!a.antes) return id + ' — criado';
+    if(!a.depois) return id + ' — removido';
+    const ks = Object.keys(de).filter(k => !/carregado_em|alterado_em|criado_em|linha_excel/.test(k) && JSON.stringify(de[k]) !== JSON.stringify(an[k]));
+    return id + ' — ' + (ks.map(k => k + ': ' + JSON.stringify(an[k]) + ' → ' + JSON.stringify(de[k])).join(', ') || 'sem mudança');
+  };
+  const linhas = as.map(a => '<tr' + (a.desfeita_em ? ' style="opacity:.5"' : '') + '><td ' + PREM_TD + ' style="white-space:nowrap">' +
+    new Date(a.em).toLocaleString('pt-BR') + '</td><td ' + PREM_TD + '>' + premEsc(a.usuario) + '</td><td ' + PREM_TD + '>' + premEsc(a.tabela) +
+    '</td><td ' + PREM_TD + '>' + premEsc(desc(a)) + (a.desfaz ? ' <i>(desfez #' + a.desfaz + ')</i>' : '') + '</td><td ' + PREM_TD + '>' +
+    (a.desfeita_em ? 'desfeita' : (a.tabela === 'portal_usuario' ? '' : '<button onclick="premDesfazer(' + a.id + ')">Desfazer</button>')) + '</td></tr>').join('');
+  return premCard('Últimas alterações', '<table ' + PREM_TAB + '><tr><th ' + PREM_TH + '>Quando</th><th ' + PREM_TH + '>Quem</th><th ' + PREM_TH +
+    '>Tabela</th><th ' + PREM_TH + '>O que mudou</th><th ' + PREM_TH + '></th></tr>' + linhas + '</table>', 'as 40 mais recentes');
+}
+async function premDesfazer(id){
+  if(!confirm('Desfazer a alteração #' + id + '?')) return;
+  try{ await premChamar({acao: 'desfazer', id}); await premRecarregar('Desfeito. O Portal atualiza em até ~10 minutos.'); }
+  catch(e){ PREM.erro = e.message; vPremissas(); }
+}
+
+/* ---------- confirmar e gravar */
+async function premConfirmarESalvar(itens, txt){
+  if(!itens.length){ PREM.msg = 'Nada mudou.'; PREM.erro = ''; vPremissas(); return; }
+  const lista = txt.slice(0, 40).map(t => '• ' + t).join('\n') + (txt.length > 40 ? '\n… e mais ' + (txt.length - 40) : '');
+  if(!confirm('Confirma estas alterações?\n\n' + lista)) return;
+  try{
+    const r = await premChamar({acao: 'salvar', itens});
+    await premRecarregar('Salvo (' + r.alteracoes.length + ' alteração(ões)). O Portal atualiza em até ~10 minutos.');
+  }catch(e){ PREM.erro = 'Não salvei nada: ' + e.message; vPremissas(); }
+}
+window.premEntrar = premEntrar; window.premSair = premSair; window.premRecarregar = premRecarregar;
+window.premNovoDoOmie = premNovoDoOmie; window.premSalvarVendedores = premSalvarVendedores;
+window.premSalvarSupervisao = premSalvarSupervisao; window.premColarMetas = premColarMetas;
+window.premSalvarMetas = premSalvarMetas; window.premSalvarPromotoria = premSalvarPromotoria;
+window.premDesfazer = premDesfazer;
+
+try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 </script>
 
 </body>
