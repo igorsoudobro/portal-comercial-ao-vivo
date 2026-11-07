@@ -16384,6 +16384,15 @@ function aovivoPendRegistrar(){
   const nav = document.getElementById('nav');
   if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
 }
+/* "Resolver" (07/11/2026): leva direto para a aba Premissas certa, ja buscando o item */
+const AOVIVO_PEND_ABA = {'SKU vendido sem custo': 'cmv', 'SKU vendido fora da Calculadora': 'calc',
+  'SKU ativo sem preço': 'calc', 'Vendedor novo no OMIE': 'vend', 'Vendedor sem comissão': 'vend'};
+function aovivoPendBotao(p){
+  const aba = AOVIVO_PEND_ABA[p.t];
+  if(!aba || typeof premResolver !== 'function') return '';
+  return '<button data-aba="' + aba + '" data-i="' + aovivoPendEsc(p.i) + '" onclick="premResolver(this.dataset.aba,this.dataset.i)" ' +
+    'style="border:1.5px solid var(--navy);color:var(--navy);background:#fff;border-radius:999px;padding:4px 12px;font-weight:700;font-size:12px;white-space:nowrap">Resolver</button>';
+}
 function vPendencias(){
   const alvo = document.getElementById('v-pendencias');
   if(!alvo) return;
@@ -16407,10 +16416,10 @@ function vPendencias(){
     const linhas = grupos[g];
     html += '<div class="card"><div class="card-h"><h3>' + aovivoPendEsc(g) + ' (' + linhas.length + ')</h3></div>' +
       '<div class="tablewrap"><table><thead><tr><th>Pendência</th><th>Item</th><th>Peso no mês</th>' +
-      '<th>Detalhe</th><th>O que fazer</th></tr></thead><tbody>' +
+      '<th>Detalhe</th><th>O que fazer</th><th></th></tr></thead><tbody>' +
       linhas.map(p => '<tr><td><b>' + aovivoPendEsc(p.t) + '</b></td><td>' + aovivoPendEsc(p.i) +
         '</td><td class="mono">' + reais(p.v) + '</td><td>' + aovivoPendEsc(p.d) +
-        '</td><td>' + aovivoPendEsc(p.a) + '</td></tr>').join('') +
+        '</td><td>' + aovivoPendEsc(p.a) + '</td><td>' + aovivoPendBotao(p) + '</td></tr>').join('') +
       '</tbody></table></div></div>';
   });
   alvo.innerHTML = html;
@@ -17589,6 +17598,24 @@ window.vComparativos = vComparativos;
 #v-premissas .pm-kpi{display:flex;gap:10px;flex-wrap:wrap}
 #v-premissas .pm-kpi div{background:#F4F6FB;border-radius:10px;padding:8px 12px;font-size:12px;color:var(--muted)}
 #v-premissas .pm-kpi b{display:block;color:var(--navy);font-size:17px}
+#v-premissas .pm-tabs{display:flex;gap:2px;flex-wrap:wrap;margin:0 0 14px;border-bottom:2px solid var(--line)}
+#v-premissas .pm-tabs button{border:none;background:none;padding:9px 14px;font-weight:700;font-size:13px;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px}
+#v-premissas .pm-tabs button:hover{color:var(--navy)}
+#v-premissas .pm-tabs button.on{color:var(--navy);border-bottom-color:var(--yellow)}
+#v-premissas .pm-tabs .pm-n{display:inline-block;background:var(--neg);color:#fff;border-radius:999px;font-size:10px;padding:1px 6px;margin-left:5px;vertical-align:1px}
+#v-premissas .pm-busca{width:260px;max-width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;background:#fff}
+#v-premissas .pm-busca:focus{outline:none;border-color:var(--sky)}
+#v-premissas .pm-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
+#v-premissas .pm-box2{background:#F7F9FE;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 12px}
+#v-premissas table.pm-tab tr.pm-urg td{background:#FFF3B0 !important}
+#v-premissas .pm-urg-tit{font-weight:800;color:#8A5A00;text-transform:uppercase;font-size:11px;letter-spacing:.04em;margin-bottom:2px}
+#v-premissas .pm-in.pm-baixo{color:var(--neg);font-weight:700;background:#FBEAEA;border-color:#E8B4B4}
+#v-premissas .pm-prev{font-size:11px;color:var(--muted);white-space:nowrap;text-align:right}
+#v-premissas .pm-prev b{color:var(--navy)}
+#v-premissas .pm-dif{color:var(--neg);font-weight:700}
+#v-premissas table.pm-tab.pm-so-ativos tr.pm-inat{display:none}
+#v-premissas table.pm-tab.pm-cv-vend tr.pm-r:not(.pm-c-vend){display:none}
+#v-premissas table.pm-tab.pm-cv-div tr.pm-r:not(.pm-c-div){display:none}
 </style>
 <script>
 /* ==========================================================================
@@ -17640,7 +17667,8 @@ window.equipeDe = function(u){
    ABA "PREMISSAS" (07/11/2026)
    ========================================================================== */
 const PREM_URL = 'https://ovvtdzpbmdtipeoewnle.supabase.co/functions/v1/premissas-portal';
-let PREM = {token: null, usuario: null, dados: null, mes: null, msg: '', erro: '', vista: 'ativos', omie: null};
+let PREM = {token: null, usuario: null, dados: null, mes: null, msg: '', erro: '', vista: 'ativos', omie: null,
+            aba: 'vend', partes: {}, carregando: {}};
 let PREM_PATCH = false;
 
 function premEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -17662,6 +17690,14 @@ function premNum(txt){
 }
 function premChave(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
   .toLowerCase().replace(/^rca\s*-\s*/, '').replace(/\s+/g, ' ').trim(); }
+function premNorm(s){ return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+/* texto de busca da linha (a busca da aba so olha isso) */
+function premB(){ return ' data-b="' + premEsc(premNorm([].slice.call(arguments).filter(x => x != null).join(' '))) + '"'; }
+function premPct(fr){ return fr == null || fr === '' ? '' : String(+(Number(fr) * 100).toFixed(4)).replace('.', ','); }
+function premFmtR(n){ return n == null || n === '' || isNaN(Number(n)) ? '' :
+  Number(n).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+function premFmtCnpj(c){ return String(c || '').replace(/\D/g, '').padStart(14, '0')
+  .replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5'); }
 function premAttr(id, valor, extra){
   const v = premEsc(valor == null ? '' : valor);
   return 'id="' + id + '" value="' + v + '" data-orig="' + v + '" ' + (extra || '');
@@ -17691,8 +17727,8 @@ function premRegistrar(){
       /* campo alterado fica amarelo: compara com o valor de quando a tela abriu */
       div.addEventListener('input', ev => {
         const t = ev.target;
-        if(t && t.classList && t.classList.contains('pm-in') && t.dataset.orig !== undefined)
-          t.classList.toggle('pm-mud', String(t.value) !== t.dataset.orig);
+        if(t && t.classList && t.classList.contains('pm-in') && t.dataset.orig !== undefined) premMarcar(t);
+        premPrevia(t);
         premContarPendentes();
       });
       div.addEventListener('change', () => premContarPendentes());
@@ -17724,6 +17760,22 @@ function vPremissas(){
   const y = window.scrollY;
   alvo.innerHTML = premTela();
   window.scrollTo(0, y);
+  /* Comercial e Calculadora/CMV: em segundo plano - o login nao espera, e o
+     numero de URGENTE das abas aparece quando chegar */
+  premGarantir(['comercial', 'calc']).catch(e => console.error('premissas: carga', e));
+  premAplicarBuscaPend();
+}
+/* "Resolver" das Pendencias: abre a aba Premissas certa ja buscando o item */
+function premResolver(aba, busca){
+  PREM.aba = aba; PREM.buscaPend = {aba, busca};
+  try{ CURRENT = 'premissas'; showView(); window.scrollTo(0, 0); }catch(e){ console.error('premissas: resolver', e); }
+}
+function premAplicarBuscaPend(){
+  const b = PREM.buscaPend; if(!b || !PREM.dados) return;
+  const parte = (PREM_ABAS.find(a => a.id === b.aba) || {}).parte;
+  if(parte && !PREM.partes[parte]) return;          /* aplica quando a parte chegar */
+  const inp = document.getElementById('pmBusca_' + b.aba); if(!inp) return;
+  inp.value = b.busca; premBuscar(b.aba, b.busca); PREM.buscaPend = null;
 }
 function premTelaLogin(){
   const u = (typeof SESSION === 'object' && SESSION && SESSION.user) || '';
@@ -17743,20 +17795,21 @@ async function premEntrar(){
   try{
     const j = await premChamar({acao: 'entrar', usuario: document.getElementById('premU').value,
       senha_login: document.getElementById('premS').value, senha_aba: document.getElementById('premA').value});
-    PREM.token = j.token; PREM.usuario = j.usuario;
+    PREM.token = j.token; PREM.usuario = j.usuario; PREM.partes = {}; PREM.carregando = {};
     try{ sessionStorage.setItem('premToken', j.token); sessionStorage.setItem('premUser', j.usuario); }catch(e){}
     PREM.dados = null; vPremissas();
   }catch(e){ PREM.erro = e.message; vPremissas(); }
 }
 async function premSair(){
   try{ await premChamar({acao: 'sair'}); }catch(e){}
-  PREM.token = null; PREM.dados = null;
+  PREM.token = null; PREM.dados = null; PREM.partes = {}; PREM.carregando = {};
   try{ sessionStorage.removeItem('premToken'); sessionStorage.removeItem('premUser'); }catch(e){}
   vPremissas();
 }
 async function premRecarregar(msg){
   try{
-    PREM.dados = await premChamar({acao: 'ler'});
+    /* depois de salvar, volta tambem o que ja estava aberto (Comercial, Calculadora) */
+    PREM.dados = await premChamar({acao: 'ler', partes: ['base'].concat(Object.keys(PREM.partes))});
     /* "Time Interno" x "Time interno": a mesma coisa escrita de dois jeitos vira UM
        modelo na tela - o da grafia mais usada no cadastro (como o Ao Vivo faz) */
     const uso = {};
@@ -17773,9 +17826,18 @@ async function premRecarregar(msg){
   vPremissas();
 }
 
+const PREM_ABAS = [
+  {id: 'vend', lab: 'Vendedores'}, {id: 'com', lab: 'Comercial', parte: 'comercial'},
+  {id: 'calc', lab: 'Calculadora', parte: 'calc'}, {id: 'cmv', lab: 'CMV', parte: 'calc'},
+  {id: 'promo', lab: 'Promotoria'}, {id: 'metas', lab: 'Metas'}, {id: 'hist', lab: 'Histórico'}];
+const PREM_NOME_TAB = {vendedor: 'Vendedores', depara_vendedor: 'Nomes do OMIE', portal_usuario: 'Acesso',
+  comissao_excecao_cnpj: 'Exceções de comissão', contrato_cnpj: 'Contratos', calc_sku: 'SKUs da Calculadora',
+  calc_tabela_canal: 'Tabelas de preço', cmv_parametros: 'CMV reserva', supervisao: 'Supervisão',
+  meta_vendedor: 'Metas', meta_bloco: 'Metas (bloco)', promotoria: 'Promotoria', promotoria_rede_cnpj: 'CNPJ da rede',
+  renomear: 'Renomear'};
+
 function premTela(){
   const d = PREM.dados;
-  const fonteVend = (d.fontes || []).find(f => f.tabela === 'vendedor');
   const ativos = (d.vendedores || []).filter(v => v.ativo).length;
   const hero = '<div class="pm-hero"><div><h2>Premissas</h2><p>Gravado direto no banco · aparece no Portal em até ~10 minutos</p></div>' +
     '<div class="pm-who"><span class="pm-chip">' + premEsc(PREM.usuario) + '</span>' +
@@ -17783,78 +17845,198 @@ function premTela(){
     '<button class="pm-btn pm-ghost pm-sm" onclick="premSair()">Sair</button></div></div>';
   const kpi = '<div class="pm-kpi" style="margin-bottom:14px">' +
     '<div><b>' + ativos + '</b>vendedores ativos</div>' +
-    '<div><b>' + (d.novos_omie || []).filter(x => !x.erro).length + '</b>nomes do OMIE sem cadastro</div>' +
     '<div><b>' + (d.supervisao || []).length + '</b>supervisores</div>' +
     '<div><b>' + premBRL((d.metas_vendedor || []).filter(m => m.mes === PREM.mes).reduce((s, m) => s + Number(m.meta || 0), 0)) + '</b>meta de ' + PREM.mes + '</div></div>';
+  /* tabela ainda copiada da Parametros: a edicao daqui seria sobrescrita pela carga diaria */
+  const naPar = (d.fontes || []).filter(f => f.fonte === 'parametros').map(f => PREM_NOME_TAB[f.tabela] || f.tabela);
   const avisos = (PREM.msg ? '<div class="pm-alert ok">' + premEsc(PREM.msg) + '</div>' : '') +
     (PREM.erro ? '<div class="pm-alert err">' + premEsc(PREM.erro) + '</div>' : '') +
-    ((fonteVend && fonteVend.fonte === 'parametros')
-      ? '<div class="pm-alert warn"><b>Vendedores ainda copiados da Parametros.</b> Uma edição de vendedor, nome do OMIE ou acesso ' +
-        'feita aqui é sobrescrita na próxima vez que o V8 for salvo. Supervisão, metas e promotoria já valem só aqui.</div>' : '');
-  const barra = '<div class="pm-bar"><span id="pmPend">Edite o que quiser em qualquer quadro — o "Salvar tudo" grava tudo de uma vez.</span>' +
+    (naPar.length ? '<div class="pm-alert warn"><b>Ainda copiados da Parametros: ' + premEsc(naPar.join(', ')) + '.</b> ' +
+      'Uma edição deles feita aqui é sobrescrita na próxima vez que o V8 for salvo.</div>' : '');
+  const barra = '<div class="pm-bar"><span id="pmPend">Edite o que quiser em qualquer aba — o "Salvar tudo" grava tudo de uma vez.</span>' +
     '<button class="pm-btn" onclick="premSalvarTudo()">Salvar tudo</button></div>';
-  return hero + kpi + avisos + premNovos() + premVendedores() + premSupervisao() + premMetas() + premPromotoria() + premHistorico() + barra;
+  const panes = PREM_ABAS.map(a => '<div class="pm-pane" id="pmPane_' + a.id + '" data-aba="' + a.id + '"' +
+    (a.id === PREM.aba ? '' : ' style="display:none"') + '>' + premBuscaBox(a.id) + premPaneHtml(a.id) + '</div>').join('');
+  return hero + kpi + avisos + '<div class="pm-tabs" id="pmTabs">' + premAbasHtml() + '</div>' + panes + barra;
+}
+function premAbasHtml(){
+  return PREM_ABAS.map(a => { const n = premUrgCount(a.id);
+    return '<button data-aba="' + a.id + '" class="' + (a.id === PREM.aba ? 'on' : '') + '" onclick="premAba(\'' + a.id + '\')">' +
+      a.lab + (n ? '<span class="pm-n" title="URGENTE">' + n + '</span>' : '') + '</button>'; }).join('');
+}
+function premAtualizarAbas(){ const el = document.getElementById('pmTabs'); if(el) el.innerHTML = premAbasHtml(); }
+function premUrgCount(id){
+  const d = PREM.dados || {};
+  if(id === 'vend') return (d.novos_omie || []).filter(x => !x.erro).length;
+  if(id === 'calc' && PREM.partes.calc){ const u = premUrgSkus(); return u.fora.length + u.semPreco.length; }
+  if(id === 'cmv' && PREM.partes.calc) return premUrgSkus().semCusto.length;
+  return 0;
+}
+function premPaneHtml(id){
+  const parte = (PREM_ABAS.find(a => a.id === id) || {}).parte;
+  if(parte && !PREM.partes[parte]) return '<p class="pm-hint" style="padding:24px 4px">Carregando do banco…</p>';
+  if(id === 'vend') return premVendedores() + premSupervisao();
+  if(id === 'com') return premComercial();
+  if(id === 'calc') return premCalc();
+  if(id === 'cmv') return premCmv();
+  if(id === 'promo') return premPromotoria();
+  if(id === 'metas') return premMetas();
+  if(id === 'hist') return premHistorico();
+  return '';
+}
+function premRedesenharPane(id){
+  const p = document.getElementById('pmPane_' + id);
+  if(p){ p.innerHTML = premBuscaBox(id) + premPaneHtml(id); premContarPendentes(); }
+}
+/* trocar de aba NAO redesenha nada: so mostra/esconde. O que foi editado nas
+   outras abas continua na tela e entra no "Salvar tudo". */
+async function premAba(id){
+  PREM.aba = id;
+  document.querySelectorAll('#pmTabs button').forEach(b => b.classList.toggle('on', b.dataset.aba === id));
+  document.querySelectorAll('#v-premissas .pm-pane').forEach(p => { p.style.display = p.dataset.aba === id ? '' : 'none'; });
+  const parte = (PREM_ABAS.find(a => a.id === id) || {}).parte;
+  if(parte && !PREM.partes[parte]){
+    try{ await premGarantir([parte]); }
+    catch(e){ const p = document.getElementById('pmPane_' + id); if(p) p.innerHTML = '<div class="pm-alert err">' + premEsc(e.message) + '</div>'; }
+  }
+}
+/* carrega as partes que faltam (uma chamada so; quem pedir a mesma parte espera a mesma) */
+function premGarantir(partes){
+  if(!PREM.token || !PREM.dados) return Promise.resolve();
+  const falta = partes.filter(p => !PREM.partes[p] && !PREM.carregando[p]);
+  if(falta.length){
+    const pr = premChamar({acao: 'ler', partes: falta}).then(j => {
+      if(!PREM.dados) return;
+      delete j.lido_em;
+      Object.assign(PREM.dados, j);
+      falta.forEach(p => { PREM.partes[p] = true; });
+      /* so redesenha paineis que ainda eram "Carregando…": nada editado se perde */
+      PREM_ABAS.filter(a => falta.indexOf(a.parte) >= 0).forEach(a => premRedesenharPane(a.id));
+      premAtualizarAbas(); premAplicarBuscaPend();
+    }).finally(() => { falta.forEach(p => { delete PREM.carregando[p]; }); });
+    falta.forEach(p => { PREM.carregando[p] = pr; });
+  }
+  return Promise.all(partes.map(p => PREM.carregando[p]).filter(Boolean));
+}
+function premBuscaBox(id){
+  if(id === 'hist') return '';
+  return '<div class="pm-tools"><input class="pm-busca" id="pmBusca_' + id + '" placeholder="Buscar nesta aba…" oninput="premBuscar(\'' + id + '\',this.value)">' +
+    '<span class="pm-hint" id="pmBuscaN_' + id + '"></span></div>';
+}
+function premBuscar(id, txt){
+  const k = premNorm(txt).split(/\s+/).filter(Boolean);
+  const pane = document.getElementById('pmPane_' + id); if(!pane) return;
+  let n = 0, tot = 0;
+  pane.querySelectorAll('tr[data-b]').forEach(tr => {
+    tot++; const ok = k.every(w => tr.dataset.b.indexOf(w) >= 0);
+    tr.style.display = ok ? '' : 'none'; if(ok) n++;
+  });
+  pane.querySelectorAll('tr.pm-sep').forEach(tr => { tr.style.display = k.length ? 'none' : ''; });
+  const el = document.getElementById('pmBuscaN_' + id); if(el) el.textContent = k.length ? n + ' de ' + tot : '';
+}
+/* campo mudado = amarelo; preco abaixo do custo (data-cmv) = vermelho */
+function premMarcar(el){
+  if(el.dataset.orig !== undefined) el.classList.toggle('pm-mud', String(el.value) !== el.dataset.orig);
+  if(el.dataset.cmv){ const n = premNum(el.value); el.classList.toggle('pm-baixo', n != null && n < Number(el.dataset.cmv)); }
+}
+/* previa em R$ do % (comissao, excecao, contrato) sobre o faturamento do ultimo mes fechado */
+function premPrevia(t){
+  if(!t || !t.dataset || t.dataset.fat === undefined) return;
+  const el = document.getElementById(t.dataset.prev); if(!el) return;
+  const fat = Number(t.dataset.fat);
+  if(t.value === t.dataset.orig || !fat){ el.innerHTML = ''; return; }
+  const a = premNum(t.dataset.orig), b = premNum(t.value);
+  const pa = a == null ? (t.dataset.base ? Number(t.dataset.base) : 0) : a;
+  el.innerHTML = premEsc(PREM.dados.mes_base) + ': ' + premBRL(Math.round(fat * pa / 100)) + ' → <b>' + premBRL(Math.round(fat * (b || 0) / 100)) + '</b>';
+}
+function premPreviaTxt(fat, fracA, fracB){
+  return fat ? ' (em ' + PREM.dados.mes_base + ': ' + premBRL(Math.round(fat * (fracA || 0))) + ' → ' + premBRL(Math.round(fat * (fracB || 0))) + ')' : '';
+}
+function premBtnXls(id, nome){
+  return ' <button class="pm-btn pm-sm" onclick="premBaixar(\'' + id + '\',\'' + nome + '\')">Baixar em Excel</button>';
+}
+/* "Baixar em Excel": a tabela como esta na tela (com o que foi digitado), em CSV
+   com ; e BOM - abre direto no Excel brasileiro */
+function premBaixar(id, nome){
+  const t = document.getElementById(id); if(!t) return;
+  const cel = c => {
+    const chips = c.querySelectorAll('.pm-chip');
+    if(chips.length) return [].map.call(chips, x => (x.firstChild ? x.firstChild.textContent : x.textContent)).join(', ');
+    const f = c.querySelector('select, input:not([type=checkbox]), textarea');
+    if(f && getComputedStyle(f).display !== 'none') return f.tagName === 'SELECT' ? ((f.options[f.selectedIndex] || {}).text || '') : f.value;
+    const cb = c.querySelector('input[type=checkbox]');
+    if(cb && !c.textContent.trim()) return cb.checked ? 'sim' : 'não';
+    /* "SKU" + linha de descricao embaixo: separa com " — " em vez de colar */
+    return [].map.call(c.childNodes, n => n.textContent.replace(/[✎×]/g, '').replace(/\s+/g, ' ').trim()).filter(Boolean).join(' — ');
+  };
+  const linhas = [].filter.call(t.querySelectorAll('tr'), tr => !tr.classList.contains('pm-sep')).map(tr => [].map.call(tr.children, cel));
+  const csv = linhas.map(l => l.map(v => /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v).join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8'}));
+  a.download = nome + ' ' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
 }
 /* contador da barra: quantos campos estao amarelos (mudados e nao salvos) */
 function premContarPendentes(){
   const el = document.getElementById('pmPend'); if(!el) return;
-  const n = document.querySelectorAll('#v-premissas .pm-mud').length;
-  el.textContent = n ? n + ' campo(s) alterado(s), ainda não salvos.' :
-    'Edite o que quiser em qualquer quadro — o "Salvar tudo" grava tudo de uma vez.';
+  const n = document.querySelectorAll('#v-premissas .pm-mud').length +
+    [].filter.call(document.querySelectorAll('#v-premissas .pm-pend'), x => x.type === 'checkbox' ? x.checked : !!x.value).length;
+  el.textContent = n ? n + ' alteração(ões) na tela, ainda não salvas.' :
+    'Edite o que quiser em qualquer aba — o "Salvar tudo" grava tudo de uma vez.';
 }
 
-/* ---------- nomes do OMIE sem cadastro */
-function premNovos(){
-  const n = (PREM.dados.novos_omie || []).filter(x => !x.erro);
-  if(!n.length) return '';
+/* ---------- URGENTE: vendedor novo no OMIE (07/11/2026, Igor): linha amarela no
+   topo da lista de vendedores. Modelo e comissao OBRIGATORIOS - a comissao saiu
+   do modelo, entao vendedor sem % sairia com comissao zero no DRE. */
+function premNovosOmie(){ return (PREM.dados.novos_omie || []).filter(x => !x.erro); }
+function premUrgentesVend(){
   const vs = (PREM.dados.vendedores || []).filter(v => v.ativo).map(v => v.nome);
-  const ms = PREM.dados.modelos || [];
-  const linhas = n.map((x, i) => '<tr><td><b>' + premEsc(x.nome) + '</b><div class="pm-hint">' + x.nfs + ' notas · ' + premBRL(x.valor) +
-    ' · última ' + premEsc(x.ultima) + '</div></td>' +
-    '<td><select id="pnA' + i + '" class="pm-in pm-box" onchange="premNovoModo(' + i + ')"><option value="">— escolha</option>' +
-    '<option value="__novo">➕ Novo vendedor</option>' + vs.map(v => '<option value="' + premEsc(v) + '">É o mesmo que ' + premEsc(v) + '</option>').join('') + '</select></td>' +
-    '<td><input id="pnN' + i + '" class="pm-in pm-box" value="' + premEsc(x.nome) + '" placeholder="nome no Portal" style="display:none"></td>' +
-    '<td><select id="pnM' + i + '" class="pm-in pm-box" style="display:none"><option value="">modelo…</option>' +
-      ms.map(m => '<option>' + premEsc(m) + '</option>').join('') + '</select></td>' +
-    '<td style="width:90px"><input id="pnC' + i + '" class="pm-in pm-box pm-num" placeholder="comissão %" style="display:none"></td>' +
-    '<td><button class="pm-btn pm-pri pm-sm" onclick="premSalvarNovo(' + i + ')">Salvar</button></td></tr>').join('');
-  return premCard('Nomes do OMIE sem cadastro', 'o nome vem do OMIE — você só diz quem é no Portal',
-    '<table class="pm-tab"><tr><th>Nome no OMIE</th><th>Quem é</th><th>Nome no Portal</th><th>Modelo</th><th>Comissão</th><th></th></tr>' + linhas + '</table>');
+  return premNovosOmie().map((x, i) => '<tr class="pm-urg"' + premB(x.nome, 'urgente') + '><td colspan="2">' +
+    '<div class="pm-urg-tit">URGENTE: Vendedor novo — necessário cadastrar</div>' +
+    '<b>' + premEsc(x.nome) + '</b> <span class="pm-hint">nome no OMIE · ' + x.nfs + ' notas · ' + premBRL(x.valor) + ' · última ' + premEsc(x.ultima) + '</span>' +
+    '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">' +
+    '<select id="pnA' + i + '" class="pm-in pm-box pm-pend" style="width:auto" onchange="premNovoModo(' + i + ')"><option value="">— quem é?</option>' +
+    '<option value="__novo">➕ Vendedor novo</option>' + vs.map(v => '<option value="' + premEsc(v) + '">É o mesmo que ' + premEsc(v) + '</option>').join('') + '</select>' +
+    '<input id="pnN' + i + '" class="pm-in pm-box" style="width:220px;display:none" value="' + premEsc(x.nome) + '" placeholder="nome no Portal"></div></td>' +
+    '<td><select id="pnM' + i + '" class="pm-in pm-box" style="display:none"><option value="">modelo (obrigatório)</option>' +
+      (PREM.dados.modelos || []).map(m => '<option>' + premEsc(m) + '</option>').join('') + '</select></td>' +
+    '<td><input id="pnC' + i + '" class="pm-in pm-box pm-num" placeholder="obrig." style="display:none"></td>' +
+    '<td colspan="3" class="pm-hint" id="pnH' + i + '">escolha quem é — grava no “Salvar tudo”</td></tr>').join('');
 }
 function premNovoModo(i){
-  const novo = document.getElementById('pnA' + i).value === '__novo';
+  const modo = document.getElementById('pnA' + i).value, novo = modo === '__novo';
   ['pnN', 'pnM', 'pnC'].forEach(p => { document.getElementById(p + i).style.display = novo ? '' : 'none'; });
+  document.getElementById('pnH' + i).textContent = novo ? 'modelo e comissão (%) obrigatórios · 0 se não tiver comissão'
+    : modo ? 'as vendas desse nome passam a ser de ' + modo : 'escolha quem é — grava no “Salvar tudo”';
+  premContarPendentes();
 }
-async function premSalvarNovo(i){
-  try{
-    const x = PREM.dados.novos_omie[i];
-    const modo = document.getElementById('pnA' + i).value;
-    if(!modo) throw new Error(x.nome + ': escolha "Novo vendedor" ou quem ele é');
-    const itens = [], txt = [];
+function premItensNovos(){
+  const itens = [], txt = [];
+  premNovosOmie().forEach((x, i) => {
+    const el = document.getElementById('pnA' + i); if(!el || !el.value) return;
+    const modo = el.value;
     if(modo === '__novo'){
       const nome = document.getElementById('pnN' + i).value.trim();
-      if(!nome) throw new Error('dê o nome do vendedor no Portal');
+      if(!nome) throw new Error(x.nome + ': dê o nome do vendedor no Portal');
       if((PREM.dados.vendedores || []).some(v => v.nome.toLowerCase() === nome.toLowerCase()))
         throw new Error('já existe "' + nome + '" — use "É o mesmo que"');
-      const pctTxt = document.getElementById('pnC' + i).value.trim();
-      const pct = pctTxt === '' ? null : premNum(pctTxt);
-      if(pctTxt !== '' && (pct === null || pct < 0 || pct > 50)) throw new Error('comissão inválida');
-      const modelo = document.getElementById('pnM' + i).value || null;
-      itens.push({tabela: 'vendedor', op: 'upsert', chave: {nome}, valores: {modelo, ativo: true, comissao_pct: pct == null ? null : Math.round(pct * 10000) / 1000000}});
-      txt.push('NOVO vendedor no Portal: ' + nome + (modelo ? ' (' + modelo + ')' : '') + (pct != null ? ', comissão ' + pct + '%' : ''));
+      const modelo = document.getElementById('pnM' + i).value;
+      if(!modelo) throw new Error(nome + ': escolha o modelo (obrigatório)');
+      const pctTxt = document.getElementById('pnC' + i).value.trim(), pct = premNum(pctTxt);
+      if(pctTxt === '') throw new Error(nome + ': informe a comissão em % (obrigatória — 0 se não tiver)');
+      if(pct === null || pct < 0 || pct > 50) throw new Error(nome + ': comissão inválida (' + pctTxt + ')');
+      itens.push({tabela: 'vendedor', op: 'upsert', chave: {nome}, valores: {modelo, ativo: true, comissao_pct: Math.round(pct * 10000) / 1000000}});
+      txt.push('NOVO vendedor no Portal: ' + nome + ' (' + modelo + '), comissão ' + pct.toLocaleString('pt-BR') + '%');
       itens.push({tabela: 'depara_vendedor', op: 'upsert', chave: {nome_omie: x.nome}, valores: {vendedor: nome, modelo: null}});
       txt.push('as vendas de "' + x.nome + '" no OMIE passam a ser de ' + nome);
     } else {
       itens.push({tabela: 'depara_vendedor', op: 'upsert', chave: {nome_omie: x.nome}, valores: {vendedor: modo, modelo: null}});
       txt.push('as vendas de "' + x.nome + '" no OMIE passam a ser de ' + modo);
     }
-    /* junto com o que estiver editado nos outros quadros - salvar recarrega a tela */
-    for(const f of [premItensVendedores, premItensSupervisao, premItensMetas, premItensPromotoria]){
-      const r = f(); r.itens.forEach(x => itens.push(x)); r.txt.forEach(x => txt.push(x));
-    }
-    await premConfirmarESalvar(itens, txt);
-  }catch(e){ PREM.erro = e.message; vPremissas(); }
+  });
+  return {itens, txt};
 }
+const premSalvarNovo = () => premSalvarTudo();
 
 /* ---------- cadastro unico de vendedor */
 function premApelidos(nome){
@@ -17936,24 +18118,28 @@ function premVendedores(){
     const v = vs[i];
     const grupo = v.ativo ? (v.modeloTela || v.modelo || 'Sem modelo') : 'Inativos (' + nI + ')';
     const sep = grupo !== modeloAnt
-      ? '<tr><td colspan="7" style="padding:12px 8px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:none;border-bottom:1px solid var(--line)">' +
+      ? '<tr class="pm-sep"><td colspan="7" style="padding:12px 8px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:none;border-bottom:1px solid var(--line)">' +
         premEsc(grupo) + '</td></tr>' : '';
     modeloAnt = grupo;
     const u = premUsuario(v.nome);
-    const pct = v.comissao_pct == null ? '' : String(+(Number(v.comissao_pct) * 100).toFixed(4)).replace('.', ',');
-    return sep + '<tr' + (v.ativo ? '' : ' class="pm-off"') + '><td style="white-space:nowrap"><b>' + premEsc(v.nome) + '</b>' +
+    const pct = premPct(v.comissao_pct);
+    const fat = (PREM.dados.fat_vend_mes_ant || {})[v.nome] || 0;
+    return sep + '<tr' + (v.ativo ? '' : ' class="pm-off"') + premB(v.nome, v.modeloTela || v.modelo, (premOmieEdit()[v.nome] || []).join(' '), u && u.perfil, v.ativo ? 'ativo' : 'inativo') +
+      '><td style="white-space:nowrap"><b>' + premEsc(v.nome) + '</b>' +
       ' <button class="pm-ren" title="renomear no Portal" onclick="premRenomear(' + i + ')">✎</button></td>' +
       '<td id="pvO' + i + '" class="pm-omie">' + premChips(v.nome, i) + '</td>' +
       '<td class="pm-mod">' + premSelModelo('pvM' + i, v.modeloTela || v.modelo) + '</td>' +
-      '<td><input ' + premAttr('pvC' + i, pct, 'class="pm-in pm-num"') + '></td>' +
+      '<td><input ' + premAttr('pvC' + i, pct, 'class="pm-in pm-num" data-fat="' + fat + '" data-prev="pvPv' + i + '"') + '>' +
+        '<div class="pm-prev" id="pvPv' + i + '"></div></td>' +
       '<td><label class="pm-sw"><input type="checkbox" id="pvA' + i + '"' + (v.ativo ? ' checked' : '') + '><span></span></label></td>' +
       '<td>' + premSelPerfil('pvP' + i, u && u.perfil) + '</td>' +
       '<td><input id="pvS' + i + '" type="password" class="pm-in" placeholder="só p/ trocar" autocomplete="new-password"></td></tr>';
   };
-  return premCard('Vendedores', nA + ' ativos · ' + nI + ' inativos · o modelo define a equipe do supervisor',
+  return premCard('Vendedores', nA + ' ativos · ' + nI + ' inativos · o modelo define a equipe do supervisor' + premBtnXls('pvTab', 'Vendedores'),
     '<div class="pm-foot" style="margin:0 0 10px"><span class="pm-hint">Desativar = vai para o fim da lista, sai das metas e perde o acesso. As vendas continuam no Portal para o admin.</span></div>' +
-    '<table class="pm-tab">' + cab + premOrdemVend(false).map(linha).join('') + '</table>' +
-    '<div class="pm-foot"><span class="pm-hint">Comissão em %: 7 = 7%, 0,5 = meio por cento. Nome novo do OMIE? Use o quadro “Nomes do OMIE sem cadastro”.</span>' +
+    '<table class="pm-tab" id="pvTab">' + cab + premUrgentesVend() + premOrdemVend(false).map(linha).join('') + '</table>' +
+    '<div class="pm-foot"><span class="pm-hint">Comissão em %: 7 = 7%, 0,5 = meio por cento. Mudou o %? Embaixo aparece quanto daria no último mês fechado. ' +
+    'A comissão é só a do vendedor (a do modelo saiu em 07/11/2026).</span>' +
     '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
 }
 function premColetarVendedor(nome, i){
@@ -17981,7 +18167,8 @@ function premItensVendedor(nome, novo, antes){
   if((novo.comissao_pct == null) !== (pa == null) || (pa != null && Math.abs(novo.comissao_pct - pa) > 1e-9)){
     camposV.comissao_pct = novo.comissao_pct;
     txt.push(nome + ': comissão ' + (pa == null ? '—' : (pa * 100).toLocaleString('pt-BR') + '%') + ' → ' +
-             (novo.comissao_pct == null ? '—' : (novo.comissao_pct * 100).toLocaleString('pt-BR') + '%'));
+             (novo.comissao_pct == null ? '—' : (novo.comissao_pct * 100).toLocaleString('pt-BR') + '%') +
+             premPreviaTxt((PREM.dados.fat_vend_mes_ant || {})[nome], pa, novo.comissao_pct));
   }
   if(Object.keys(camposV).length) itens.push({tabela: 'vendedor', op: 'upsert', chave: {nome}, valores: camposV});
   /* nomes do OMIE: cada um e uma linha do de-para; o modelo fica so no cadastro */
@@ -18065,7 +18252,7 @@ async function premRenomear(i){
 function premSupervisao(){
   const sup = PREM.dados.supervisao || [];
   const ms = PREM.dados.modelos || [];
-  const linhas = sup.map((s, i) => '<tr><td><b>' + premEsc(s.supervisor) + '</b></td><td>' +
+  const linhas = sup.map((s, i) => '<tr' + premB(s.supervisor, (s.modelos || []).join(' '), (s.avulsos || []).join(' ')) + '><td><b>' + premEsc(s.supervisor) + '</b></td><td>' +
     ms.map((m, j) => { const on = (s.modelos || []).indexOf(m) >= 0;
       return '<label class="pm-pill' + (on ? ' on' : '') + '"><input type="checkbox" id="psM' + i + '_' + j + '"' + (on ? ' checked' : '') +
         ' onchange="this.parentNode.classList.toggle(\'on\',this.checked);premAvisoSup()">' + premEsc(m) + '</label>'; }).join('') +
@@ -18073,8 +18260,8 @@ function premSupervisao(){
     '<td><input ' + premAttr('psV' + i, (s.avulsos || []).join('; '), 'class="pm-in" placeholder="nomes, separados por ;" onchange="premAvisoSup()"') + '></td></tr>').join('');
   const novo = '<tr><td><input id="psNovo" class="pm-in pm-box" placeholder="+ novo supervisor (nome de login)"></td>' +
     '<td colspan="3" class="pm-hint">depois de salvar, marque os modelos dele</td></tr>';
-  return premCard('Supervisão', 'quem cada supervisor enxerga · mudar o modelo do vendedor já muda a equipe',
-    '<table class="pm-tab"><tr><th>Supervisor</th><th>Vê os modelos</th><th>RCAs restantes</th><th>Vê também (avulso)</th></tr>' + linhas + novo + '</table>' +
+  return premCard('Supervisão', 'quem cada supervisor enxerga · mudar o modelo do vendedor já muda a equipe' + premBtnXls('psTab', 'Supervisao'),
+    '<table class="pm-tab" id="psTab"><tr><th>Supervisor</th><th>Vê os modelos</th><th>RCAs restantes</th><th>Vê também (avulso)</th></tr>' + linhas + novo + '</table>' +
     '<div class="pm-foot"><span id="psAviso" class="pm-hint">' + premConferirSupervisao(false) + '</span>' +
     '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
 }
@@ -18135,20 +18322,22 @@ function premMetas(){
   const fmt = n => Number(n).toLocaleString('pt-BR', {maximumFractionDigits: 2});
   /* so ATIVOS (Igor, 07/11/2026): inativo nao tem meta; ordem por modelo, como no cadastro */
   const linhas = premOrdemVend(true).map(i => { const v = d.vendedores[i];
-    return '<tr><td>' + premEsc(v.nome) + '</td><td class="pm-hint">' + premEsc(v.modeloTela || v.modelo || '') +
+    return '<tr' + premB(v.nome, v.modeloTela || v.modelo) + '><td>' + premEsc(v.nome) + '</td><td class="pm-hint">' + premEsc(v.modeloTela || v.modelo || '') +
     '</td><td style="width:170px"><input ' + premAttr('pmV' + i, porV[v.nome] ? fmt(porV[v.nome].meta) : '',
     'class="pm-in pm-num" placeholder="sem meta"') + '</td></tr>'; }).join('');
-  const seg = '<div class="pm-seg">' + d.meses.map(m => '<button class="' + (m === mes ? 'on' : '') + '" onclick="PREM.mes=\'' + m + '\';vPremissas()">' + m + '</button>').join('') + '</div>';
-  return premCard('Metas', 'meta por vendedor · o modelo vem do cadastro',
+  const seg = '<div class="pm-seg">' + d.meses.map(m => '<button class="' + (m === mes ? 'on' : '') + '" onclick="premMetasMes(\'' + m + '\')">' + m + '</button>').join('') + '</div>';
+  return premCard('Metas', 'meta por vendedor · o modelo vem do cadastro' + premBtnXls('pmTab', 'Metas ' + mes),
     '<div class="pm-foot" style="margin:0 0 10px">' + seg + '<span class="pm-hint">total gravado em ' + mes + ': <b>' + premBRL(total) + '</b></span></div>' +
     '<details style="margin-bottom:10px"><summary class="pm-btn pm-sm" style="display:inline-block;list-style:none">Colar do Excel</summary>' +
     '<div style="margin-top:8px"><textarea id="pmCola" rows="6" class="pm-in pm-box" style="font-family:monospace" placeholder="RCA - Alberto&#9;R$ 20,000.00&#10;…"></textarea>' +
     '<div class="pm-foot" style="margin-top:6px"><span id="pmColaMsg" class="pm-hint">Duas colunas: nome e valor. Os nomes não precisam ser exatos.</span>' +
     '<button class="pm-btn pm-sm" onclick="premColarMetas()">Preencher a tabela</button></div></div></details>' +
-    '<table class="pm-tab"><tr><th>Vendedor</th><th>Modelo</th><th style="text-align:right">Meta (R$)</th></tr>' + linhas + '</table>' +
+    '<table class="pm-tab" id="pmTab"><tr><th>Vendedor</th><th>Modelo</th><th style="text-align:right">Meta (R$)</th></tr>' + linhas + '</table>' +
     '<div class="pm-foot"><span class="pm-hint">Vazio = sem meta. "Comercial total" e "Key Account" são recalculados ao salvar.</span>' +
     '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
 }
+/* trocar o mes redesenha so a aba Metas - o resto da tela continua como esta */
+function premMetasMes(m){ PREM.mes = m; premRedesenharPane('metas'); }
 function premColarMetas(){
   const idx = {};
   premOrdemVend(true).forEach(i => { idx[premChave(PREM.dados.vendedores[i].nome)] = i; });
@@ -18213,7 +18402,7 @@ function premPromotoria(){
   const redes = [...new Set((PREM.dados.redes || []).map(r => r.rede).concat(ps.map(p => p.rede)))].sort();
   const dl = '<datalist id="pmRedes">' + redes.map(r => '<option value="' + premEsc(r) + '">').join('') + '</datalist>';
   const cab = '<tr><th>CNPJ (raiz)</th><th>Rede</th><th>Agência</th><th style="text-align:right">Valor/mês</th><th>Desde</th><th>Até</th><th>Conta na rede</th></tr>';
-  const linhas = ps.map((p, i) => '<tr' + (p.vigente_ate ? ' class="pm-off"' : '') + '><td>' +
+  const linhas = ps.map((p, i) => '<tr' + (p.vigente_ate ? ' class="pm-off"' : '') + premB(p.rede, p.promotoria, p.rede_venda, premRaizesDe(p.rede_venda || p.rede).join(' ')) + '><td>' +
       premRaizesDe(p.rede_venda || p.rede).map(r => '<span class="pm-chip">' + premFmtRaiz(r) + '</span>').join('') + '</td>' +
     '<td><input ' + premAttr('ppR' + i, p.rede, 'class="pm-in" list="pmRedes"') + '></td>' +
     '<td><input ' + premAttr('ppA' + i, p.promotoria, 'class="pm-in"') + '></td>' +
@@ -18228,8 +18417,8 @@ function premPromotoria(){
     '<td><input id="ppVn" class="pm-in pm-box pm-num" placeholder="R$"></td>' +
     '<td><input id="ppDn" type="date" class="pm-in pm-box"></td><td><input id="ppTn" type="date" class="pm-in pm-box"></td>' +
     '<td><input id="ppCn" class="pm-in pm-box" list="pmRedes" placeholder="= rede"></td></tr>';
-  return premCard('Promotoria', 'custo mensal por rede · vai inteiro para o dono da rede na carteira',
-    dl + '<table class="pm-tab">' + cab + linhas + novo + '</table>' +
+  return premCard('Promotoria', 'custo mensal por rede · vai inteiro para o dono da rede na carteira' + premBtnXls('ppTab', 'Promotoria'),
+    dl + '<table class="pm-tab" id="ppTab">' + cab + linhas + novo + '</table>' +
     '<div class="pm-foot"><span class="pm-hint">Na linha nova, digite o CNPJ: a rede e o dono aparecem sozinhos. Valor mudou? Preencha "Até" na linha antiga e crie uma nova. Datas sempre no dia 1º.</span>' +
     '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
 }
@@ -18281,29 +18470,423 @@ function premItensPromotoria(){
   }
 }
 
-/* ---------- historico */
+/* ---------- historico: filtro por tabela, pessoa e texto */
 function premHistorico(){
   const as = PREM.dados.alteracoes || [];
-  if(!as.length) return premCard('Últimas alterações', '', '<p class="pm-hint">Nenhuma ainda.</p>');
+  if(!as.length) return premCard('Histórico', '', '<p class="pm-hint">Nenhuma alteração ainda.</p>');
   const desc = a => {
     const c = a.chave || {}, an = a.antes || {}, de = a.depois || {};
     const id = Object.values(c).join(' · ');
+    if(a.tabela === 'renomear') return '<b>' + premEsc(an.nome) + '</b> → <b>' + premEsc(de.nome) + '</b>';
     if(!a.antes) return '<b>' + premEsc(id) + '</b> — criado';
     if(!a.depois) return '<b>' + premEsc(id) + '</b> — removido';
     const ks = Object.keys(de).filter(k => !/carregado_em|alterado_em|criado_em|linha_excel/.test(k) && JSON.stringify(de[k]) !== JSON.stringify(an[k]));
     return '<b>' + premEsc(id) + '</b> — ' + (premEsc(ks.map(k => k + ': ' + JSON.stringify(an[k]) + ' → ' + JSON.stringify(de[k])).join(', ')) || 'sem mudança');
   };
-  const linhas = as.map(a => '<tr' + (a.desfeita_em ? ' class="pm-off"' : '') + '><td style="white-space:nowrap">' +
-    new Date(a.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) + '</td><td>' + premEsc(a.usuario) + '</td><td class="pm-hint">' + premEsc(a.tabela) +
+  const nomeTab = t => PREM_NOME_TAB[t] || t;
+  const tabs = [...new Set(as.map(a => a.tabela))].sort((x, y) => nomeTab(x).localeCompare(nomeTab(y), 'pt-BR'));
+  const quem = [...new Set(as.map(a => a.usuario))].sort();
+  const filtros = '<div class="pm-tools"><select id="phT" class="pm-in pm-box" style="width:auto" onchange="premHistFiltro()"><option value="">todas as tabelas</option>' +
+    tabs.map(t => '<option value="' + premEsc(t) + '">' + premEsc(nomeTab(t)) + '</option>').join('') + '</select>' +
+    '<select id="phU" class="pm-in pm-box" style="width:auto" onchange="premHistFiltro()"><option value="">todas as pessoas</option>' +
+    quem.map(u => '<option>' + premEsc(u) + '</option>').join('') + '</select>' +
+    '<input id="phB" class="pm-busca" placeholder="Buscar (nome, SKU, CNPJ…)" oninput="premHistFiltro()"><span id="phN" class="pm-hint">' + as.length + ' alterações</span></div>';
+  const linhas = as.map(a => '<tr data-t="' + premEsc(a.tabela) + '" data-u="' + premEsc(a.usuario) + '"' +
+    premB(nomeTab(a.tabela), a.usuario, JSON.stringify(a.chave), JSON.stringify(a.depois || a.antes)) + (a.desfeita_em ? ' class="pm-off"' : '') + '><td style="white-space:nowrap">' +
+    new Date(a.em).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) + '</td><td>' + premEsc(a.usuario) + '</td><td class="pm-hint">' + premEsc(nomeTab(a.tabela)) +
     '</td><td>' + desc(a) + (a.desfaz ? ' <i class="pm-hint">(desfez #' + a.desfaz + ')</i>' : '') + '</td><td style="text-align:right">' +
     (a.desfeita_em ? '<span class="pm-hint">desfeita</span>' : (a.tabela === 'portal_usuario' || a.tabela === 'renomear' ? '' : '<button class="pm-btn pm-sm" onclick="premDesfazer(' + a.id + ')">Desfazer</button>')) + '</td></tr>').join('');
-  return premCard('Últimas alterações', 'as 40 mais recentes · cada uma pode ser desfeita',
-    '<table class="pm-tab"><tr><th>Quando</th><th>Quem</th><th>Tabela</th><th>O que mudou</th><th></th></tr>' + linhas + '</table>');
+  return premCard('Histórico', 'as ' + as.length + ' mais recentes · cada uma pode ser desfeita' + premBtnXls('phTab', 'Historico premissas'),
+    filtros + '<table class="pm-tab" id="phTab"><tr><th>Quando</th><th>Quem</th><th>Tabela</th><th>O que mudou</th><th></th></tr>' + linhas + '</table>');
+}
+function premHistFiltro(){
+  const t = document.getElementById('phT').value, u = document.getElementById('phU').value;
+  const k = premNorm(document.getElementById('phB').value).split(/\s+/).filter(Boolean);
+  let n = 0;
+  document.querySelectorAll('#phTab tr[data-t]').forEach(tr => {
+    const ok = (!t || tr.dataset.t === t) && (!u || tr.dataset.u === u) && k.every(w => tr.dataset.b.indexOf(w) >= 0);
+    tr.style.display = ok ? '' : 'none'; if(ok) n++;
+  });
+  document.getElementById('phN').textContent = n + ' alteração(ões)';
 }
 async function premDesfazer(id){
   if(!confirm('Desfazer a alteração #' + id + '?')) return;
   try{ await premChamar({acao: 'desfazer', id}); await premRecarregar('Desfeito. O Portal atualiza em até ~10 minutos.'); }
   catch(e){ PREM.erro = e.message; vPremissas(); }
+}
+
+
+/* ==========================================================================
+   COMERCIAL: excecao de comissao e contrato, por CNPJ (bloco 2, 07/11/2026)
+   Percentual digitado em % ("5" = 5%), gravado como fracao. A previa usa o
+   faturamento liquido do ultimo mes fechado daquele CNPJ.
+   ========================================================================== */
+function premTxt(t){ return String(t == null ? '' : t).replace(/&amp;/g, '&'); }
+function premComVend(nome){
+  const v = (PREM.dados.vendedores || []).find(x => x.nome === nome);
+  return v && v.comissao_pct != null ? Number(v.comissao_pct) : null;     /* fracao */
+}
+function premComercial(){
+  const d = PREM.dados, fat = d.fat_cnpj_mes_ant || {};
+  const tabela = tipo => {
+    const exc = tipo === 'exc', P = exc ? 'pe' : 'pk', col = exc ? 'comissao_pct' : 'contrato_pct';
+    const ls = exc ? (d.excecoes || []) : (d.contratos || []);
+    const cab = '<tr>' + (exc ? '' : '<th>Nome curto</th>') + '<th>Cliente</th><th>Dono na carteira</th><th style="text-align:right">Fat. ' + premEsc(d.mes_base) + '</th>' +
+      '<th style="text-align:right">' + (exc ? 'Comissão %' : 'Contrato %') + '</th><th></th></tr>';
+    const linhas = ls.map((x, i) => {
+      const f = fat[x.cnpj] || 0, base = exc ? premComVend(x.vendedor) : null;
+      return '<tr' + premB(x.cliente, x.nome_cliente, x.cnpj, premFmtCnpj(x.cnpj), x.vendedor) + '>' +
+        (exc ? '' : '<td style="width:130px"><input ' + premAttr(P + 'N' + i, x.cliente || '', 'class="pm-in" placeholder="nome curto"') + '></td>') +
+        '<td><b>' + premEsc(premTxt(x.nome_cliente) || '(fora da carteira)') + '</b><div class="pm-hint">' + premFmtCnpj(x.cnpj) + '</div></td>' +
+        '<td>' + premEsc(x.vendedor || '—') + (base != null ? '<div class="pm-hint">padrão dele: ' + premPct(base) + '%</div>' : '') + '</td>' +
+        '<td class="pm-num">' + (f ? premBRL(Math.round(f)) : '<span class="pm-hint">—</span>') + '</td>' +
+        '<td style="width:100px"><input ' + premAttr(P + 'P' + i, premPct(x[col]), 'class="pm-in pm-num" data-fat="' + f + '" data-prev="' + P + 'V' + i + '"') + '>' +
+        '<div class="pm-prev" id="' + P + 'V' + i + '"></div></td>' +
+        '<td style="width:90px"><label class="pm-pill"><input type="checkbox" class="pm-pend" id="' + P + 'X' + i + '" ' +
+        'onchange="this.parentNode.classList.toggle(\'on\',this.checked);premContarPendentes()">remover</label></td></tr>';
+    }).join('');
+    return '<table class="pm-tab" id="' + P + 'Tab">' + cab + linhas + '</table>';
+  };
+  return premCard('Adicionar por CNPJ', 'digite um CNPJ: aparecem todos os da mesma raiz para marcar de uma vez', premComNovoHtml()) +
+    premCard('Exceção de comissão', (d.excecoes || []).length + ' CNPJs · vale no lugar da comissão do vendedor' + premBtnXls('peTab', 'Excecoes de comissao'), tabela('exc')) +
+    premCard('Contratos', (d.contratos || []).length + ' CNPJs · % descontado da receita do cliente' + premBtnXls('pkTab', 'Contratos'), tabela('con') +
+      '<div class="pm-foot"><span class="pm-hint">Mudou o %? Embaixo aparece quanto daria no último mês fechado. Para tirar, marque “remover”.</span>' +
+      '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
+}
+function premComNovoHtml(){
+  return '<div class="pm-tools" style="margin:0">' +
+    '<select id="pcnT" class="pm-in pm-box" style="width:auto"><option value="exc">Exceção de comissão</option><option value="con">Contrato</option></select>' +
+    '<input id="pcnK" class="pm-in pm-box" style="width:200px" placeholder="CNPJ (ou os 8 da raiz)" onchange="premBuscarCnpjCom()">' +
+    '<input id="pcnP" class="pm-in pm-box pm-num" style="width:80px" placeholder="%">' +
+    '<input id="pcnN" class="pm-in pm-box" style="width:160px" placeholder="nome curto (contrato)"></div>' +
+    '<div id="pcnL" class="pm-hint" style="margin-top:8px"></div>';
+}
+async function premBuscarCnpjCom(){
+  const L = document.getElementById('pcnL'), v = document.getElementById('pcnK').value, dig = v.replace(/\D/g, '');
+  PREM.comNovo = null;
+  if(!dig){ L.textContent = ''; return; }
+  L.textContent = 'buscando…';
+  try{
+    const r = await premChamar({acao: 'cnpj', cnpj: v});
+    const alvo = dig.length > 8 ? dig.padStart(14, '0') : null;
+    const cl = (r.clientes || []).map(c => Object.assign({}, c, {cnpj14: String(c.cnpj).replace(/\D/g, '').padStart(14, '0')}));
+    if(alvo && !cl.some(c => c.cnpj14 === alvo)) cl.unshift({cnpj14: alvo, nome_cliente: '(não está na carteira)', vendedor: null});
+    PREM.comNovo = {raiz: r.raiz, clientes: cl};
+    const d = PREM.dados, fat = d.fat_cnpj_mes_ant || {};
+    const ja = (ls, col, k) => { const x = (ls || []).find(e => e.cnpj === k); return x ? premPct(x[col]) + '%' : ''; };
+    L.innerHTML = 'raiz <b>' + premFmtRaiz(r.raiz) + '</b> · ' + cl.length + ' CNPJ(s)' +
+      (cl.length > 1 ? ' <button class="pm-btn pm-sm" onclick="premMarcarRaiz(true)">marcar todos da raiz</button>' +
+                       ' <button class="pm-btn pm-sm" onclick="premMarcarRaiz(false)">desmarcar</button>' : '') +
+      '<table class="pm-tab" style="margin-top:6px"><tr><th></th><th>Cliente</th><th>Dono</th><th style="text-align:right">Fat. ' + premEsc(d.mes_base) +
+      '</th><th>Já tem</th></tr>' + cl.map((c, j) => '<tr><td style="width:30px"><input type="checkbox" class="pm-pend" id="pcnC' + j + '"' +
+        ((alvo ? c.cnpj14 === alvo : cl.length === 1) ? ' checked' : '') + ' onchange="premContarPendentes()"></td><td>' + premEsc(premTxt(c.nome_cliente)) +
+        '<div class="pm-hint">' + premFmtCnpj(c.cnpj14) + '</div></td><td>' + premEsc(c.vendedor || '—') + '</td><td class="pm-num">' +
+        premBRL(Math.round(fat[c.cnpj14] || 0)) + '</td><td class="pm-hint">' +
+        [ja(d.excecoes, 'comissao_pct', c.cnpj14) && 'exceção ' + ja(d.excecoes, 'comissao_pct', c.cnpj14),
+         ja(d.contratos, 'contrato_pct', c.cnpj14) && 'contrato ' + ja(d.contratos, 'contrato_pct', c.cnpj14)].filter(Boolean).join(' · ') +
+        '</td></tr>').join('') + '</table>';
+    premContarPendentes();
+  }catch(e){ L.innerHTML = '<span style="color:var(--neg)">' + premEsc(e.message) + '</span>'; }
+}
+function premMarcarRaiz(on){
+  ((PREM.comNovo || {}).clientes || []).forEach((c, j) => { const el = document.getElementById('pcnC' + j); if(el) el.checked = on; });
+  premContarPendentes();
+}
+function premItensComercial(){
+  const itens = [], txt = [];
+  if(!PREM.partes.comercial || !document.getElementById('peTab')) return {itens, txt};
+  const d = PREM.dados, fat = d.fat_cnpj_mes_ant || {};
+  const lePct = (t, rot) => { const n = premNum(t); if(n == null || n < 0 || n > 60) throw new Error(rot + ': % inválido (' + t + ') — de 0 a 60'); return Math.round(n * 10000) / 1000000; };
+  [['exc', 'pe', 'comissao_excecao_cnpj', 'comissao_pct', d.excecoes || [], 'exceção de comissão'],
+   ['con', 'pk', 'contrato_cnpj', 'contrato_pct', d.contratos || [], 'contrato']].forEach(([tipo, P, tabela, col, ls, rot]) => {
+    ls.forEach((x, i) => {
+      const nome = x.cliente || premTxt(x.nome_cliente) || premFmtCnpj(x.cnpj);
+      const rm = document.getElementById(P + 'X' + i); if(!rm) return;
+      const padrao = tipo === 'exc' ? premComVend(x.vendedor) : 0;
+      if(rm.checked){
+        itens.push({tabela, op: 'delete', chave: {cnpj: x.cnpj}});
+        txt.push(nome + ': ' + rot + ' REMOVIDA' + (tipo === 'exc' ? ' — volta a comissão do vendedor' : '') + premPreviaTxt(fat[x.cnpj], Number(x[col]), padrao));
+        return;
+      }
+      const el = document.getElementById(P + 'P' + i), val = {};
+      if(el.value !== el.dataset.orig){
+        if(el.value.trim() === '') throw new Error(nome + ': para tirar a ' + rot + ', marque “remover”');
+        const fr = lePct(el.value, nome);
+        if(Math.abs(fr - Number(x[col])) > 1e-9){ val[col] = fr;
+          txt.push(nome + ': ' + rot + ' ' + premPct(x[col]) + '% → ' + premPct(fr) + '%' + premPreviaTxt(fat[x.cnpj], Number(x[col]), fr)); }
+      }
+      if(tipo === 'con'){ const cn = document.getElementById(P + 'N' + i).value.trim();
+        if(cn !== (x.cliente || '')){ val.cliente = cn || null; txt.push(premFmtCnpj(x.cnpj) + ': nome curto → ' + (cn || '—')); } }
+      if(Object.keys(val).length) itens.push({tabela, op: 'upsert', chave: {cnpj: x.cnpj}, valores: val});
+    });
+  });
+  /* novo(s) CNPJ(s): todos os marcados da raiz */
+  const N = PREM.comNovo;
+  if(N && document.getElementById('pcnK')){
+    const marcados = N.clientes.filter((c, j) => (document.getElementById('pcnC' + j) || {}).checked);
+    if(marcados.length){
+      const exc = document.getElementById('pcnT').value === 'exc';
+      const tabela = exc ? 'comissao_excecao_cnpj' : 'contrato_cnpj', col = exc ? 'comissao_pct' : 'contrato_pct';
+      const rot = exc ? 'exceção de comissão' : 'contrato';
+      const t = document.getElementById('pcnP').value.trim();
+      if(t === '') throw new Error('CNPJ novo: informe o % da ' + rot);
+      const fr = lePct(t, 'CNPJ novo'), curto = document.getElementById('pcnN').value.trim();
+      const P = exc ? 'pe' : 'pk', ls = (exc ? d.excecoes : d.contratos) || [];
+      marcados.forEach(c => {
+        const k = ls.findIndex(e => e.cnpj === c.cnpj14), el = k >= 0 && document.getElementById(P + 'P' + k);
+        if(el && (el.value !== el.dataset.orig || document.getElementById(P + 'X' + k).checked))
+          throw new Error(premFmtCnpj(c.cnpj14) + ' foi mexido na tabela E marcado em “Adicionar por CNPJ” — deixe só um dos dois');
+      });
+      marcados.forEach(c => {
+        const val = {}; val[col] = fr; if(!exc && curto) val.cliente = curto;
+        itens.push({tabela, op: 'upsert', chave: {cnpj: c.cnpj14}, valores: val});
+        const antes = (exc ? d.excecoes : d.contratos || []).find(e => e.cnpj === c.cnpj14);
+        const fa = antes ? Number(antes[col]) : (exc ? premComVend(c.vendedor) : 0);
+        txt.push(premTxt(c.nome_cliente) + ' ' + premFmtCnpj(c.cnpj14) + ': ' + rot + ' ' + (antes ? premPct(antes[col]) + '% → ' : 'NOVA ') + premPct(fr) + '%' +
+                 premPreviaTxt(fat[c.cnpj14], fa, fr));
+      });
+    }
+  }
+  return {itens, txt};
+}
+
+/* ==========================================================================
+   CALCULADORA e CMV (bloco 2, 07/11/2026)
+   CMV em uso = o da responsavel (vortex.dim_cmv); sem ele, o da reserva
+   (cmv_parametros) - a mesma ordem do Ao Vivo. Preco abaixo do custo em vermelho.
+   ========================================================================== */
+const PREM_CANAIS = ['Distribuidores', 'Especializado', 'Supermercados'];
+function premCmvMapas(){
+  const dim = {}, bk = {}, bkOrig = {};
+  (PREM.dados.dim_cmv || []).forEach(x => { dim[String(x.sku).toUpperCase()] = Number(x.cmv); });
+  (PREM.dados.cmv_parametros || []).forEach(x => { const k = String(x.sku).toUpperCase(); bkOrig[k] = x.sku; if(x.cmv != null) bk[k] = Number(x.cmv); });
+  return {dim, bk, bkOrig, uso: s => { s = String(s).toUpperCase(); return dim[s] != null ? dim[s] : (bk[s] != null ? bk[s] : null); }};
+}
+function premPrecos(){ const m = {}; (PREM.dados.calc_tabelas || []).forEach(t => { m[t.canal + '|' + t.sku] = Number(t.preco); }); return m; }
+function premUrgSkus(){
+  const d = PREM.dados, C = premCmvMapas();
+  const calc = new Set((d.calc_skus || []).map(s => String(s.sku).toUpperCase()));
+  const v = d.vendidos_60d || [];
+  return {fora: v.filter(x => !calc.has(String(x.sku).toUpperCase())),
+          semCusto: v.filter(x => C.uso(x.sku) == null),
+          semPreco: (d.calc_skus || []).filter(s => s.ativo && !s.brinde && s.preco_consumidor == null)};
+}
+function premCalc(){
+  const d = PREM.dados, C = premCmvMapas(), P = premPrecos(), U = premUrgSkus();
+  const skus = d.calc_skus || [];
+  const cats = [...new Set(skus.filter(s => s.ativo).map(s => s.categoria).filter(Boolean))].sort();
+  const semPreco = new Set(U.semPreco.map(s => s.sku));
+  const urg = U.fora.length ? '<table class="pm-tab" style="margin-bottom:12px">' + U.fora.map((v, j) =>
+    '<tr class="pm-urg"' + premB(v.sku, v.descricao, 'urgente') + '><td><div class="pm-urg-tit">URGENTE: SKU vendido fora da Calculadora</div><b>' + premEsc(v.sku) + '</b> — ' +
+    premEsc(v.descricao || '') + '<div class="pm-hint">' + premBRL(Math.round(v.valor)) + ' vendidos para PJ nos últimos 60 dias' +
+    (C.uso(v.sku) == null ? ' · <b class="pm-dif">sem custo</b> (aba CMV)' : '') + '</div></td>' +
+    '<td style="width:190px;text-align:right"><label class="pm-pill"><input type="checkbox" class="pm-pend" id="pcU' + j + '" ' +
+    'onchange="this.parentNode.classList.toggle(\'on\',this.checked);premContarPendentes()">incluir na Calculadora</label></td></tr>').join('') + '</table>' : '';
+  const ferramentas = '<div class="pm-box2"><div class="pm-tools" style="margin:0">' +
+    '<div class="pm-seg"><button class="on" id="pcVA" onclick="premCalcVista(true)">Só ativos</button><button id="pcVT" onclick="premCalcVista(false)">Todos (' + skus.length + ')</button></div>' +
+    '<b style="margin-left:6px">Reajuste em massa</b>' +
+    '<select id="pcmCanal" class="pm-in pm-box" style="width:auto">' + PREM_CANAIS.concat(['Consumidor']).map(c => '<option>' + c + '</option>').join('') +
+      '<option value="__todas">Todas as tabelas</option></select>' +
+    '<select id="pcmCat" class="pm-in pm-box" style="width:auto"><option value="">todas as categorias</option>' + cats.map(c => '<option>' + premEsc(c) + '</option>').join('') + '</select>' +
+    '<input id="pcmPct" class="pm-in pm-box pm-num" style="width:80px" placeholder="+5 ou -3"><span class="pm-hint">%</span>' +
+    '<button class="pm-btn pm-sm" onclick="premMassaPrevia()">Prévia</button></div><div id="pcmPrev" style="margin-top:6px"></div>' +
+    '<details style="margin-top:6px"><summary class="pm-hint" style="cursor:pointer">Colar preços do Excel</summary>' +
+    '<textarea id="pcCola" rows="5" class="pm-in pm-box" style="font-family:monospace;margin-top:6px" placeholder="DBR-BTG-GL-ACE-10X30&#9;37,60"></textarea>' +
+    '<div class="pm-foot" style="margin-top:6px"><span id="pcColaMsg" class="pm-hint">Duas colunas: SKU e preço — vai para a tabela escolhida em “Reajuste em massa”.</span>' +
+    '<button class="pm-btn pm-sm" onclick="premColarPrecos()">Preencher</button></div></details></div>';
+  const cab = '<tr><th>SKU</th><th>Categoria</th><th style="text-align:right">CMV em uso</th>' +
+    PREM_CANAIS.map(c => '<th style="text-align:right">' + c + '</th>').join('') +
+    '<th style="text-align:right">Consumidor</th><th>Quem vê</th><th>Brinde</th><th>Ativo</th></tr>';
+  const linhas = skus.map((s, i) => {
+    const cmv = C.uso(s.sku);
+    const inp = (id, v) => '<input ' + premAttr(id, premFmtR(v), 'class="pm-in pm-num' + (cmv != null && v != null && !isNaN(v) && v < cmv ? ' pm-baixo' : '') +
+      '" data-cmv="' + (cmv == null ? '' : cmv) + '"') + '>';
+    const vers = ['TODOS', 'Key Account'].concat(['TODOS', 'Key Account'].indexOf(s.ver) < 0 && s.ver ? [s.ver] : []);
+    const cls = [s.ativo ? '' : 'pm-inat pm-off', semPreco.has(s.sku) ? 'pm-urg' : ''].filter(Boolean).join(' ');
+    return '<tr' + (cls ? ' class="' + cls + '"' : '') + premB(s.sku, s.descricao, s.categoria, semPreco.has(s.sku) ? 'urgente' : '') + '><td><b>' + premEsc(s.sku) + '</b>' +
+      (semPreco.has(s.sku) ? '<div class="pm-urg-tit">URGENTE: ativo sem preço consumidor</div>' : '') +
+      '<div class="pm-hint">' + premEsc(s.descricao || '') + '</div></td>' +
+      '<td class="pm-hint">' + premEsc(s.categoria || '—') + '</td>' +
+      '<td class="pm-num">' + (cmv == null ? '<b class="pm-dif">sem custo</b>' : premFmtR(cmv)) + '</td>' +
+      PREM_CANAIS.map((c, k) => '<td style="width:96px">' + inp('pcP' + k + '_' + i, P[c + '|' + s.sku]) + '</td>').join('') +
+      '<td style="width:96px">' + inp('pcC' + i, s.preco_consumidor == null ? null : Number(s.preco_consumidor)) + '</td>' +
+      '<td><select ' + premAttr('pcV' + i, s.ver || '', 'class="pm-in"') + '>' + vers.map(o => '<option' + (o === s.ver ? ' selected' : '') + '>' + premEsc(o) + '</option>').join('') + '</select></td>' +
+      '<td><label class="pm-sw"><input type="checkbox" id="pcB' + i + '"' + (s.brinde ? ' checked' : '') + '><span></span></label></td>' +
+      '<td><label class="pm-sw"><input type="checkbox" id="pcA' + i + '"' + (s.ativo ? ' checked' : '') + '><span></span></label></td></tr>';
+  }).join('');
+  return premCard('Calculadora', skus.filter(s => s.ativo).length + ' SKUs ativos · preço em R$ por unidade de venda' + premBtnXls('pcTab', 'Calculadora'),
+    urg + ferramentas + '<table class="pm-tab pm-so-ativos" id="pcTab">' + cab + linhas + '</table>' +
+    '<div class="pm-foot"><span class="pm-hint">Vermelho = preço abaixo do CMV em uso. Apagar um preço tira o SKU daquela tabela.</span>' +
+    '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
+}
+function premCalcVista(so){
+  const t = document.getElementById('pcTab'); if(t) t.classList.toggle('pm-so-ativos', so);
+  document.getElementById('pcVA').classList.toggle('on', so); document.getElementById('pcVT').classList.toggle('on', !so);
+}
+function premIdsCanal(canal, i){
+  if(canal === '__todas') return PREM_CANAIS.map((c, k) => 'pcP' + k + '_' + i).concat(['pcC' + i]);
+  return [canal === 'Consumidor' ? 'pcC' + i : 'pcP' + PREM_CANAIS.indexOf(canal) + '_' + i];
+}
+function premMassaPrevia(){
+  const out = document.getElementById('pcmPrev'), pct = premNum(document.getElementById('pcmPct').value);
+  if(pct == null || pct === 0 || Math.abs(pct) > 50){ out.innerHTML = '<span class="pm-dif">informe um % entre -50 e 50 (ex.: 5 ou -3)</span>'; return; }
+  const canal = document.getElementById('pcmCanal').value, cat = document.getElementById('pcmCat').value, muda = [];
+  (PREM.dados.calc_skus || []).forEach((s, i) => {
+    if(!s.ativo || (cat && s.categoria !== cat)) return;
+    premIdsCanal(canal, i).forEach(id => {
+      const el = document.getElementById(id), v = el && premNum(el.value);
+      if(!v) return;
+      const nv = Math.round(v * (1 + pct / 100) * 100) / 100, cmv = el.dataset.cmv ? Number(el.dataset.cmv) : null;
+      muda.push({id, sku: s.sku, v, nv, baixo: cmv != null && nv < cmv});
+    });
+  });
+  PREM.massa = muda;
+  if(!muda.length){ out.innerHTML = '<span class="pm-hint">nenhum preço preenchido nesse recorte (só SKUs ativos)</span>'; return; }
+  const nb = muda.filter(m => m.baixo).length;
+  out.innerHTML = '<b>' + muda.length + ' preço(s)</b> mudam ' + (pct > 0 ? '+' : '') + pct.toLocaleString('pt-BR') + '%' +
+    (nb ? ' · <span class="pm-dif">' + nb + ' ficariam abaixo do custo</span>' : '') +
+    '<div class="pm-hint" style="margin:4px 0 6px">' + muda.slice(0, 8).map(m => premEsc(m.sku) + ': ' + premFmtR(m.v) + ' → <b' + (m.baixo ? ' class="pm-dif"' : '') + '>' +
+      premFmtR(m.nv) + '</b>').join(' · ') + (muda.length > 8 ? ' …' : '') + '</div>' +
+    '<button class="pm-btn pm-y pm-sm" onclick="premMassaAplicar()">Aplicar na tabela</button> <span class="pm-hint">fica amarelo na tela; grava no “Salvar tudo”</span>';
+}
+function premMassaAplicar(){
+  const ms = PREM.massa || [];
+  ms.forEach(m => { const el = document.getElementById(m.id); if(el){ el.value = premFmtR(m.nv); premMarcar(el); } });
+  document.getElementById('pcmPrev').innerHTML = '<b>' + ms.length + ' preço(s) preenchidos</b> — confira os amarelos e clique em “Salvar tudo”.';
+  PREM.massa = null; premContarPendentes();
+}
+function premColarPrecos(){
+  const canal = document.getElementById('pcmCanal').value, msg = document.getElementById('pcColaMsg');
+  if(canal === '__todas'){ msg.innerHTML = '<span class="pm-dif">escolha UMA tabela em “Reajuste em massa”</span>'; return; }
+  const idx = {}; (PREM.dados.calc_skus || []).forEach((s, i) => { idx[String(s.sku).toUpperCase()] = i; });
+  let ok = 0; const nao = [];
+  document.getElementById('pcCola').value.split(/\r?\n/).forEach(l => {
+    const p = l.split(/\t|;| {2,}/).map(x => x.trim()).filter(Boolean); if(p.length < 2) return;
+    const i = idx[p[0].toUpperCase()], v = premNum(p[p.length - 1]);
+    if(i === undefined || v == null){ nao.push(p[0]); return; }
+    const el = document.getElementById(premIdsCanal(canal, i)[0]); if(!el) return;
+    el.value = premFmtR(v); premMarcar(el); ok++;
+  });
+  msg.innerHTML = '<b>' + ok + ' preenchidos em ' + premEsc(canal) + '</b>' + (nao.length ? ' · <b class="pm-dif">não achei: ' + premEsc(nao.join(', ')) + '</b>' : '') +
+    ' — confira os amarelos e salve.';
+  premContarPendentes();
+}
+function premItensCalc(){
+  const itens = [], txt = [];
+  if(!PREM.partes.calc || !document.getElementById('pcTab')) return {itens, txt};
+  const d = PREM.dados, P = premPrecos(), skus = d.calc_skus || [];
+  skus.forEach((s, i) => {
+    PREM_CANAIS.forEach((c, k) => {
+      const el = document.getElementById('pcP' + k + '_' + i);
+      if(!el || el.value === el.dataset.orig) return;
+      const vazio = el.value.trim() === '', n = vazio ? null : premNum(el.value);
+      if(!vazio && (n == null || n < 0)) throw new Error(s.sku + ' · ' + c + ': preço inválido (' + el.value + ')');
+      const a = P[c + '|' + s.sku];
+      if(n == null){ if(a != null){ itens.push({tabela: 'calc_tabela_canal', op: 'delete', chave: {canal: c, sku: s.sku}});
+                                    txt.push(s.sku + ' · ' + c + ': sai da tabela (era ' + premFmtR(a) + ')'); } return; }
+      if(a != null && Math.abs(n - a) < 0.005) return;
+      const cmv = el.dataset.cmv ? Number(el.dataset.cmv) : null;
+      itens.push({tabela: 'calc_tabela_canal', op: 'upsert', chave: {canal: c, sku: s.sku}, valores: {preco: n}});
+      txt.push(s.sku + ' · ' + c + ': ' + (a == null ? '—' : premFmtR(a)) + ' → ' + premFmtR(n) +
+               (cmv != null && n < cmv ? '  ⚠️ ABAIXO DO CUSTO (' + premFmtR(cmv) + ')' : ''));
+    });
+    const val = {}, mud = [];
+    const ec = document.getElementById('pcC' + i);
+    if(ec && ec.value !== ec.dataset.orig){
+      const vazio = ec.value.trim() === '', n = vazio ? null : premNum(ec.value);
+      if(!vazio && (n == null || n < 0)) throw new Error(s.sku + ': preço consumidor inválido (' + ec.value + ')');
+      const pc = s.preco_consumidor == null ? null : Number(s.preco_consumidor);
+      if(!(n === pc || (n != null && pc != null && Math.abs(n - pc) < 0.005))){ val.preco_consumidor = n; mud.push('consumidor ' + (premFmtR(s.preco_consumidor) || '—') + ' → ' + (premFmtR(n) || '—')); }
+    }
+    const ev = document.getElementById('pcV' + i); if(ev && ev.value !== (s.ver || '')){ val.ver = ev.value; mud.push('quem vê → ' + ev.value); }
+    const eb = document.getElementById('pcB' + i); if(eb && eb.checked !== !!s.brinde){ val.brinde = eb.checked; mud.push(eb.checked ? 'vira brinde' : 'deixa de ser brinde'); }
+    const ea = document.getElementById('pcA' + i); if(ea && ea.checked !== !!s.ativo){ val.ativo = ea.checked; mud.push(ea.checked ? 'ATIVADO' : 'desativado'); }
+    if(mud.length){ itens.push({tabela: 'calc_sku', op: 'upsert', chave: {sku: s.sku}, valores: val}); txt.push(s.sku + ': ' + mud.join(', ')); }
+  });
+  let ordem = skus.reduce((m, s) => Math.max(m, Number(s.ordem) || 0), 0);
+  premUrgSkus().fora.forEach((v, j) => {
+    const el = document.getElementById('pcU' + j); if(!el || !el.checked) return;
+    itens.push({tabela: 'calc_sku', op: 'upsert', chave: {sku: v.sku},
+                valores: {descricao: v.descricao || v.sku, ativo: true, brinde: false, ver: 'TODOS', ordem: ++ordem}});
+    txt.push('NOVO na Calculadora: ' + v.sku + ' — ' + (v.descricao || '') + ' (depois de salvar, preencha os preços)');
+  });
+  return {itens, txt};
+}
+
+/* ---------- CMV: o da responsavel x a reserva, lado a lado */
+function premCmvLista(){
+  const d = PREM.dados, C = premCmvMapas(), info = {};
+  const add = (sku, desc) => { const k = String(sku).toUpperCase(); if(!info[k]) info[k] = {k, sku: C.bkOrig[k] || sku, desc: ''}; if(desc && !info[k].desc) info[k].desc = desc; };
+  (d.calc_skus || []).forEach(s => add(s.sku, s.descricao));
+  (d.vendidos_60d || []).forEach(v => add(v.sku, v.descricao));
+  Object.keys(C.dim).forEach(k => add(k)); Object.keys(C.bk).forEach(k => add(C.bkOrig[k]));
+  const vend = {}; (d.vendidos_60d || []).forEach(v => { vend[String(v.sku).toUpperCase()] = v; });
+  return Object.values(info).map(x => Object.assign(x, {vend: vend[x.k] || null, dim: C.dim[x.k], bk: C.bk[x.k]}))
+    .sort((a, b) => ((a.dim == null && a.bk == null && a.vend) ? 0 : 1) - ((b.dim == null && b.bk == null && b.vend) ? 0 : 1) ||
+                    ((b.vend || {}).valor || 0) - ((a.vend || {}).valor || 0) || a.k.localeCompare(b.k));
+}
+function premCmv(){
+  const d = PREM.dados, L = premCmvLista(), dimInfo = {};
+  (d.dim_cmv || []).forEach(x => { dimInfo[String(x.sku).toUpperCase()] = x; });
+  PREM.cmvLista = L;
+  const nDiv = L.filter(x => x.dim != null && x.bk != null && Math.abs(x.bk / x.dim - 1) > 0.01).length;
+  const linhas = L.map((x, j) => {
+    const urg = x.dim == null && x.bk == null && x.vend;
+    const div = x.dim != null && x.bk != null && Math.abs(x.bk / x.dim - 1) > 0.01;
+    const uso = x.dim != null ? x.dim : x.bk;
+    const di = dimInfo[x.k];
+    const cls = ['pm-r', x.vend ? 'pm-c-vend' : '', div ? 'pm-c-div' : '', urg ? 'pm-urg' : ''].filter(Boolean).join(' ');
+    return '<tr class="' + cls + '"' + premB(x.sku, x.desc, urg ? 'urgente' : '', div ? 'diverge' : '') + '><td><b>' + premEsc(x.sku) + '</b>' +
+      (urg ? '<div class="pm-urg-tit">URGENTE: SKU vendido sem custo</div>' : '') + '<div class="pm-hint">' + premEsc(x.desc || '') + '</div></td>' +
+      '<td class="pm-num">' + (x.vend ? premBRL(Math.round(x.vend.valor)) : '<span class="pm-hint">—</span>') + '</td>' +
+      '<td class="pm-num">' + (x.dim != null ? premFmtR(x.dim) + (di ? '<div class="pm-hint">' + premEsc(String(di.atualizado_em || '').slice(0, 10)) + '</div>' : '') : '<span class="pm-hint">não tem</span>') + '</td>' +
+      '<td style="width:110px"><input ' + premAttr('cmP' + j, premFmtR(x.bk), 'class="pm-in pm-num" placeholder="' + (urg ? 'obrigatório' : '') + '"') + '></td>' +
+      '<td class="pm-num"><b>' + (uso != null ? premFmtR(uso) : '<span class="pm-dif">sem custo</span>') + '</b><div class="pm-hint">' +
+        (x.dim != null ? 'da responsável' : x.bk != null ? 'da reserva' : '') + '</div></td>' +
+      '<td class="pm-num">' + (div ? '<span class="pm-dif">' + (x.bk > x.dim ? '+' : '') + ((x.bk / x.dim - 1) * 100).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + '%</span>' : '') + '</td>' +
+      '<td>' + (x.dim != null && (x.bk == null || div) ? '<button class="pm-btn pm-sm" onclick="premUsarResp(' + j + ')">usar o da responsável</button>' : '') + '</td></tr>';
+  }).join('');
+  return premCard('CMV', 'o da responsável (vortex) vale sempre que existir; a reserva cobre o SKU que ela ainda não cadastrou' + premBtnXls('cmTab', 'CMV'),
+    '<div class="pm-tools"><div class="pm-seg"><button id="cmVv" class="on" onclick="premCmvVista(\'vend\')">Vendidos (60 dias)</button>' +
+    '<button id="cmVd" onclick="premCmvVista(\'div\')">Divergentes (' + nDiv + ')</button><button id="cmVt" onclick="premCmvVista(\'\')">Todos (' + L.length + ')</button></div>' +
+    '<span class="pm-hint">Divergente = reserva diferente da responsável em mais de 1%. Quem decide o custo em uso é a responsável; aqui só se edita a reserva.</span></div>' +
+    '<table class="pm-tab pm-cv-vend" id="cmTab"><tr><th>SKU</th><th style="text-align:right">Vendido 60d</th><th style="text-align:right">Da responsável</th>' +
+    '<th style="text-align:right">Reserva</th><th style="text-align:right">Em uso</th><th style="text-align:right">Dif.</th><th></th></tr>' + linhas + '</table>' +
+    '<div class="pm-foot"><span class="pm-hint">SKU vendido sem custo sai com margem 100% no Portal: preencha a reserva até a responsável cadastrar.</span>' +
+    '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
+}
+function premCmvVista(v){
+  const t = document.getElementById('cmTab'); if(!t) return;
+  t.classList.toggle('pm-cv-vend', v === 'vend'); t.classList.toggle('pm-cv-div', v === 'div');
+  document.getElementById('cmVv').classList.toggle('on', v === 'vend');
+  document.getElementById('cmVd').classList.toggle('on', v === 'div');
+  document.getElementById('cmVt').classList.toggle('on', !v);
+}
+function premUsarResp(j){
+  const x = (PREM.cmvLista || [])[j], el = document.getElementById('cmP' + j);
+  if(!x || !el || x.dim == null) return;
+  el.value = premFmtR(x.dim); premMarcar(el); premContarPendentes();
+}
+function premItensCmv(){
+  const itens = [], txt = [];
+  if(!PREM.partes.calc || !document.getElementById('cmTab')) return {itens, txt};
+  (PREM.cmvLista || []).forEach((x, j) => {
+    const el = document.getElementById('cmP' + j);
+    if(!el || el.value === el.dataset.orig) return;
+    const vazio = el.value.trim() === '', n = vazio ? null : premNum(el.value);
+    if(!vazio && (n == null || n < 0)) throw new Error(x.sku + ': CMV inválido (' + el.value + ')');
+    if(n == null){
+      if(x.bk == null) return;
+      itens.push({tabela: 'cmv_parametros', op: 'delete', chave: {sku: x.sku}});
+      txt.push(x.sku + ': CMV reserva removido' + (x.dim == null ? ' — ⚠️ fica SEM CUSTO' : ' (continua o da responsável, ' + premFmtR(x.dim) + ')'));
+      return;
+    }
+    if(x.bk != null && Math.abs(n - x.bk) < 0.005) return;
+    itens.push({tabela: 'cmv_parametros', op: 'upsert', chave: {sku: x.sku}, valores: {cmv: n}});
+    txt.push(x.sku + ': CMV reserva ' + (x.bk == null ? '—' : premFmtR(x.bk)) + ' → ' + premFmtR(n) +
+             (x.dim != null ? ' (em uso continua o da responsável, ' + premFmtR(x.dim) + ')' : ' — PASSA A VALER no Portal'));
+  });
+  return {itens, txt};
 }
 
 /* ---------- SALVAR TUDO (07/11/2026): cada quadro tinha o seu botao e salvar um
@@ -18313,11 +18896,12 @@ async function premDesfazer(id){
 async function premSalvarTudo(){
   try{
     let itens = [], txt = [];
-    for(const f of [premItensVendedores, premItensSupervisao, premItensMetas, premItensPromotoria]){
+    for(const f of [premItensNovos, premItensVendedores, premItensSupervisao, premItensMetas, premItensPromotoria,
+                    premItensComercial, premItensCalc, premItensCmv]){
       const r = f(); itens = itens.concat(r.itens); txt = txt.concat(r.txt);
     }
     await premConfirmarESalvar(itens, txt);
-    PREM.cnpj = null;
+    PREM.cnpj = null; PREM.comNovo = null;
   }catch(e){ PREM.erro = e.message; vPremissas(); window.scrollTo(0, 0); }
 }
 const premSalvarVendedores = premSalvarTudo, premSalvarSupervisao = premSalvarTudo,
@@ -18333,7 +18917,9 @@ async function premConfirmarESalvar(itens, txt){
     await premRecarregar('Salvo (' + r.alteracoes.length + ' alteração(ões)). O Portal atualiza em até ~10 minutos.');
   }catch(e){ PREM.erro = 'Não salvei nada: ' + e.message; vPremissas(); }
 }
-Object.assign(window, {premSalvarTudo, premEntrar, premSair, premRecarregar, premNovoModo, premSalvarNovo, premSalvarVendedores,
+Object.assign(window, {premResolver, premAba, premBuscar, premBaixar, premHistFiltro, premMetasMes, premBuscarCnpjCom, premMarcarRaiz,
+  premCalcVista, premMassaPrevia, premMassaAplicar, premColarPrecos, premCmvVista, premUsarResp,
+  premSalvarTudo, premEntrar, premSair, premRecarregar, premNovoModo, premSalvarNovo, premSalvarVendedores,
   premChipRm, premChipAdd, premPerfilMudou, premRenomear, premAvisoSup, premSalvarSupervisao, premColarMetas, premSalvarMetas,
   premBuscarCnpj, premSalvarPromotoria, premDesfazer});
 
