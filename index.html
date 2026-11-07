@@ -17541,6 +17541,7 @@ window.vComparativos = vComparativos;
 #v-premissas .pm-in:hover{border-color:var(--line);background:#fff}
 #v-premissas .pm-in:focus{outline:none;border-color:var(--sky);background:#fff;box-shadow:0 0 0 3px rgba(81,136,223,.16)}
 #v-premissas .pm-in.pm-mud{background:#FFF7D1;border-color:#E9D774}
+#v-premissas .pm-in.pm-mud.pm-num{padding-right:24px}
 #v-premissas .pm-in.pm-box{border-color:var(--line);background:#fff}
 #v-premissas .pm-num{text-align:right;font-variant-numeric:tabular-nums}
 #v-premissas .pm-btn{border:1.5px solid var(--navy);color:var(--navy);background:#fff;border-radius:999px;padding:7px 16px;font-weight:700;font-size:13px;transition:.12s;white-space:nowrap}
@@ -17613,6 +17614,9 @@ window.vComparativos = vComparativos;
 #v-premissas .pm-prev{font-size:11px;color:var(--muted);white-space:nowrap;text-align:right}
 #v-premissas .pm-prev b{color:var(--navy)}
 #v-premissas .pm-dif{color:var(--neg);font-weight:700}
+#v-premissas td{position:relative}
+#v-premissas .pm-volta{position:absolute;right:-2px;top:50%;transform:translateY(-50%);border:none;background:#fff;color:var(--navy);border-radius:50%;width:20px;height:20px;padding:0;font-size:13px;line-height:20px;box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:pointer;z-index:2}
+#v-premissas .pm-volta:hover{background:var(--yellow)}
 #v-premissas table.pm-tab.pm-so-ativos tr.pm-inat{display:none}
 #v-premissas table.pm-tab.pm-cv-vend tr.pm-r:not(.pm-c-vend){display:none}
 #v-premissas table.pm-tab.pm-cv-div tr.pm-r:not(.pm-c-div){display:none}
@@ -17732,6 +17736,12 @@ function premRegistrar(){
         premContarPendentes();
       });
       div.addEventListener('change', () => premContarPendentes());
+      /* "Voltar" de um campo (Igor, 07/11/2026: "mudei e não lembro o CMV que tava"):
+         Esc no campo amarelo devolve o valor de antes; o "antes" aparece ao passar o mouse */
+      div.addEventListener('keydown', ev => {
+        const t = ev.target;
+        if(ev.key === 'Escape' && t && t.classList && t.classList.contains('pm-mud')) premVoltarCampo(t);
+      });
     }
   }
   if(!PREM_PATCH && typeof abasPermitidas === 'function'){
@@ -17854,7 +17864,8 @@ function premTela(){
     (naPar.length ? '<div class="pm-alert warn"><b>Ainda copiados da Parametros: ' + premEsc(naPar.join(', ')) + '.</b> ' +
       'Uma edição deles feita aqui é sobrescrita na próxima vez que o V8 for salvo.</div>' : '');
   const barra = '<div class="pm-bar"><span id="pmPend">Edite o que quiser em qualquer aba — o "Salvar tudo" grava tudo de uma vez.</span>' +
-    '<button class="pm-btn" onclick="premSalvarTudo()">Salvar tudo</button></div>';
+    '<span style="display:flex;gap:8px"><button class="pm-btn pm-ghost" style="border-color:rgba(255,255,255,.55);color:#fff;background:transparent" onclick="premDescartar()">Descartar alterações</button>' +
+    '<button class="pm-btn" onclick="premSalvarTudo()">Salvar tudo</button></span></div>';
   const panes = PREM_ABAS.map(a => '<div class="pm-pane" id="pmPane_' + a.id + '" data-aba="' + a.id + '"' +
     (a.id === PREM.aba ? '' : ' style="display:none"') + '>' + premBuscaBox(a.id) + premPaneHtml(a.id) + '</div>').join('');
   return hero + kpi + avisos + '<div class="pm-tabs" id="pmTabs">' + premAbasHtml() + '</div>' + panes + barra;
@@ -17936,8 +17947,35 @@ function premBuscar(id, txt){
 }
 /* campo mudado = amarelo; preco abaixo do custo (data-cmv) = vermelho */
 function premMarcar(el){
-  if(el.dataset.orig !== undefined) el.classList.toggle('pm-mud', String(el.value) !== el.dataset.orig);
+  if(el.dataset.orig !== undefined){
+    const mud = String(el.value) !== el.dataset.orig;
+    el.classList.toggle('pm-mud', mud);
+    el.title = mud ? 'antes: ' + (el.dataset.orig || '(vazio)') + ' — Esc ou ↺ volta' : '';
+    premBotaoVoltar(el, mud);
+  }
   if(el.dataset.cmv){ const n = premNum(el.value); el.classList.toggle('pm-baixo', n != null && n < Number(el.dataset.cmv)); }
+}
+/* botaozinho ↺ ao lado do campo amarelo: um clique e o valor de antes volta */
+function premBotaoVoltar(el, mostrar){
+  let b = el.nextElementSibling;
+  if(!(b && b.classList.contains('pm-volta'))){
+    if(!mostrar) return;
+    b = document.createElement('button'); b.className = 'pm-volta'; b.type = 'button'; b.textContent = '↺';
+    b.onclick = () => premVoltarCampo(el);
+    el.insertAdjacentElement('afterend', b);
+  }
+  b.title = 'voltar para ' + (el.dataset.orig || '(vazio)');
+  b.style.display = mostrar ? '' : 'none';
+}
+function premVoltarCampo(el){
+  el.value = el.dataset.orig; premMarcar(el); premPrevia(el); premContarPendentes();
+}
+/* descarta TUDO o que nao foi salvo: redesenha a tela com o que veio do banco */
+function premDescartar(){
+  const n = document.querySelectorAll('#v-premissas .pm-mud').length;
+  if(!confirm('Descartar ' + (n ? n + ' alteração(ões) não salvas' : 'o que não foi salvo') + '? Volta tudo como está no banco.')) return;
+  PREM.omie = null; PREM.comNovo = null; PREM.cnpj = null; PREM.massa = null; PREM.msg = 'Alterações descartadas — a tela está igual ao banco.'; PREM.erro = '';
+  vPremissas();
 }
 /* previa em R$ do % (comissao, excecao, contrato) sobre o faturamento do ultimo mes fechado */
 function premPrevia(t){
@@ -18355,7 +18393,7 @@ function premColarMetas(){
     if(i === undefined){ naoAchei.push(nome); return; }
     const el = document.getElementById('pmV' + i);
     if(el){ el.value = valor == null ? '' : Number(valor).toLocaleString('pt-BR', {maximumFractionDigits: 2});
-            el.classList.toggle('pm-mud', el.value !== el.dataset.orig); ok++; }
+            premMarcar(el); ok++; }
   });
   document.getElementById('pmColaMsg').innerHTML = '<b>' + ok + ' preenchidas</b>' +
     (naoAchei.length ? ' · <b style="color:var(--neg)">não achei: ' + premEsc(naoAchei.join(', ')) + '</b>' : '') + ' — confira os campos amarelos e salve.';
@@ -18615,8 +18653,8 @@ function premItensComercial(){
         if(Math.abs(fr - Number(x[col])) > 1e-9){ val[col] = fr;
           txt.push(nome + ': ' + rot + ' ' + premPct(x[col]) + '% → ' + premPct(fr) + '%' + premPreviaTxt(fat[x.cnpj], Number(x[col]), fr)); }
       }
-      if(tipo === 'con'){ const cn = document.getElementById(P + 'N' + i).value.trim();
-        if(cn !== (x.cliente || '')){ val.cliente = cn || null; txt.push(premFmtCnpj(x.cnpj) + ': nome curto → ' + (cn || '—')); } }
+      if(tipo === 'con'){ const en = document.getElementById(P + 'N' + i), cn = en.value.trim();
+        if(en.value !== en.dataset.orig && cn !== (x.cliente || '').trim()){ val.cliente = cn || null; txt.push(premFmtCnpj(x.cnpj) + ': nome curto → ' + (cn || '—')); } }
       if(Object.keys(val).length) itens.push({tabela, op: 'upsert', chave: {cnpj: x.cnpj}, valores: val});
     });
   });
@@ -18917,7 +18955,7 @@ async function premConfirmarESalvar(itens, txt){
     await premRecarregar('Salvo (' + r.alteracoes.length + ' alteração(ões)). O Portal atualiza em até ~10 minutos.');
   }catch(e){ PREM.erro = 'Não salvei nada: ' + e.message; vPremissas(); }
 }
-Object.assign(window, {premResolver, premAba, premBuscar, premBaixar, premHistFiltro, premMetasMes, premBuscarCnpjCom, premMarcarRaiz,
+Object.assign(window, {premDescartar, premVoltarCampo, premResolver, premAba, premBuscar, premBaixar, premHistFiltro, premMetasMes, premBuscarCnpjCom, premMarcarRaiz,
   premCalcVista, premMassaPrevia, premMassaAplicar, premColarPrecos, premCmvVista, premUsarResp,
   premSalvarTudo, premEntrar, premSair, premRecarregar, premNovoModo, premSalvarNovo, premSalvarVendedores,
   premChipRm, premChipAdd, premPerfilMudou, premRenomear, premAvisoSup, premSalvarSupervisao, premColarMetas, premSalvarMetas,
