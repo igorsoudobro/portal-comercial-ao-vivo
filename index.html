@@ -17577,6 +17577,8 @@ window.vComparativos = vComparativos;
 #v-premissas .pm-login input{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit;font-size:14px}
 #v-premissas .pm-login input:focus{outline:none;border-color:var(--sky);box-shadow:0 0 0 3px rgba(81,136,223,.16)}
 #v-premissas .pm-login .pm-btn{width:100%;margin-top:20px;padding:12px;font-size:14px;border-radius:12px}
+#v-premissas .pm-bar{position:sticky;bottom:12px;z-index:30;display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--navy);color:#fff;border-radius:14px;padding:10px 16px;margin-top:6px;box-shadow:0 8px 24px rgba(30,46,95,.28)}
+#v-premissas .pm-bar .pm-btn{background:var(--yellow);border-color:var(--yellow);color:var(--navy)}
 #v-premissas td.pm-omie{text-align:left;min-width:220px}
 #v-premissas .pm-ren{border:none;background:none;color:var(--muted);font-size:13px;padding:0 4px;opacity:.5}
 #v-premissas tr:hover .pm-ren{opacity:1}
@@ -17691,7 +17693,9 @@ function premRegistrar(){
         const t = ev.target;
         if(t && t.classList && t.classList.contains('pm-in') && t.dataset.orig !== undefined)
           t.classList.toggle('pm-mud', String(t.value) !== t.dataset.orig);
+        premContarPendentes();
       });
+      div.addEventListener('change', () => premContarPendentes());
     }
   }
   if(!PREM_PATCH && typeof abasPermitidas === 'function'){
@@ -17787,7 +17791,16 @@ function premTela(){
     ((fonteVend && fonteVend.fonte === 'parametros')
       ? '<div class="pm-alert warn"><b>Vendedores ainda copiados da Parametros.</b> Uma edição de vendedor, nome do OMIE ou acesso ' +
         'feita aqui é sobrescrita na próxima vez que o V8 for salvo. Supervisão, metas e promotoria já valem só aqui.</div>' : '');
-  return hero + kpi + avisos + premNovos() + premVendedores() + premSupervisao() + premMetas() + premPromotoria() + premHistorico();
+  const barra = '<div class="pm-bar"><span id="pmPend">Edite o que quiser em qualquer quadro — o "Salvar tudo" grava tudo de uma vez.</span>' +
+    '<button class="pm-btn" onclick="premSalvarTudo()">Salvar tudo</button></div>';
+  return hero + kpi + avisos + premNovos() + premVendedores() + premSupervisao() + premMetas() + premPromotoria() + premHistorico() + barra;
+}
+/* contador da barra: quantos campos estao amarelos (mudados e nao salvos) */
+function premContarPendentes(){
+  const el = document.getElementById('pmPend'); if(!el) return;
+  const n = document.querySelectorAll('#v-premissas .pm-mud').length;
+  el.textContent = n ? n + ' campo(s) alterado(s), ainda não salvos.' :
+    'Edite o que quiser em qualquer quadro — o "Salvar tudo" grava tudo de uma vez.';
 }
 
 /* ---------- nomes do OMIE sem cadastro */
@@ -17834,6 +17847,10 @@ async function premSalvarNovo(i){
     } else {
       itens.push({tabela: 'depara_vendedor', op: 'upsert', chave: {nome_omie: x.nome}, valores: {vendedor: modo, modelo: null}});
       txt.push('as vendas de "' + x.nome + '" no OMIE passam a ser de ' + modo);
+    }
+    /* junto com o que estiver editado nos outros quadros - salvar recarrega a tela */
+    for(const f of [premItensVendedores, premItensSupervisao, premItensMetas, premItensPromotoria]){
+      const r = f(); r.itens.forEach(x => itens.push(x)); r.txt.forEach(x => txt.push(x));
     }
     await premConfirmarESalvar(itens, txt);
   }catch(e){ PREM.erro = e.message; vPremissas(); }
@@ -17937,7 +17954,7 @@ function premVendedores(){
     '<div class="pm-foot" style="margin:0 0 10px"><span class="pm-hint">Desativar = vai para o fim da lista, sai das metas e perde o acesso. As vendas continuam no Portal para o admin.</span></div>' +
     '<table class="pm-tab">' + cab + premOrdemVend(false).map(linha).join('') + '</table>' +
     '<div class="pm-foot"><span class="pm-hint">Comissão em %: 7 = 7%, 0,5 = meio por cento. Nome novo do OMIE? Use o quadro “Nomes do OMIE sem cadastro”.</span>' +
-    '<button class="pm-btn pm-pri" onclick="premSalvarVendedores()">Salvar vendedores</button></div>');
+    '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
 }
 function premColetarVendedor(nome, i){
   const g = id => document.getElementById(id + i);
@@ -18003,8 +18020,8 @@ function premItensVendedor(nome, novo, antes){
   }
   return {itens, txt};
 }
-async function premSalvarVendedores(){
-  try{
+function premItensVendedores(){
+  {
     let itens = [], txt = [];
     (PREM.dados.vendedores || []).forEach((v, i) => {
       const novo = premColetarVendedor(v.nome, i);
@@ -18012,8 +18029,8 @@ async function premSalvarVendedores(){
       const r = premItensVendedor(v.nome, novo, v);
       itens = itens.concat(r.itens); txt = txt.concat(r.txt);
     });
-    await premConfirmarESalvar(itens, txt);
-  }catch(e){ PREM.erro = e.message; vPremissas(); }
+    return {itens, txt};
+  }
 }
 
 /* renomear: troca o nome em todas as tabelas de uma vez, no porteiro (vendedor,
@@ -18059,7 +18076,7 @@ function premSupervisao(){
   return premCard('Supervisão', 'quem cada supervisor enxerga · mudar o modelo do vendedor já muda a equipe',
     '<table class="pm-tab"><tr><th>Supervisor</th><th>Vê os modelos</th><th>RCAs restantes</th><th>Vê também (avulso)</th></tr>' + linhas + novo + '</table>' +
     '<div class="pm-foot"><span id="psAviso" class="pm-hint">' + premConferirSupervisao(false) + '</span>' +
-    '<button class="pm-btn pm-pri" onclick="premSalvarSupervisao()">Salvar supervisão</button></div>');
+    '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
 }
 function premAvisoSup(){ const el = document.getElementById('psAviso'); if(el) el.textContent = premConferirSupervisao(true); }
 function premLerSupervisao(){
@@ -18086,8 +18103,8 @@ function premConferirSupervisao(daTela){
     (orfaos.length ? '⚠️ Sem supervisor: ' + orfaos.join(', ') + '. ' : '') +
     (!duplos.length && !orfaos.length ? '✅ Todo RCA ativo tem exatamente um supervisor.' : '');
 }
-async function premSalvarSupervisao(){
-  try{
+function premItensSupervisao(){
+  {
     const atual = PREM.dados.supervisao || [];
     const itens = [], txt = [];
     premLerSupervisao().forEach((s, i) => {
@@ -18105,8 +18122,8 @@ async function premSalvarSupervisao(){
               txt.push('NOVO supervisor: ' + novo); }
     const aviso = premConferirSupervisao(true);
     if(aviso.indexOf('⚠️') >= 0) txt.push('ATENÇÃO — ' + aviso);
-    await premConfirmarESalvar(itens, txt);
-  }catch(e){ PREM.erro = e.message; vPremissas(); }
+    return {itens, txt};
+  }
 }
 
 /* ---------- metas do mes */
@@ -18130,7 +18147,7 @@ function premMetas(){
     '<button class="pm-btn pm-sm" onclick="premColarMetas()">Preencher a tabela</button></div></div></details>' +
     '<table class="pm-tab"><tr><th>Vendedor</th><th>Modelo</th><th style="text-align:right">Meta (R$)</th></tr>' + linhas + '</table>' +
     '<div class="pm-foot"><span class="pm-hint">Vazio = sem meta. "Comercial total" e "Key Account" são recalculados ao salvar.</span>' +
-    '<button class="pm-btn pm-pri" onclick="premSalvarMetas()">Salvar metas de ' + mes + '</button></div>');
+    '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
 }
 function premColarMetas(){
   const idx = {};
@@ -18154,8 +18171,8 @@ function premColarMetas(){
   document.getElementById('pmColaMsg').innerHTML = '<b>' + ok + ' preenchidas</b>' +
     (naoAchei.length ? ' · <b style="color:var(--neg)">não achei: ' + premEsc(naoAchei.join(', ')) + '</b>' : '') + ' — confira os campos amarelos e salve.';
 }
-async function premSalvarMetas(){
-  try{
+function premItensMetas(){
+  {
     const d = PREM.dados, mes = PREM.mes;
     const metas = (d.metas_vendedor || []).filter(m => m.mes === mes);
     const porV = {}; metas.forEach(m => { porV[m.vendedor] = m; });
@@ -18184,8 +18201,8 @@ async function premSalvarMetas(){
       itens.push({tabela: 'meta_bloco', op: 'upsert', chave: {bloco: 'Key Account (bloco)', mes}, valores: {modelo: 'Key Account', meta: ka}});
       txt.push('Comercial total de ' + mes + ': ' + premBRL(total) + ' · Key Account: ' + premBRL(ka));
     }
-    await premConfirmarESalvar(itens, txt);
-  }catch(e){ PREM.erro = e.message; vPremissas(); }
+    return {itens, txt};
+  }
 }
 
 /* ---------- promotoria (por CNPJ) */
@@ -18214,7 +18231,7 @@ function premPromotoria(){
   return premCard('Promotoria', 'custo mensal por rede · vai inteiro para o dono da rede na carteira',
     dl + '<table class="pm-tab">' + cab + linhas + novo + '</table>' +
     '<div class="pm-foot"><span class="pm-hint">Na linha nova, digite o CNPJ: a rede e o dono aparecem sozinhos. Valor mudou? Preencha "Até" na linha antiga e crie uma nova. Datas sempre no dia 1º.</span>' +
-    '<button class="pm-btn pm-pri" onclick="premSalvarPromotoria()">Salvar promotoria</button></div>');
+    '<button class="pm-btn pm-pri" onclick="premSalvarTudo()">Salvar tudo</button></div>');
 }
 async function premBuscarCnpj(){
   const info = document.getElementById('ppKinfo');
@@ -18234,8 +18251,8 @@ async function premBuscarCnpj(){
          : '<br><span style="color:var(--neg)">não está na carteira — a promotoria fica só no total</span>');
   }catch(e){ info.innerHTML = '<span style="color:var(--neg)">' + premEsc(e.message) + '</span>'; }
 }
-async function premSalvarPromotoria(){
-  try{
+function premItensPromotoria(){
+  {
     const ps = PREM.dados.promotoria || [];
     const itens = [], txt = [];
     const g = id => (document.getElementById(id) || {value: ''}).value.trim();
@@ -18260,9 +18277,8 @@ async function premSalvarPromotoria(){
         txt.push('CNPJ raiz ' + premFmtRaiz(raiz) + ' passa a ser da rede ' + v.rede_venda);
       }
     }
-    await premConfirmarESalvar(itens, txt);
-    PREM.cnpj = null;
-  }catch(e){ PREM.erro = e.message; vPremissas(); }
+    return {itens, txt};
+  }
 }
 
 /* ---------- historico */
@@ -18290,6 +18306,23 @@ async function premDesfazer(id){
   catch(e){ PREM.erro = e.message; vPremissas(); }
 }
 
+/* ---------- SALVAR TUDO (07/11/2026): cada quadro tinha o seu botao e salvar um
+   recarregava a tela - o que estava editado nos OUTROS quadros sumia calado (o Igor
+   mexeu em varios e so um gravou). Agora qualquer botao salva todos os quadros
+   juntos: uma confirmacao, uma transacao. */
+async function premSalvarTudo(){
+  try{
+    let itens = [], txt = [];
+    for(const f of [premItensVendedores, premItensSupervisao, premItensMetas, premItensPromotoria]){
+      const r = f(); itens = itens.concat(r.itens); txt = txt.concat(r.txt);
+    }
+    await premConfirmarESalvar(itens, txt);
+    PREM.cnpj = null;
+  }catch(e){ PREM.erro = e.message; vPremissas(); window.scrollTo(0, 0); }
+}
+const premSalvarVendedores = premSalvarTudo, premSalvarSupervisao = premSalvarTudo,
+      premSalvarMetas = premSalvarTudo, premSalvarPromotoria = premSalvarTudo;
+
 /* ---------- confirmar e gravar */
 async function premConfirmarESalvar(itens, txt){
   if(!itens.length){ PREM.msg = 'Nada mudou.'; PREM.erro = ''; vPremissas(); return; }
@@ -18300,7 +18333,7 @@ async function premConfirmarESalvar(itens, txt){
     await premRecarregar('Salvo (' + r.alteracoes.length + ' alteração(ões)). O Portal atualiza em até ~10 minutos.');
   }catch(e){ PREM.erro = 'Não salvei nada: ' + e.message; vPremissas(); }
 }
-Object.assign(window, {premEntrar, premSair, premRecarregar, premNovoModo, premSalvarNovo, premSalvarVendedores,
+Object.assign(window, {premSalvarTudo, premEntrar, premSair, premRecarregar, premNovoModo, premSalvarNovo, premSalvarVendedores,
   premChipRm, premChipAdd, premPerfilMudou, premRenomear, premAvisoSup, premSalvarSupervisao, premColarMetas, premSalvarMetas,
   premBuscarCnpj, premSalvarPromotoria, premDesfazer});
 
