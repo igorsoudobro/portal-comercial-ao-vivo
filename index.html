@@ -16386,7 +16386,7 @@ function aovivoPendRegistrar(){
 }
 /* "Resolver" (07/11/2026): leva direto para a aba Premissas certa, ja buscando o item */
 const AOVIVO_PEND_ABA = {'SKU vendido sem custo': 'cmv', 'SKU vendido fora da Calculadora': 'calc',
-  'SKU ativo sem preço': 'calc', 'Vendedor novo no OMIE': 'vend', 'Vendedor sem comissão': 'vend'};
+  'SKU ativo sem preço': 'calc', 'SKU sem categoria': 'calc', 'Vendedor novo no OMIE': 'vend', 'Vendedor sem comissão': 'vend'};
 function aovivoPendBotao(p){
   const aba = AOVIVO_PEND_ABA[p.t];
   if(!aba || typeof premResolver !== 'function') return '';
@@ -17842,7 +17842,7 @@ const PREM_ABAS = [
   {id: 'promo', lab: 'Promotoria'}, {id: 'metas', lab: 'Metas'}, {id: 'hist', lab: 'Histórico'}];
 const PREM_NOME_TAB = {vendedor: 'Vendedores', depara_vendedor: 'Nomes do OMIE', portal_usuario: 'Acesso',
   comissao_excecao_cnpj: 'Exceções de comissão', contrato_cnpj: 'Contratos', calc_sku: 'SKUs da Calculadora',
-  calc_tabela_canal: 'Tabelas de preço', cmv_parametros: 'CMV reserva', supervisao: 'Supervisão',
+  calc_tabela_canal: 'Tabelas de preço', cmv_parametros: 'CMV reserva', sku_categoria: 'Categoria do SKU', supervisao: 'Supervisão',
   meta_vendedor: 'Metas', meta_bloco: 'Metas (bloco)', promotoria: 'Promotoria', promotoria_rede_cnpj: 'CNPJ da rede',
   renomear: 'Renomear'};
 
@@ -17879,7 +17879,7 @@ function premAtualizarAbas(){ const el = document.getElementById('pmTabs'); if(e
 function premUrgCount(id){
   const d = PREM.dados || {};
   if(id === 'vend') return (d.novos_omie || []).filter(x => !x.erro).length;
-  if(id === 'calc' && PREM.partes.calc){ const u = premUrgSkus(); return u.fora.length + u.semPreco.length; }
+  if(id === 'calc' && PREM.partes.calc){ const u = premUrgSkus(); return u.fora.length + u.semPreco.length + u.semCat.length; }
   if(id === 'cmv' && PREM.partes.calc) return premUrgSkus().semCusto.length;
   return 0;
 }
@@ -18707,17 +18707,67 @@ function premUrgSkus(){
   const v = d.vendidos_60d || [];
   return {fora: v.filter(x => !calc.has(String(x.sku).toUpperCase())),
           semCusto: v.filter(x => C.uso(x.sku) == null),
-          semPreco: (d.calc_skus || []).filter(s => s.ativo && !s.brinde && s.preco_consumidor == null)};
+          semPreco: (d.calc_skus || []).filter(s => s.ativo && !s.brinde && s.preco_consumidor == null),
+          semCat: (d.calc_skus || []).filter(s => s.ativo && (!s.categoria || s.categoria === 'Outros')),
+          /* vendeu nos 60 dias e esta INATIVO (Igor, 07/11/2026, Hidro Gel Limao/Morango): so uma
+             nota cinza em "Todos" - NAO e URGENTE, ha 26 assim, quase todos "Unidade" de proposito */
+          inativoVendido: (d.calc_skus || []).filter(s => !s.ativo && v.some(x => String(x.sku).toUpperCase() === String(s.sku).toUpperCase()))};
+}
+/* ---------- categoria: as MESMAS regras do gerar_dados_dashboard (descricao, depois codigo);
+   sem regra, a categoria mais comum entre os SKUs da mesma familia (DBR-HDG-GL-... -> Hidrogel) */
+const PREM_REGRAS_DESC = [['CARBSGEL', 'Carbs Gel'], ['CARBS40', 'Carbs 40'], ['HIDRAELETROLIT', 'Hidra Eletrólitos'],
+                          ['CREATINA', 'Isolados'], ['BTNITRATOGEL', 'BT Nitrato Gel']];
+const PREM_REGRAS_SKU = [['PCKCBS', 'Carbs Gel'], ['PCKHEL', 'Hidra Eletrólitos'], ['PCKISL', 'Isolados'],
+                         ['DBRCBSGL', 'Carbs Gel'], ['DBRNITGL', 'BT Nitrato Gel']];
+function premSugerirCat(sku, desc){
+  const n = t => premNorm(t).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const d = n(desc), k = n(sku), seg = String(sku).toUpperCase().split('-');
+  /* 1o a familia PROXIMA (4+ partes iguais: DBR-CBS-GL-40-... -> Carbs 40, que a regra
+     "CARBSGEL" erraria); depois as regras; depois a familia larga */
+  const familia = (ate) => {
+    for(let t = seg.length - 1; t >= ate; t--){
+      const pre = seg.slice(0, t).join('-') + '-', conta = {};
+      (PREM.dados.calc_skus || []).forEach(s => { if(String(s.sku).toUpperCase().indexOf(pre) === 0 && String(s.sku).toUpperCase() !== String(sku).toUpperCase() &&
+        s.categoria && s.categoria !== 'Outros') conta[s.categoria] = (conta[s.categoria] || 0) + 1; });
+      const melhor = Object.keys(conta).sort((a, b) => conta[b] - conta[a])[0];
+      if(melhor) return melhor;
+    }
+    return '';
+  };
+  const perto = familia(4); if(perto) return perto;
+  for(const [m, c] of PREM_REGRAS_DESC) if(d && d.indexOf(m) >= 0) return c;
+  for(const [m, c] of PREM_REGRAS_SKU) if(k.indexOf(m) >= 0) return c;
+  return familia(2);
+}
+function premCategorias(){
+  return [...new Set((PREM.dados.calc_skus || []).map(s => s.categoria).filter(c => c && c !== 'Outros'))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+function premSelCat(id, atual, extra){
+  const cs = premCategorias(); if(atual && cs.indexOf(atual) < 0) cs.push(atual);
+  return '<select ' + premAttr(id, atual || '', 'class="pm-in" onchange="premCatNova(this)" ' + (extra || '')) + '><option value="">— escolha</option>' +
+    cs.map(c => '<option' + (c === atual ? ' selected' : '') + '>' + premEsc(c) + '</option>').join('') +
+    '<option value="__nova">+ nova categoria…</option></select>';
+}
+function premCatNova(sel){
+  if(sel.value !== '__nova') return;
+  const nome = (prompt('Nome da categoria nova (aparece assim nos relatórios):') || '').trim();
+  if(!nome){ sel.value = sel.dataset.orig || ''; premMarcar(sel); return; }
+  const ja = premCategorias().find(c => c.toLowerCase() === nome.toLowerCase());
+  if(ja){ sel.value = ja; premMarcar(sel); return; }      /* "carbs gel" nao vira categoria nova */
+  const o = document.createElement('option'); o.textContent = nome; sel.insertBefore(o, sel.lastElementChild);
+  sel.value = nome; premMarcar(sel); premContarPendentes();
 }
 function premCalc(){
   const d = PREM.dados, C = premCmvMapas(), P = premPrecos(), U = premUrgSkus();
   const skus = d.calc_skus || [];
   const cats = [...new Set(skus.filter(s => s.ativo).map(s => s.categoria).filter(Boolean))].sort();
-  const semPreco = new Set(U.semPreco.map(s => s.sku));
+  const semPreco = new Set(U.semPreco.map(s => s.sku)), semCat = new Set(U.semCat.map(s => s.sku)), vend60 = {};
+  (d.vendidos_60d || []).forEach(v => { vend60[String(v.sku).toUpperCase()] = v.valor; });
   const urg = U.fora.length ? '<table class="pm-tab" style="margin-bottom:12px">' + U.fora.map((v, j) =>
     '<tr class="pm-urg"' + premB(v.sku, v.descricao, 'urgente') + '><td><div class="pm-urg-tit">URGENTE: SKU vendido fora da Calculadora</div><b>' + premEsc(v.sku) + '</b> — ' +
     premEsc(v.descricao || '') + '<div class="pm-hint">' + premBRL(Math.round(v.valor)) + ' vendidos para PJ nos últimos 60 dias' +
     (C.uso(v.sku) == null ? ' · <b class="pm-dif">sem custo</b> (aba CMV)' : '') + '</div></td>' +
+    '<td style="width:200px">' + premSelCat('pcUG' + j, premSugerirCat(v.sku, v.descricao)) + '<div class="pm-hint">categoria (sugerida)</div></td>' +
     '<td style="width:190px;text-align:right"><label class="pm-pill"><input type="checkbox" class="pm-pend" id="pcU' + j + '" ' +
     'onchange="this.parentNode.classList.toggle(\'on\',this.checked);premContarPendentes()">incluir na Calculadora</label></td></tr>').join('') + '</table>' : '';
   const ferramentas = '<div class="pm-box2"><div class="pm-tools" style="margin:0">' +
@@ -18740,11 +18790,15 @@ function premCalc(){
     const inp = (id, v) => '<input ' + premAttr(id, premFmtR(v), 'class="pm-in pm-num' + (cmv != null && v != null && !isNaN(v) && v < cmv ? ' pm-baixo' : '') +
       '" data-cmv="' + (cmv == null ? '' : cmv) + '"') + '>';
     const vers = ['TODOS', 'Key Account'].concat(['TODOS', 'Key Account'].indexOf(s.ver) < 0 && s.ver ? [s.ver] : []);
-    const cls = [s.ativo ? '' : 'pm-inat pm-off', semPreco.has(s.sku) ? 'pm-urg' : ''].filter(Boolean).join(' ');
-    return '<tr' + (cls ? ' class="' + cls + '"' : '') + premB(s.sku, s.descricao, s.categoria, semPreco.has(s.sku) ? 'urgente' : '') + '><td><b>' + premEsc(s.sku) + '</b>' +
+    const urg = semPreco.has(s.sku) || semCat.has(s.sku), vv = !s.ativo && vend60[String(s.sku).toUpperCase()];
+    const cls = [s.ativo ? '' : 'pm-inat pm-off', urg ? 'pm-urg' : ''].filter(Boolean).join(' ');
+    return '<tr' + (cls ? ' class="' + cls + '"' : '') + premB(s.sku, s.descricao, s.categoria, urg ? 'urgente' : '') + '><td><b>' + premEsc(s.sku) + '</b>' +
       (semPreco.has(s.sku) ? '<div class="pm-urg-tit">URGENTE: ativo sem preço consumidor</div>' : '') +
+      (semCat.has(s.sku) ? '<div class="pm-urg-tit">URGENTE: ativo sem categoria (cai em “Outros”)</div>' : '') +
+      (vv ? '<div class="pm-hint"><b>inativo, mas vendeu ' + premBRL(Math.round(vv)) + ' em 60 dias</b></div>' : '') +
       '<div class="pm-hint">' + premEsc(s.descricao || '') + '</div></td>' +
-      '<td class="pm-hint">' + premEsc(s.categoria || '—') + '</td>' +
+      '<td style="min-width:150px">' + premSelCat('pcG' + i, s.categoria && s.categoria !== 'Outros' ? s.categoria : '') +
+        (semCat.has(s.sku) ? '<div class="pm-hint">sugerida: <b>' + premEsc(premSugerirCat(s.sku, s.descricao) || '—') + '</b></div>' : '') + '</td>' +
       '<td class="pm-num">' + (cmv == null ? '<b class="pm-dif">sem custo</b>' : premFmtR(cmv)) + '</td>' +
       PREM_CANAIS.map((c, k) => '<td style="width:96px">' + inp('pcP' + k + '_' + i, P[c + '|' + s.sku]) + '</td>').join('') +
       '<td style="width:96px">' + inp('pcC' + i, s.preco_consumidor == null ? null : Number(s.preco_consumidor)) + '</td>' +
@@ -18840,13 +18894,21 @@ function premItensCalc(){
     const eb = document.getElementById('pcB' + i); if(eb && eb.checked !== !!s.brinde){ val.brinde = eb.checked; mud.push(eb.checked ? 'vira brinde' : 'deixa de ser brinde'); }
     const ea = document.getElementById('pcA' + i); if(ea && ea.checked !== !!s.ativo){ val.ativo = ea.checked; mud.push(ea.checked ? 'ATIVADO' : 'desativado'); }
     if(mud.length){ itens.push({tabela: 'calc_sku', op: 'upsert', chave: {sku: s.sku}, valores: val}); txt.push(s.sku + ': ' + mud.join(', ')); }
+    const eg = document.getElementById('pcG' + i);
+    if(eg && eg.value !== eg.dataset.orig && eg.value && eg.value !== '__nova'){
+      itens.push({tabela: 'sku_categoria', op: 'upsert', chave: {sku: s.sku}, valores: {categoria: eg.value, descricao: s.descricao || null, origem: 'depara'}});
+      txt.push(s.sku + ': categoria ' + (s.categoria || '—') + ' → ' + eg.value);
+    }
   });
   let ordem = skus.reduce((m, s) => Math.max(m, Number(s.ordem) || 0), 0);
   premUrgSkus().fora.forEach((v, j) => {
     const el = document.getElementById('pcU' + j); if(!el || !el.checked) return;
     itens.push({tabela: 'calc_sku', op: 'upsert', chave: {sku: v.sku},
                 valores: {descricao: v.descricao || v.sku, ativo: true, brinde: false, ver: 'TODOS', ordem: ++ordem}});
-    txt.push('NOVO na Calculadora: ' + v.sku + ' — ' + (v.descricao || '') + ' (depois de salvar, preencha os preços)');
+    const cat = (document.getElementById('pcUG' + j) || {}).value;
+    if(!cat || cat === '__nova') throw new Error(v.sku + ': escolha a categoria antes de incluir na Calculadora');
+    itens.push({tabela: 'sku_categoria', op: 'upsert', chave: {sku: v.sku}, valores: {categoria: cat, descricao: v.descricao || null, origem: 'depara'}});
+    txt.push('NOVO na Calculadora: ' + v.sku + ' — ' + (v.descricao || '') + ' · categoria ' + cat + ' (depois de salvar, preencha os preços)');
   });
   return {itens, txt};
 }
@@ -18955,7 +19017,7 @@ async function premConfirmarESalvar(itens, txt){
     await premRecarregar('Salvo (' + r.alteracoes.length + ' alteração(ões)). O Portal atualiza em até ~10 minutos.');
   }catch(e){ PREM.erro = 'Não salvei nada: ' + e.message; vPremissas(); }
 }
-Object.assign(window, {premDescartar, premVoltarCampo, premResolver, premAba, premBuscar, premBaixar, premHistFiltro, premMetasMes, premBuscarCnpjCom, premMarcarRaiz,
+Object.assign(window, {premCatNova, premDescartar, premVoltarCampo, premResolver, premAba, premBuscar, premBaixar, premHistFiltro, premMetasMes, premBuscarCnpjCom, premMarcarRaiz,
   premCalcVista, premMassaPrevia, premMassaAplicar, premColarPrecos, premCmvVista, premUsarResp,
   premSalvarTudo, premEntrar, premSair, premRecarregar, premNovoModo, premSalvarNovo, premSalvarVendedores,
   premChipRm, premChipAdd, premPerfilMudou, premRenomear, premAvisoSup, premSalvarSupervisao, premColarMetas, premSalvarMetas,
