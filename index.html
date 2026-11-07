@@ -1020,9 +1020,9 @@ function dre(rows){
     if(r.venda){
       fat+=r.fat;cmv+=r.cmv;cmvBruto+=r.cmv;imp+=r.imp;fr+=r.fr;com+=r.com;q+=r.q;
       if(r.cn)ped.add(r.cn+'|'+r.m);                 // pedido = CNPJ+mês distinto (só venda)
-      if(r.cn)liqCn[r.cn]=(liqCn[r.cn]||0)+r.fat;
+      if(r.cn){const _k=r.cn+'|'+contratoMes(r);liqCn[_k]=(liqCn[_k]||0)+r.fat;}
     } else if(r.tipo===0){ dev+=r.fat;cmv+=r.cmv;cmvDev+=r.cmv;imp+=r.imp;fr+=r.fr;com+=r.com;   // devolução (V8: liquida CMV/imposto/frete)
-      if(r.cn)liqCn[r.cn]=(liqCn[r.cn]||0)+r.fat; }  // devolução reduz a base do contrato
+      if(r.cn){const _k=r.cn+'|'+contratoMes(r);liqCn[_k]=(liqCn[_k]||0)+r.fat;} }  // devolução reduz a base do contrato
     else if(r.bonif){ boni+=r.cmv+r.imp; }            // bonificação: mercadoria líq + imposto
     else if(r.amostra){ boni+=r.cmv; }                // amostra: só mercadoria líq (isenta de imposto)
   });
@@ -1030,7 +1030,7 @@ function dre(rows){
      percentual sobre elas seria zero de qualquer jeito - mas deixo explícito
      para ninguém "consertar" isso depois somando o CMV delas. */
   let contrato=0;
-  Object.keys(liqCn).forEach(cn=>{ contrato+=liqCn[cn]*contratoPct(cn); });
+  Object.keys(liqCn).forEach(k=>{ const i=k.indexOf('|'); contrato+=liqCn[k]*contratoPct(k.slice(0,i), k.slice(i+1)); });
   const fatLiq=fat+dev;
   /* RECEITA LIQUIDA = faturamento liquido MENOS imposto (19/10/2026, decisao do
      Igor: "a margem bruta e descontando os impostos").
@@ -5965,13 +5965,14 @@ function shrDados(){
   /* O contrato por CNPJ e consultado uma vez por cliente e guardado: a conta
      passou a rodar por LINHA, e sao dezenas de milhares. */
   const _pctCn = {};
-  const pctDe = (cn) => {
+  const pctDe = (cn, ym) => {
     if(!cn) return 0;
-    if(_pctCn[cn] === undefined){
-      try{ _pctCn[cn] = (typeof contratoPct === 'function') ? (contratoPct(cn) || 0) : 0; }
-      catch(e){ _pctCn[cn] = 0; }
+    const _k = cn + '|' + (ym || '');
+    if(_pctCn[_k] === undefined){
+      try{ _pctCn[_k] = (typeof contratoPct === 'function') ? (contratoPct(cn, ym) || 0) : 0; }
+      catch(e){ _pctCn[_k] = 0; }
     }
-    return _pctCn[cn];
+    return _pctCn[_k];
   };
   /* Acumula lucro e base no MESMO objeto de celula, para o motor nao precisar
      de uma segunda estrutura paralela. `luc` e `liq` ficam zerados quando o
@@ -6018,7 +6019,7 @@ function shrDados(){
       let luc = 0, liq = 0;
       if(r.venda || r.tipo === 0){
         liq = r.fat;
-        luc = r.fat - r.cmv - r.imp - r.fr - r.com - (r.fat * pctDe(r.cn));
+        luc = r.fat - r.cmv - r.imp - r.fr - r.com - (r.fat * pctDe(r.cn, contratoMes(r)));
       } else if(r.bonif){
         luc = -(r.cmv + r.imp);          /* mercadoria + imposto, sem receita */
       } else if(r.amostra){
@@ -7302,20 +7303,20 @@ window.verContratos = function(){
   linhas().forEach(r => {
     if(!r.cn) return;
     if(!(r.venda || r.tipo === 0)) return;      // bonif/amostra não têm receita
-    const p = contratoPct(r.cn);
+    const p = contratoPct(r.cn, contratoMes(r));
     if(!p) return;
     const o = info[r.cn] = info[r.cn] ||
-      {liq:0, pct:p, uf:r.uf, ca:r.ca, mo:r.mo};
-    o.liq += r.fat;
+      {liq:0, val:0, pct:p, uf:r.uf, ca:r.ca, mo:r.mo};
+    o.liq += r.fat; o.val += r.fat * p;
   });
   const arr = Object.keys(info).map(cn => {
     const o = info[cn];
     return {cn: cn,
             nome: (typeof cliName === 'function' ? cliName(cn) : '') || cn,
             mo: o.mo || '—', uf: o.uf || '—', ca: o.ca || '—',
-            pctN: o.pct, pct: pct(o.pct),
+            pctN: (o.liq ? o.val / o.liq : o.pct), pct: pct(o.liq ? o.val / o.liq : o.pct),
             liqN: o.liq, liq: brl(o.liq),
-            valN: o.liq * o.pct, val: brl(o.liq * o.pct)};
+            valN: o.val, val: brl(o.val)};
   }).sort((a, b) => b.valN - a.valN);
   const tv = arr.reduce((a, r) => a + r.valN, 0);
   const tl = arr.reduce((a, r) => a + r.liqN, 0);
@@ -11966,20 +11967,21 @@ function simulDados(){
   const L = linhas();
   const por = {};
   const _pct = {};
-  const pctDe = (cn) => {
+  const pctDe = (cn, ym) => {
     if(!cn) return 0;
-    if(_pct[cn] === undefined){
-      try{ _pct[cn] = (typeof contratoPct === 'function') ? (contratoPct(cn) || 0) : 0; }
-      catch(e){ _pct[cn] = 0; }
+    const _k = cn + '|' + (ym || '');
+    if(_pct[_k] === undefined){
+      try{ _pct[_k] = (typeof contratoPct === 'function') ? (contratoPct(cn, ym) || 0) : 0; }
+      catch(e){ _pct[_k] = 0; }
     }
-    return _pct[cn];
+    return _pct[_k];
   };
   let totLuc = 0, totLiq = 0;
   L.forEach(r => {
     const o = por[r.sk] = por[r.sk] || {sk: r.sk, fat: 0, q: 0, cmv: 0, imp: 0,
                                         fr: 0, com: 0, contrato: 0, boni: 0};
     if(r.venda || r.tipo === 0){
-      const ct = r.fat * pctDe(r.cn);
+      const ct = r.fat * pctDe(r.cn, contratoMes(r));
       o.fat += r.fat; o.q += r.q; o.cmv += r.cmv; o.imp += r.imp;
       o.fr += r.fr; o.com += r.com; o.contrato += ct;
       totLiq += r.fat;
@@ -16387,6 +16389,19 @@ function aovivoPendRegistrar(){
 /* "Resolver" (07/11/2026): leva direto para a aba Premissas certa, ja buscando o item */
 const AOVIVO_PEND_ABA = {'SKU vendido sem custo': 'cmv', 'SKU vendido fora da Calculadora': 'calc',
   'SKU ativo sem preço': 'calc', 'SKU sem categoria': 'calc', 'Vendedor novo no OMIE': 'vend', 'Vendedor sem comissão': 'vend'};
+/* VIGENCIA POR DATA (07/11/2026): o contrato que valia NO MES da linha.
+   CONTRATOS_HIST[cnpj] = [["AAAA-MM", fracao|null], ...] = "ate esse mes (exclusive)
+   valia X"; sem historico, o CONTRATOS de hoje vale o ano todo - como sempre foi.
+   Sobrescreve o contratoPct(cn) da producao: quem chama sem mes recebe o de hoje
+   (Calculadora de pedido). As 4 contas do DRE passam o mes - ver TROCAS_ANO. */
+function contratoMes(r){ return r && r.d ? String(r.d).slice(0, 7) : ''; }
+function contratoPct(cn, ym){
+  const c = _canonCnpj(cn);
+  if(!c) return 0;
+  const H = (typeof _Z === 'object' && _Z && _Z.CONTRATOS_HIST) ? _Z.CONTRATOS_HIST[c] : null;
+  if(H && ym){ for(let i = 0; i < H.length; i++){ if(ym < H[i][0]) return +H[i][1] || 0; } }
+  return +contratoIndex()[c] || 0;
+}
 function aovivoPendBotao(p){
   const aba = AOVIVO_PEND_ABA[p.t];
   if(!aba || typeof premResolver !== 'function') return '';
@@ -16495,6 +16510,8 @@ async function anoSubstituirBase(){
        dele e por identidade do objeto. Sem o bloco, fica o da rodada. */
     if(d && d.CONTRATOS && Object.keys(d.CONTRATOS).length && typeof _Z==='object' && _Z)
       _Z.CONTRATOS = d.CONTRATOS;
+    /* vigencia por data (07/11/2026): valores ANTERIORES de contrato por CNPJ */
+    if(d && d.CONTRATOS_HIST && typeof _Z==='object' && _Z) _Z.CONTRATOS_HIST = d.CONTRATOS_HIST;
     /* Calculadora (30/10/2026): precos, tabelas por canal e SKUs vem do banco
        e TROCAM os da rodada; CMV, imposto e frete por UF entram POR CIMA (o da
        rodada cobre SKU/UF que o banco nao tem). Peso e caixa ficam da rodada. */
@@ -17864,6 +17881,7 @@ function premTela(){
     (naPar.length ? '<div class="pm-alert warn"><b>Ainda copiados da Parametros: ' + premEsc(naPar.join(', ')) + '.</b> ' +
       'Uma edição deles feita aqui é sobrescrita na próxima vez que o V8 for salvo.</div>' : '');
   const barra = '<div class="pm-bar"><span id="pmPend">Edite o que quiser em qualquer aba — o "Salvar tudo" grava tudo de uma vez.</span>' +
+    premSelDesde() +
     '<span style="display:flex;gap:8px"><button class="pm-btn pm-ghost" style="border-color:rgba(255,255,255,.55);color:#fff;background:transparent" onclick="premDescartar()">Descartar alterações</button>' +
     '<button class="pm-btn" onclick="premSalvarTudo()">Salvar tudo</button></span></div>';
   const panes = PREM_ABAS.map(a => '<div class="pm-pane" id="pmPane_' + a.id + '" data-aba="' + a.id + '"' +
@@ -18014,6 +18032,48 @@ function premBaixar(id, nome){
   a.download = nome + ' ' + new Date().toISOString().slice(0, 10) + '.csv';
   document.body.appendChild(a); a.click(); a.remove();
 }
+/* ---------- VIGENCIA POR DATA (07/11/2026): mudar comissao, excecao ou contrato vale
+   "a partir de" um mes. Padrao: o mes atual - os meses anteriores nao mudam. Mes ja
+   fechado pode, com aviso: muda o DRE dele e o Word ja entregue deixa de bater. */
+const PREM_MES_ABR = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+function premMesLab(ym){ const [a, m] = String(ym).split('-'); return PREM_MES_ABR[+m - 1] + '/' + String(a).slice(2); }
+function premMesesAte(ym, n){
+  const out = []; let [a, m] = String(ym).split('-').map(Number);
+  for(let i = 0; i < n; i++){ out.push(a + '-' + String(m).padStart(2, '0')); m--; if(!m){ m = 12; a--; } }
+  return out;
+}
+function premSelDesde(){
+  const atual = PREM.dados.mes_atual || new Date().toISOString().slice(0, 7);
+  if(!PREM.desde) PREM.desde = atual;
+  return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap" title="vale para comissão, exceção e contrato">' +
+    'Vale a partir de <select id="pmDesde" onchange="PREM.desde=this.value" style="border-radius:8px;border:none;padding:4px 6px;font:inherit;font-size:12px">' +
+    premMesesAte(atual, 13).map(m => '<option value="' + m + '"' + (m === PREM.desde ? ' selected' : '') + '>' + premMesLab(m) +
+      (m === atual ? ' (atual)' : ' · fechado') + '</option>').join('') + '</select></label>';
+}
+/* linha do tempo de um % ("antes de nov/26: 7%") - o que vale hoje fica no campo */
+function premLinhaTempo(tipo, chave){
+  const vs = (PREM.dados.vigencia || []).filter(v => v.tipo === tipo && v.chave === chave);
+  if(!vs.length) return '';
+  return '<div class="pm-hint" title="valores anteriores (vigência)">' + vs.map(v => 'antes de ' + premMesLab(v.ate.slice(0, 7)) + ': ' +
+    (v.valor == null ? 'sem' : premPct(v.valor) + '%')).join(' · ') + '</div>';
+}
+/* marca os itens de % com o "a partir de" e devolve o aviso para a confirmacao */
+function premAplicarDesde(itens){
+  const atual = PREM.dados.mes_atual || new Date().toISOString().slice(0, 7);
+  const desde = PREM.desde || atual;
+  let algum = false;
+  itens.forEach(it => {
+    if(it.tabela === 'comissao_excecao_cnpj' || it.tabela === 'contrato_cnpj' ||
+       (it.tabela === 'vendedor' && it.valores && 'comissao_pct' in it.valores)){ it.desde = desde; algum = true; }
+  });
+  if(!algum) return null;
+  if(desde === atual) return '📅 comissão/exceção/contrato valem a partir de ' + premMesLab(desde) + ' — os meses anteriores NÃO mudam';
+  const fechados = premMesesAte(atual, 13).filter(m => m >= desde && m < atual).reverse().map(premMesLab);
+  return '⚠️ RETROATIVO: valem a partir de ' + premMesLab(desde) + ' — muda o DRE de ' + fechados.join(', ') +
+         (fechados.length > 1 ? ', que já foram fechados' : ', que já foi fechado') +
+         ': o Word/One Page já entregues ' + (fechados.length > 1 ? 'desses meses' : 'desse mês') + ' deixam de bater';
+}
+
 /* contador da barra: quantos campos estao amarelos (mudados e nao salvos) */
 function premContarPendentes(){
   const el = document.getElementById('pmPend'); if(!el) return;
@@ -18168,7 +18228,7 @@ function premVendedores(){
       '<td id="pvO' + i + '" class="pm-omie">' + premChips(v.nome, i) + '</td>' +
       '<td class="pm-mod">' + premSelModelo('pvM' + i, v.modeloTela || v.modelo) + '</td>' +
       '<td><input ' + premAttr('pvC' + i, pct, 'class="pm-in pm-num" data-fat="' + fat + '" data-prev="pvPv' + i + '"') + '>' +
-        '<div class="pm-prev" id="pvPv' + i + '"></div></td>' +
+        '<div class="pm-prev" id="pvPv' + i + '"></div>' + premLinhaTempo('comissao', v.nome) + '</td>' +
       '<td><label class="pm-sw"><input type="checkbox" id="pvA' + i + '"' + (v.ativo ? ' checked' : '') + '><span></span></label></td>' +
       '<td>' + premSelPerfil('pvP' + i, u && u.perfil) + '</td>' +
       '<td><input id="pvS' + i + '" type="password" class="pm-in" placeholder="só p/ trocar" autocomplete="new-password"></td></tr>';
@@ -18688,7 +18748,7 @@ function premComercial(){
         '<td>' + premEsc(x.vendedor || '—') + (base != null ? '<div class="pm-hint">padrão dele: ' + premPct(base) + '%</div>' : '') + '</td>' +
         '<td class="pm-num">' + (f ? premBRL(Math.round(f)) : '<span class="pm-hint">—</span>') + '</td>' +
         '<td style="width:100px"><input ' + premAttr(P + 'P' + i, premPct(x[col]), 'class="pm-in pm-num" data-fat="' + f + '" data-prev="' + P + 'V' + i + '"') + '>' +
-        '<div class="pm-prev" id="' + P + 'V' + i + '"></div></td>' +
+        '<div class="pm-prev" id="' + P + 'V' + i + '"></div>' + premLinhaTempo(exc ? 'excecao' : 'contrato', x.cnpj) + '</td>' +
         '<td style="width:90px"><label class="pm-pill"><input type="checkbox" class="pm-pend" id="' + P + 'X' + i + '" ' +
         'onchange="this.parentNode.classList.toggle(\'on\',this.checked);premContarPendentes()">remover</label></td></tr>';
     }).join('');
@@ -19109,6 +19169,8 @@ async function premSalvarTudo(){
                     premItensComercial, premItensCalc, premItensCmv]){
       const r = f(); itens = itens.concat(r.itens); txt = txt.concat(r.txt);
     }
+    const avisoVig = premAplicarDesde(itens);
+    if(avisoVig) txt.unshift(avisoVig);
     await premConfirmarESalvar(itens, txt);
     PREM.cnpj = null; PREM.comNovo = null;
   }catch(e){ PREM.erro = e.message; vPremissas(); window.scrollTo(0, 0); }
