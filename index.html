@@ -1093,14 +1093,14 @@ function contratoPct(cn){
 }
 
 function dre(rows){
-  let fat=0,dev=0,cmv=0,cmvBruto=0,cmvDev=0,imp=0,fr=0,com=0,q=0,boni=0; const ped=new Set();
+  let fat=0,dev=0,cmv=0,cmvBruto=0,cmvDev=0,cred=0,imp=0,fr=0,com=0,q=0,boni=0; const ped=new Set();
   const liqCn={};                                    // CNPJ -> líquido, para o contrato
   rows.forEach(r=>{
     if(r.venda){
-      fat+=r.fat;cmv+=r.cmv;cmvBruto+=r.cmv;imp+=r.imp;fr+=r.fr;com+=r.com;q+=r.q;
+      fat+=r.fat;cmv+=r.cmv;cmvBruto+=r.cmv+(r.cr||0);cred-=(r.cr||0);imp+=r.imp;fr+=r.fr;com+=r.com;q+=r.q;
       if(r.cn)ped.add(r.cn+'|'+r.m);                 // pedido = CNPJ+mês distinto (só venda)
       if(r.cn){const _k=r.cn+'|'+contratoMes(r);liqCn[_k]=(liqCn[_k]||0)+r.fat;}
-    } else if(r.tipo===0){ dev+=r.fat;cmv+=r.cmv;cmvDev+=r.cmv;imp+=r.imp;fr+=r.fr;com+=r.com;   // devolução (V8: liquida CMV/imposto/frete)
+    } else if(r.tipo===0){ dev+=r.fat;cmv+=r.cmv;cmvDev+=r.cmv+(r.cr||0);cred-=(r.cr||0);imp+=r.imp;fr+=r.fr;com+=r.com;   // devolução (V8: liquida CMV/imposto/frete)
       if(r.cn){const _k=r.cn+'|'+contratoMes(r);liqCn[_k]=(liqCn[_k]||0)+r.fat;} }  // devolução reduz a base do contrato
     else if(r.bonif){ boni+=r.cmv+r.imp; }            // bonificação: mercadoria líq + imposto
     else if(r.amostra){ boni+=r.cmv; }                // amostra: só mercadoria líq (isenta de imposto)
@@ -1135,7 +1135,7 @@ function dre(rows){
   /* margem bruta sobre a RECEITA LIQUIDA, nao sobre o faturamento. Rentabilidade
      e rentabilidade fin. continuam sobre o faturamento liquido - sao a leitura
      "quanto sobra de tudo que faturei" e ninguem pediu para mexer nelas. */
-  return {fat,dev,fatLiq,recLiq,cmv,cmvBruto,cmvDev,lucroBruto,
+  return {fat,dev,fatLiq,recLiq,cmv,cmvBruto,cmvDev,cred,lucroBruto,
     margem:recLiq?lucroBruto/recLiq:0,
     imp,fr,com,boni,contrato,lucro,rent:fatLiq?lucro/fatLiq:0,
     lucroFin,rentFin:fatLiq?lucroFin/fatLiq:0,q,nfs,ticket:nfs?fatLiq/nfs:0};
@@ -1337,7 +1337,7 @@ const DRE_ROWS_PUB=[['Faturamento','fat','brl'],['Devoluções','dev','brl'],['F
    nomeando a Receita liquida, a coluna volta a fechar lida de cima para baixo. */
 const DRE_ROWS_FULL=[['Faturamento','fat','brl'],['Devoluções','dev','brl'],['Faturamento líquido','fatLiq','brl','b'],
   ['Impostos','imp','brl','s'],['Receita líquida','recLiq','brl','b'],
-  ['CMV bruto','cmvBruto','brl','s'],['CMV devolvido','cmvDev','brl','s'],
+  ['CMV bruto','cmvBruto','brl','s'],['CMV devolvido','cmvDev','brl','s'],['Crédito de insumos','cred','brl','s'],
   ['CMV líquido','cmv','brl','s'],['Lucro bruto','lucroBruto','brl','b'],['Margem bruta','margem','pct','s'],
   ['Frete','fr','brl'],['Comissão','com','brl'],
   /* Contratos fica só no DRE_ROWS_FULL, de propósito: o vendedor já não vê
@@ -19778,8 +19778,9 @@ const UX_DICA = [
   ['receita liquida', 'Faturamento líquido menos impostos.'],
   ['cmv bruto', 'Custo das mercadorias vendidas: quantidade × custo unitário do SKU (o da responsável; sem ele, a reserva da aba Premissas).'],
   ['cmv devolvido', 'Custo que volta ao estoque nas devoluções (negativo).'],
-  ['cmv liquido', 'CMV bruto + CMV devolvido.'],
-  ['cmv', 'Custo das mercadorias vendidas (quantidade × custo do SKU).'],
+  ['credito de insumos', 'Crédito de ICMS/PIS/COFINS dos insumos: CMV × % do SKU (do BoM; sem BoM, a média do DRE do site). % do mês fotografado - mês fechado não muda.'],
+  ['cmv liquido', 'CMV bruto + CMV devolvido − crédito de insumos.'],
+  ['cmv', 'Custo das mercadorias vendidas (quantidade × custo do SKU), já sem o crédito de insumos.'],
   ['margem bruta', 'Receita líquida menos CMV, sobre a receita líquida. Já sem imposto, antes de frete, comissão e contratos.'],
   ['lucro bruto', 'Receita líquida menos CMV.'],
   ['frete', 'Frete real do CT-e quando há; senão a estimativa da UF.'],
