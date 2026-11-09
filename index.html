@@ -19492,7 +19492,7 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 </style>
 <script>
 /* ===================== ABA MARKETPLACE (Mercado Livre) ===================== */
-const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', ord: 'rec',
+const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', ord: 'rec', fam: '', gs: {k: 'dias', dir: 1}, proj: false, tend: false, ev: {},
              agrupar: false, lead: 15, ritmo: 30, mes: null, busca: '', charts: {}, patch: false};
 const MKT_ABAS = [['geral','Visão geral'],['gerencial','Tabela gerencial por SKU'],['skus','Venda por SKU'],
                   ['estoque','Estoque & ruptura'],['envios','Envios'],['margem','Margem'],['ads','Ads']];
@@ -19643,10 +19643,15 @@ function mkClique(ev){
   if(acao === 'aba'){ MKT.aba = val; mkDesenhar(); window.scrollTo(0, 0); }
   else if(acao === 'atualizar') mkCarregar(true);
   else if(acao === 'ord'){ MKT.ord = val; mkDesenhar(true); }
+  else if(acao === 'gsort'){ MKT.gs = {k: val, dir: MKT.gs.k === val ? -MKT.gs.dir : (val === 's' || val === 't' || val === 'fam' || val === 'dias' ? 1 : -1)}; mkDesenhar(true); }
+  else if(acao === 'proj'){ MKT.proj = !MKT.proj; mkDesenhar(true); if(MKT.proj){ const c = document.getElementById('mkProjCard'); if(c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); } }
 }
 function mkMudou(ev){
   const t = ev.target; if(!t || !t.id) return;
   if(t.id === 'mkAgr') MKT.agrupar = t.checked;
+  else if(t.id === 'mkFam') MKT.fam = t.value;
+  else if(t.id === 'mkTend') MKT.tend = t.checked;
+  else if(t.id.indexOf('mkEv_') === 0) MKT.ev[t.id.slice(5)] = Math.max(0, +String(t.value).replace(',', '.') || 0);
   else if(t.id === 'mkLead') MKT.lead = Math.max(1, +t.value || 15);
   else if(t.id === 'mkRitmo') MKT.ritmo = +t.value || 30;
   else return;
@@ -19697,25 +19702,32 @@ function mkGeral(){
   const dia = x => d.T[x] || {ped: 0, q: 0, rec: 0};
   const mesAntD = (() => { const m = new Date(ontem + 'T12:00:00'); m.setMonth(m.getMonth() - 1); return m.toLocaleDateString('sv'); })();
   const o = dia(ontem);
-  let h = mkBarPeriodo();
+  const nd = Math.round((new Date(p.fim + 'T12:00:00') - new Date(p.ini + 'T12:00:00')) / 86400000) + 1;
+  const bruto = t.preco + t.canc, brutoA = ta.preco + ta.canc, cup = t.preco - t.rec;
+  const u = d.ult_pedido ? new Date(d.ult_pedido) : null, hU = u ? u.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : '?';
+  const velho = u && (Date.now() - u.getTime()) > 2 * 3600000;
+  let h = '';
+  /* bruto - cancelado - cupons = liquido (04/11: 26.016 - 520 - 1.225 = 24.271) */
   h += '<div class="kpirow">' +
-    mkKpi('Faturamento', mkR(t.rec), mkVar(t.rec, ta.rec) + ' vs período anterior<br>pago pelo comprador · no painel do ML: <b>' + mkR(t.preco + t.canc) + '</b> (preço cheio, com cupons e cancelados)', 'accent') +
-    mkKpi('Pedidos', mkN(t.ped), mkVar(t.ped, ta.ped) + ' · ' + mkN1(t.ped / Math.max(1, t.dias)) + '/dia') +
-    mkKpi('Unidades', mkN(t.q), mkVar(t.q, ta.q)) +
+    mkKpi('Faturamento bruto', mkR(bruto), mkVar(bruto, brutoA) + ' vs período anterior<br>preço cheio, como no painel do ML') +
+    mkKpi('Cancelamento', mkR(t.canc), mkP(bruto ? t.canc / bruto : 0) + ' do bruto') +
+    mkKpi('Faturamento líquido', mkR(t.rec), mkVar(t.rec, ta.rec) + ' vs período anterior<br>pago pelo comprador · cupons ' + mkR(cup), 'accent') +
+    mkKpi('Pedidos', mkN(t.ped), mkVar(t.ped, ta.ped) + ' · ' + mkN(t.q) + ' un') +
+    mkKpi('Unidades', mkN(t.q), mkVar(t.q, ta.q) + ' · ' + mkN1(t.ped ? t.q / t.ped : 0) + ' por pedido') +
     mkKpi('Ticket médio', mkR2(t.ped ? t.rec / t.ped : 0), 'antes ' + mkR2(ta.ped ? ta.rec / ta.ped : 0)) +
-    mkKpi('Unid. por pedido', mkN1(t.ped ? t.q / t.ped : 0), 'antes ' + mkN1(ta.ped ? ta.q / ta.ped : 0)) +
     '</div>';
   h += '<div class="mk-cmp">' +
-    (() => { const u = d.ult_pedido ? new Date(d.ult_pedido) : null, h2 = u ? u.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : '?';
-             const velho = u && (Date.now() - u.getTime()) > 2 * 3600000;
-             return mkKpi('Hoje até ' + h2, mkR(dia(hoje).rec), mkN(dia(hoje).ped) + ' pedidos' +
-               (velho ? '<br><b style="color:var(--warn)">⚠ o banco recebeu pedidos do ML só até ' + h2 + ' — a sincronização roda de ~4 em 4 h</b>' : ' · o dia ainda está aberto')); })() +
-    mkKpi('Ontem (' + mkDD(ontem) + ')', mkR(o.rec), mkN(o.ped) + ' pedidos · ' + mkN(o.q) + ' un') +
-    mkKpi('vs D-1 (' + mkDD(mkDia(ontem, -1)) + ')', mkVar(o.rec, dia(mkDia(ontem, -1)).rec), mkR(dia(mkDia(ontem, -1)).rec)) +
-    mkKpi('vs D-7 (' + mkDD(mkDia(ontem, -7)) + ')', mkVar(o.rec, dia(mkDia(ontem, -7)).rec), mkR(dia(mkDia(ontem, -7)).rec) + ' · mesmo dia da semana') +
-    mkKpi('vs mês anterior (' + mkDD(mesAntD) + ')', mkVar(o.rec, dia(mesAntD).rec), mkR(dia(mesAntD).rec)) +
+    mkKpi('Vendas hoje', mkR(dia(hoje).rec), mkN(dia(hoje).ped) + ' pedidos · até ' + hU +
+      (velho ? '<br><b style="color:var(--mk-warn)">⚠ o banco recebeu pedidos do ML só até ' + hU + ' (sincroniza de ~4 em 4 h)</b>' : '')) +
+    mkKpi('Vendas ontem', mkR(o.rec), mkN(o.ped) + ' pedidos · ' + mkVar(o.rec, dia(mkDia(ontem, -1)).rec) + ' vs D-1 · ' +
+      mkVar(o.rec, dia(mkDia(ontem, -7)).rec) + ' vs D-7 · ' + mkVar(o.rec, dia(mesAntD).rec) + ' vs ' + mkDD(mesAntD)) +
+    mkKpi('Média por dia', mkR(t.rec / Math.max(1, nd)), 'líquido ÷ ' + nd + ' dias do período · antes ' + mkR(ta.rec / Math.max(1, nd))) +
+    '<div class="kpi" style="display:flex;flex-direction:column;justify-content:center;gap:8px"><div class="lab">Projeção do mês</div>' +
+      '<button data-mk="proj" style="background:var(--mk-navy);color:#fff;border:none;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer">' +
+      (MKT.proj ? 'Fechar projeção' : '📈 Ver projeção') + '</button></div>' +
     '</div>';
-  h += mkCard('Faturamento por dia', 'barras = faturamento · linha = média móvel de 7 dias', '<div style="padding:14px;height:280px"><canvas id="mkGDia"></canvas></div>');
+  if(MKT.proj) h += mkProjecao();
+  h += mkCard('Faturamento líquido por dia', 'barras = líquido (pago pelo comprador) · linha = média móvel de 7 dias', '<div style="padding:14px;height:280px"><canvas id="mkGDia"></canvas></div>');
   /* mapa de calor dia da semana x hora (90 dias) */
   const H = {}; let mx = 0;
   (d.hora || []).forEach(x => { H[x[0] + '|' + x[1]] = {ped: +x[2], rec: +x[3]}; mx = Math.max(mx, +x[2]); });
@@ -19748,39 +19760,118 @@ function mkGeral(){
    estoque (disponivel + em transferencia) / media dos tres giros diarios. */
 function mkGerencial(){
   const d = MKT.d, hoje = mkHoje(), ontem = mkDia(hoje, -1);
-  const S = {}; (d.saida_dia || []).forEach(x => { (S[x[1]] || (S[x[1]] = {}))[x[0]] = (S[x[1]][x[0]] || 0) + (+x[2]); });
-  const soma = (inv, n) => { let t = 0; for(let i = 0; i < n; i++) t += ((S[inv] || {})[mkDia(ontem, -i)] || 0); return t; };
+  const S = {}; (d.saida_dia || []).forEach(x => { const o = (S[x[1]] || (S[x[1]] = {}));
+    const c = o[x[0]] || (o[x[0]] = {u: 0, rec: 0, preco: 0}); c.u += +x[2]; c.rec += +x[3] || 0; c.preco += +x[4] || 0; });
+  const soma = (inv, n, k) => { let t = 0; for(let i = 0; i < n; i++) t += (((S[inv] || {})[mkDia(ontem, -i)] || {})[k] || 0); return t; };
+  const ultPreco = inv => { const o = S[inv] || {}; const ds = Object.keys(o).filter(k => o[k].u > 0).sort(); const k = ds[ds.length - 1]; return k ? o[k].preco / o[k].u : null; };
   const dob = {}; (d.S || []).forEach(k => { if(k.dob) dob[String(k.s).toUpperCase()] = k.dob; });
   let L = (d.estoque || []).map(x => {
     const det = x[8] || {}, disp = +x[6] || 0, transf = (+det.transfer || 0) + (+det.inbound || 0) + (+det.in_transfer || 0);
-    const g7 = soma(x[0], 7), g15 = soma(x[0], 15), g30 = soma(x[0], 30), g60 = soma(x[0], 60);
+    const g7 = soma(x[0], 7, 'u'), g15 = soma(x[0], 15, 'u'), g30 = soma(x[0], 30, 'u'), g60 = soma(x[0], 60, 'u');
+    const r30 = soma(x[0], 30, 'rec');
     const media = (g7 / 7 + g15 / 15 + g30 / 30) / 3;
     const est = disp + transf, dias = media > 0 ? est / media : null;
-    return {inv: x[0], s: x[1], dob: dob[String(x[1]).toUpperCase()] || '', t: x[2], disp, transf, est, g7, g15, g30, media, dias,
+    return {inv: x[0], s: dob[String(x[1]).toUpperCase()] || x[1], sml: x[1], t: x[2], fam: x[11] || 'Outros', disp, transf, est, g7, g15, g30, media, dias,
+            preco: ultPreco(x[0]), pago: g30 ? r30 / g30 : null,
             data: dias != null ? mkDia(hoje, Math.floor(dias)) : null, morto: (+x[5] || 0) <= 0 && g60 === 0};
   }).filter(o => !o.morto);
+  const fams = [...new Set(L.map(o => o.fam))].sort((a, b) => a === 'Outros' ? 1 : (b === 'Outros' ? -1 : a.localeCompare(b)));
+  if(MKT.fam) L = L.filter(o => o.fam === MKT.fam);
   const b = (MKT.busca || '').toLowerCase();
-  if(b) L = L.filter(o => (o.s + ' ' + o.dob + ' ' + o.t).toLowerCase().indexOf(b) >= 0);
-  L.sort((a, c) => (a.dias == null ? 1e9 : a.dias) - (c.dias == null ? 1e9 : c.dias));
+  if(b) L = L.filter(o => (o.s + ' ' + o.sml + ' ' + o.t).toLowerCase().indexOf(b) >= 0);
+  const g = MKT.gs, val = o => { const v = o[g.k]; return v == null ? (g.dir > 0 ? Infinity : -Infinity) : v; };
+  L.sort((a, c) => { const va = val(a), vc = val(c); return (typeof va === 'string' ? va.localeCompare(vc) : va - vc) * g.dir; });
   const cor = dd => dd == null ? '' : (dd < MKT.lead ? 'r' : (dd < 2 * MKT.lead ? 'y' : 'g'));
   const nR = L.filter(o => cor(o.dias) === 'r').length, nY = L.filter(o => cor(o.dias) === 'y').length;
   const T = L.reduce((a, o) => (a.est += o.est, a.g7 += o.g7, a.g15 += o.g15, a.g30 += o.g30, a), {est: 0, g7: 0, g15: 0, g30: 0});
-  let h = '<div class="mk-bar">Vermelho abaixo de <input id="mkLead" type="number" min="1" value="' + MKT.lead + '" style="width:64px"> dias de estoque (lead time de reposição)' +
+  const th = (k, lab) => '<th data-mk="gsort:' + k + '" style="cursor:pointer;white-space:nowrap" title="clique para ordenar">' + lab +
+    (g.k === k ? (g.dir > 0 ? ' ▲' : ' ▼') : ' <span style="opacity:.35">↕</span>') + '</th>';
+  let h = '<div class="mk-bar">Família <select id="mkFam"><option value="">todas</option>' + fams.map(f => '<option' + (MKT.fam === f ? ' selected' : '') + '>' + mkEsc(f) + '</option>').join('') + '</select>' +
+          'Vermelho abaixo de <input id="mkLead" type="number" min="1" value="' + MKT.lead + '" style="width:64px"> dias' +
           '<input id="mkBusca" placeholder="buscar SKU ou produto" value="' + mkEsc(MKT.busca) + '" style="min-width:220px;margin-left:auto"></div>';
-  h += '<div class="kpirow kpi-mini">' + mkKpi('SKUs no Full', mkN(L.length), 'com estoque ou venda nos últimos 60 dias', 'accent') +
+  h += '<div class="kpirow kpi-mini">' + mkKpi('SKUs no Full', mkN(L.length), MKT.fam ? 'família ' + mkEsc(MKT.fam) : 'com estoque ou venda nos últimos 60 dias', 'accent') +
        mkKpi('Ruptura em < ' + MKT.lead + ' dias', nR, 'repor já', nR ? '' : 'pos') + mkKpi('Entre ' + MKT.lead + ' e ' + (2 * MKT.lead) + ' dias', nY, 'programar reposição') +
-       mkKpi('Unidades em estoque', mkN(T.est), 'disponível + em transferência') + mkKpi('Giro do mês', mkN(T.g30), 'unidades vendidas em 30 dias') + '</div>';
-  h += mkCard('Tabela gerencial por SKU', 'giro = unidades vendidas pelo Full até ontem · previsão = estoque ÷ média dos giros diários de 7, 15 e 30 dias',
+       mkKpi('Unidades em estoque', mkN(T.est), 'disponível + a caminho') + mkKpi('Giro do mês', mkN(T.g30), 'unidades vendidas em 30 dias') + '</div>';
+  h += mkCard('Tabela gerencial por SKU', 'clique no título da coluna para ordenar · giro = unidades vendidas pelo Full até ontem · previsão = estoque ÷ média dos giros diários de 7, 15 e 30 dias',
     '<div class="mk-legenda"><span class="r">ruptura antes de ' + MKT.lead + ' dias</span><span class="y">até ' + (2 * MKT.lead) + ' dias</span><span class="g">confortável</span></div>' +
-    '<div class="mk-scroll"><table class="mk-ger"><thead><tr><th>SKU</th><th>Descrição</th><th>Estoque</th><th>Giro 7 dias</th><th>Giro 15 dias</th><th>Giro mês</th><th>Média/dia</th><th>Previsão de ruptura</th></tr></thead><tbody>' +
-    L.map(o => '<tr><td class="mk-sku"><b>' + mkEsc(o.dob || o.s) + '</b>' + (o.dob && o.dob !== o.s ? '<small class="mk-sub">ML: ' + mkEsc(o.s) + '</small>' : '') + '</td>' +
-      '<td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '</td>' +
+    '<div class="mk-scroll"><table class="mk-ger"><thead><tr>' + th('s', 'SKU') + th('t', 'Descrição') + th('fam', 'Família') + th('preco', 'Preço do anúncio') + th('pago', 'Preço médio pago') +
+    th('est', 'Estoque') + th('g7', 'Giro 7 dias') + th('g15', 'Giro 15 dias') + th('g30', 'Giro mês') + th('media', 'Média/dia') + th('dias', 'Previsão de ruptura') + '</tr></thead><tbody>' +
+    L.map(o => '<tr><td class="mk-sku"><b>' + mkEsc(o.s) + '</b>' + (o.sml && o.sml !== o.s ? '<small class="mk-sub">ML: ' + mkEsc(o.sml) + '</small>' : '') + '</td>' +
+      '<td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '</td><td style="text-align:left;white-space:nowrap">' + mkEsc(o.fam) + '</td>' +
+      '<td>' + (o.preco != null ? mkR2(o.preco) : '—') + '</td>' +
+      '<td>' + (o.pago != null ? mkR2(o.pago) + (o.preco ? '<small class="mk-sub">' + mkP(o.pago / o.preco - 1) + ' do anúncio</small>' : '') : '—') + '</td>' +
       '<td>' + mkN(o.disp) + (o.transf ? '<small class="mk-sub">+' + mkN(o.transf) + ' a caminho</small>' : '') + '</td>' +
       '<td>' + mkN(o.g7) + '</td><td>' + mkN(o.g15) + '</td><td>' + mkN(o.g30) + '</td><td>' + mkN1(o.media) + '</td>' +
       '<td>' + (o.dias == null ? '<span class="mk-chip nt">sem giro</span>' : '<span class="mk-dias ' + cor(o.dias) + '"><b>' + (o.est <= 0 ? 'sem estoque' : mkDD(o.data)) + '</b><small>' +
         (o.est <= 0 ? 'zerado' : mkN1(o.dias) + ' dias') + '</small></span>') + '</td></tr>').join('') +
-    '<tr class="mk-tot"><td>Total</td><td></td><td>' + mkN(T.est) + '</td><td>' + mkN(T.g7) + '</td><td>' + mkN(T.g15) + '</td><td>' + mkN(T.g30) + '</td><td></td><td></td></tr>' +
-    '</tbody></table></div>');
+    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td></td><td></td><td>' + mkN(T.est) + '</td><td>' + mkN(T.g7) + '</td><td>' + mkN(T.g15) + '</td><td>' + mkN(T.g30) + '</td><td></td><td></td></tr>' +
+    '</tbody></table></div>' +
+    '<div class="mk-note">Preço do anúncio = preço cheio da última venda (o preço atual do anúncio entra na Fase 2, quando coletarmos os anúncios). Preço médio pago = líquido ÷ unidades nos últimos 30 dias, já sem cupom.</div>');
+  return h;
+}
+
+/* ---------------- PROJECAO DO MES (Igor, 09/11/2026) ----------------
+   proj(dia) = base x fator do dia da semana x fator do evento (x tendencia, se ligada)
+   base   = media liquida diaria dos ultimos 28 dias completos (ate ontem)
+   semana = media de cada dia da semana / media geral, ultimas 12 semanas (data do PEDIDO)
+   evento = premissas abaixo, medidas no ML de 2025 (vortex.fato_venda_d2c, data da NOTA)
+   faixa  = +-1,28 desvio dos erros diarios dos ultimos 28 dias (80% de confianca) */
+const MKT_EVENTOS = [
+  {id: 'ss', nome: '11.11 (Dia dos Solteiros)', de: '-11-11', ate: '-11-13', mult: 1.55,
+   fonte: '2025: 11 a 13/11 venderam 55% acima da média de novembro'},
+  {id: 'bf', nome: 'Semana da Black Friday', de: '-11-23', ate: '-11-27', mult: 1.25,
+   fonte: '2025: semana da Black Friday (24 a 28/11) +25% sobre a média de novembro'},
+  {id: 'nt', nome: 'Natal: fim do prazo de entrega', de: '-12-20', ate: '-12-31', mult: 0.15,
+   fonte: '2025: 20 a 31/12 caíram ~85% — pela data da nota; pode ser pausa de faturamento, ajuste se o Full seguiu vendendo'}
+];
+function mkProjCalc(){
+  const d = MKT.d, hoje = mkHoje(), ontem = mkDia(hoje, -1), ano = hoje.slice(0, 4), mes = hoje.slice(0, 7);
+  const v = x => (d.T[x] || {}).rec || 0;
+  let b = 0; for(let i = 0; i < 28; i++) b += v(mkDia(ontem, -i)); const base = b / 28;
+  const W = [0, 0, 0, 0, 0, 0, 0], N = [0, 0, 0, 0, 0, 0, 0]; let tot = 0;
+  for(let i = 0; i < 84; i++){ const x = mkDia(ontem, -i), w = new Date(x + 'T12:00:00').getDay(); W[w] += v(x); N[w]++; tot += v(x); }
+  const media84 = tot / 84, fdw = W.map((s2, w) => (N[w] && media84) ? (s2 / N[w]) / media84 : 1);
+  let a14 = 0, p14 = 0; for(let i = 0; i < 14; i++){ a14 += v(mkDia(ontem, -i)); p14 += v(mkDia(ontem, -14 - i)); }
+  const tendRaw = p14 ? a14 / p14 : 1, tend = Math.min(1.2, Math.max(0.85, Math.sqrt(tendRaw)));
+  const evDe = x => { let f = 1, quem = null; MKT_EVENTOS.forEach(e => { const m = MKT.ev[e.id] != null ? MKT.ev[e.id] : e.mult;
+    if(x >= ano + e.de && x <= ano + e.ate){ f *= m; quem = e.nome; } }); return {f, quem}; };
+  const prev = x => { const w = new Date(x + 'T12:00:00').getDay(), e = evDe(x); return base * fdw[w] * e.f * (MKT.tend ? tend : 1); };
+  /* erro: quanto o modelo (sem evento) errou nos ultimos 28 dias */
+  const er = []; for(let i = 0; i < 28; i++){ const x = mkDia(ontem, -i), w = new Date(x + 'T12:00:00').getDay(), q = base * fdw[w]; if(q) er.push(v(x) / q - 1); }
+  const mu = er.reduce((a, c) => a + c, 0) / Math.max(1, er.length);
+  const sd = Math.sqrt(er.reduce((a, c) => a + (c - mu) * (c - mu), 0) / Math.max(1, er.length - 1));
+  const fim = new Date(+ano, +mes.slice(5, 7), 0).toLocaleDateString('sv');
+  const dias = []; let real = 0, proj = 0;
+  for(let x = mes + '-01'; x <= fim; x = mkDia(x, 1)){
+    if(x < hoje){ dias.push({x, real: v(x), proj: null}); real += v(x); }
+    else { const q = prev(x); dias.push({x, real: x === hoje ? v(x) : null, proj: q, ev: evDe(x).quem}); proj += q; }
+  }
+  const nRest = dias.filter(o => o.proj != null).length;
+  const faixa = 1.28 * sd * base * Math.sqrt(nRest);
+  const mesAnt = (() => { const m = new Date(mes + '-01T12:00:00'); m.setMonth(m.getMonth() - 1); return m.toLocaleDateString('sv').slice(0, 7); })();
+  let tAnt = 0; d.dias.forEach(x => { if(x.slice(0, 7) === mesAnt) tAnt += v(x); });
+  return {mes, base, fdw, tendRaw, tend, real, proj, total: real + proj, faixa, nRest, dias, tAnt, mesAnt, sd};
+}
+function mkProjecao(){
+  const P = mkProjCalc(); MKT.projCalc = P;
+  const dn = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  let h = '<div id="mkProjCard"></div>' + '<div class="kpirow">' +
+    mkKpi('Realizado até ontem', mkR(P.real), 'líquido de ' + mkNomeMes(P.mes)) +
+    mkKpi('Projeção dos ' + P.nRest + ' dias restantes', mkR(P.proj), 'a partir de hoje (o dia de hoje entra inteiro na projeção)') +
+    mkKpi('Fechamento projetado', mkR(P.total), 'faixa provável ' + mkR(P.total - P.faixa) + ' a ' + mkR(P.total + P.faixa) + ' (80%)', 'accent') +
+    mkKpi('vs ' + mkNomeMes(P.mesAnt), mkVar(P.total, P.tAnt), mkR(P.tAnt) + ' no mês passado') + '</div>';
+  h += mkCard('Projeção de ' + mkNomeMes(P.mes) + ' dia a dia', 'barras azuis = realizado · claras = projeção · faixa amarela = datas comemorativas',
+    '<div style="padding:14px;height:260px"><canvas id="mkGProj"></canvas></div>');
+  h += mkCard('Premissas da projeção', 'mude os multiplicadores e a projeção refaz na hora',
+    '<table><tbody>' +
+    '<tr><td>Ritmo base</td><td>' + mkR(P.base) + ' por dia</td><td style="text-align:left">média do líquido dos últimos 28 dias completos</td></tr>' +
+    '<tr><td>Dia da semana</td><td>' + P.fdw.map((f, w) => dn[w] + ' ' + f.toFixed(2).replace('.', ',')).join(' · ') + '</td><td style="text-align:left">últimas 12 semanas, pela data do pedido</td></tr>' +
+    '<tr><td><label><input type="checkbox" id="mkTend"' + (MKT.tend ? ' checked' : '') + '> Aplicar tendência</label></td><td>últimos 14 dias ' + mkVar(P.tendRaw, 1).replace('vs', '') + ' sobre os 14 anteriores → fator ' + P.tend.toFixed(2).replace('.', ',') + '</td><td style="text-align:left">desligada por padrão: o crescimento de set/out ainda não sabemos se continua</td></tr>' +
+    MKT_EVENTOS.map(e => '<tr><td>' + mkEsc(e.nome) + ' <small style="color:var(--muted)">(' + e.de.slice(4, 6) + '/' + e.de.slice(1, 3) + ' a ' + e.ate.slice(4, 6) + '/' + e.ate.slice(1, 3) + ')</small></td>' +
+      '<td>× <input id="mkEv_' + e.id + '" value="' + String(MKT.ev[e.id] != null ? MKT.ev[e.id] : e.mult).replace('.', ',') + '" style="width:60px;border:1.5px solid var(--mk-line);border-radius:8px;padding:4px 6px;text-align:right"></td>' +
+      '<td style="text-align:left">' + mkEsc(e.fonte) + '</td></tr>').join('') +
+    '</tbody></table>' +
+    '<div class="mk-note warn">A projeção é uma estimativa: usa só o histórico de vendas do ML. Não sabe de campanha nova, mudança de preço, Ads ou ruptura de estoque — se um produto forte zerar no Full, a venda real fica abaixo.</div>');
   return h;
 }
 
@@ -20045,6 +20136,16 @@ function mkGraficos(){
       {label: 'Faturamento', data: ys, backgroundColor: '#2A3E7E'}]},
       options: {maintainAspectRatio: false, plugins: {legend: {display: true}, tooltip: {callbacks: {label: c => c.dataset.label + ': ' + mkR(c.raw)}}},
                 scales: {y: {ticks: {callback: v => mkR(v)}}}}});
+  }
+  const cP = document.getElementById('mkGProj');
+  if(cP && MKT.projCalc){
+    const P = MKT.projCalc;
+    MKT.charts.proj = new Chart(cP, {type: 'bar', data: {labels: P.dias.map(o => mkDD(o.x)), datasets: [
+      {label: 'Realizado', data: P.dias.map(o => o.real), backgroundColor: '#2A3E7E', stack: 's'},
+      {label: 'Projeção', data: P.dias.map(o => o.proj != null ? Math.max(0, o.proj - (o.real || 0)) : null),
+       backgroundColor: P.dias.map(o => o.ev ? 'rgba(216,199,51,.75)' : 'rgba(81,136,223,.35)'), borderColor: '#5188DF', borderWidth: 1, stack: 's'}]},
+      options: {maintainAspectRatio: false, plugins: {tooltip: {callbacks: {label: c => c.dataset.label + ': ' + mkR(c.raw),
+                 afterLabel: c => (P.dias[c.dataIndex] || {}).ev || ''}}}, scales: {x: {stacked: true}, y: {stacked: true, ticks: {callback: v => mkR(v)}}}}});
   }
   const c2 = document.getElementById('mkGEst');
   if(c2){
