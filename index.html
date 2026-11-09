@@ -19412,6 +19412,544 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 </script>
 
 <style>
+#v-marketplace .mk-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+#v-marketplace .mk-tabs button{border:1.5px solid var(--line);background:#fff;color:var(--navy);border-radius:20px;padding:7px 14px;font-weight:700;font-size:13px;cursor:pointer}
+#v-marketplace .mk-tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+#v-marketplace .mk-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-size:13px;color:var(--muted)}
+#v-marketplace .mk-bar select,#v-marketplace .mk-bar input{border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;color:var(--navy)}
+#v-marketplace .mk-hero{background:linear-gradient(135deg,var(--navy),var(--navy-d));color:#fff;border-radius:14px;padding:16px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+#v-marketplace .mk-hero h2{font-family:'Barlow Condensed',sans-serif;font-size:26px;margin:0}
+#v-marketplace .mk-hero p{margin:2px 0 0;font-size:12px;opacity:.85}
+#v-marketplace .mk-hero button{background:var(--yellow);color:var(--navy);border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer}
+#v-marketplace .mk-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+#v-marketplace .mk-cmp .kpi .sub b{font-weight:700}
+#v-marketplace .mk-scroll{overflow-x:auto}
+#v-marketplace .mk-heat td{padding:4px 2px;text-align:center;font-size:10px;min-width:26px}
+#v-marketplace .mk-heat th{padding:4px 2px;font-size:10px;text-align:center}
+#v-marketplace .mk-note{font-size:12px;color:var(--muted);padding:10px 20px}
+#v-marketplace td.mk-t{max-width:330px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#v-marketplace .mk-abc{display:inline-block;width:20px;text-align:center;border-radius:6px;font-weight:800;font-size:11px}
+#v-marketplace .mk-abc.A{background:#E4F5EE;color:var(--pos)}#v-marketplace .mk-abc.B{background:#FDF6E0;color:var(--warn)}#v-marketplace .mk-abc.C{background:#EEF0F6;color:var(--muted)}
+#v-marketplace tr.mk-tot td{font-weight:800;background:#F7F9FD}
+@media (max-width:760px){#v-marketplace .grid2{grid-template-columns:1fr}}
+</style>
+<script>
+/* ===================== ABA MARKETPLACE (Mercado Livre) ===================== */
+const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', ord: 'rec',
+             agrupar: false, lead: 15, ritmo: 30, mes: null, busca: '', charts: {}, patch: false};
+const MKT_ABAS = [['geral','Visão geral'],['skus','Venda por SKU'],['estoque','Estoque & ruptura'],
+                  ['envios','Envios'],['margem','Margem'],['ads','Ads']];
+const MKT_LT = {fulfillment:'Full', self_service:'Flex', xd_drop_off:'Drop-off (agência)',
+                cross_docking:'Coleta', drop_off:'Correios', '?':'Sem envio'};
+const MKT_CANC = {buyer:'Comprador desistiu', shipment:'Problema no envio', internal:'Interno do ML',
+                  mediations:'Mediação / reclamação', fiscal:'Fiscal', seller:'Nós cancelamos',
+                  fraud:'Fraude', outro:'Outro'};
+const MKT_PERDA = {DAMAGED_REMOVAL:'Avaria retirada', ADJUSTMENT:'Ajuste de inventário',
+                   FISCAL_COVERAGE_ADJUSTMENT:'Ajuste fiscal', QUARANTINE_RESERVATION:'Quarentena (entrou)',
+                   QUARANTINE_RESTOCK:'Quarentena (voltou)', WITHDRAWAL_DELIVERY:'Retirada do Full',
+                   TRANSFER_ADJUSTMENT:'Ajuste de transferência'};
+const MKT_MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function mkEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function mkR(v){ return (typeof brl === 'function') ? brl(v || 0) : 'R$ ' + Math.round(v || 0); }
+function mkR2(v){ v = v || 0; return (v < 0 ? '-' : '') + 'R$ ' + Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+function mkN(v){ return Math.round(v || 0).toLocaleString('pt-BR'); }
+function mkN1(v){ return (v || 0).toLocaleString('pt-BR', {maximumFractionDigits: 1}); }
+function mkP(v){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(1).replace('.', ',') + '%'; }
+function mkHoje(){ return new Date().toLocaleDateString('sv'); }
+function mkDia(s, n){ const d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv'); }
+function mkDD(s){ return s ? s.slice(8, 10) + '/' + s.slice(5, 7) : ''; }
+function mkNomeMes(m){ return MKT_MES[+m.slice(5, 7) - 1] + '/' + m.slice(2, 4); }
+function mkVar(a, b){   /* variacao a sobre b, com seta */
+  if(!b) return '<span style="color:var(--muted)">—</span>';
+  const v = a / b - 1, cor = v >= 0 ? 'var(--pos)' : 'var(--neg)';
+  return '<b style="color:' + cor + '">' + (v >= 0 ? '▲ ' : '▼ ') + mkP(Math.abs(v)) + '</b>';
+}
+function mkCard(t, sub, corpo){
+  return '<div class="card"><div class="card-h"><h3>' + t + '</h3>' + (sub ? '<span class="hint">' + sub + '</span>' : '') +
+         '</div>' + corpo + '</div>';
+}
+function mkKpi(lab, val, sub, cls){
+  return '<div class="kpi' + (cls ? ' ' + cls : '') + '"><div class="lab">' + lab + '</div><div class="val">' + val +
+         '</div>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>';
+}
+
+/* --------------------------------------------------------------- registro */
+function mkRegistrar(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  if(!VIEWS.find(x => x.id === 'marketplace')) VIEWS.push({id: 'marketplace', lab: 'Marketplace', fn: vMarketplace});
+  if(!document.getElementById('v-marketplace')){
+    const irmao = document.querySelector('.view');
+    if(irmao && irmao.parentNode){
+      const div = document.createElement('div');
+      div.className = 'view'; div.id = 'v-marketplace';
+      irmao.parentNode.appendChild(div);
+      div.addEventListener('click', mkClique);
+      div.addEventListener('change', mkMudou);
+      div.addEventListener('input', ev => { if(ev.target && ev.target.id === 'mkBusca'){ MKT.busca = ev.target.value; mkDesenharDepois(); } });
+    }
+  }
+  if(!MKT.patch && typeof abasPermitidas === 'function'){
+    const orig = abasPermitidas;
+    abasPermitidas = function(){
+      const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin);
+      return orig().filter(x => x.id !== 'marketplace' || adm);
+    };
+    MKT.patch = true;
+  }
+  const nav = document.getElementById('nav');
+  if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
+}
+let MKT_TIMER = null;
+function mkDesenharDepois(){ clearTimeout(MKT_TIMER); MKT_TIMER = setTimeout(() => mkDesenhar(true), 250); }
+
+async function mkCarregar(forcar){
+  if(MKT.carregando) return;
+  MKT.carregando = true; MKT.erro = null;
+  if(forcar) MKT.d = null;
+  mkDesenhar();
+  try{
+    const d = (typeof aovivoBaixarArquivo === 'function') ? await aovivoBaixarArquivo('marketplace.json') : null;
+    if(!d || !Array.isArray(d.dia_tot)) throw new Error('o arquivo marketplace.json ainda não foi publicado');
+    mkPreparar(d);
+    MKT.d = d;
+  }catch(e){ MKT.erro = e.message || String(e); console.error('marketplace:', e); }
+  MKT.carregando = false;
+  if(typeof CURRENT !== 'undefined' && CURRENT === 'marketplace') mkDesenhar();
+}
+function mkPreparar(d){
+  d.S = (d.skus || []).map(x => ({s: x[0], t: x[1] || x[0], p: x[2] || x[0], cat: x[3] || 'Outros', cmv: !!x[4], dob: x[5] || ''}));
+  d.R = (d.dia_sku || []).map(x => ({d: x[0], i: x[1], ped: +x[2], q: +x[3], rec: +x[4], tar: +x[5], env: +x[6],
+                                     imp: +x[7], cmv: +x[8], sem: !!x[9], cup: +x[10] || 0}));
+  d.T = {}; (d.dia_tot || []).forEach(x => d.T[x[0]] = {ped: +x[1], q: +x[2], rec: +x[3]});
+  d.dias = Object.keys(d.T).sort();
+  d.ult = d.dias[d.dias.length - 1];
+  d.meses = [...new Set(d.dias.map(x => x.slice(0, 7)))].sort();
+  if(!MKT.mes) MKT.mes = d.meses[d.meses.length - 1];
+}
+
+/* --------------------------------------------------------------- periodo */
+function mkPeriodo(){
+  const hoje = mkHoje(), d = MKT.d;
+  const ini = {
+    '7': mkDia(hoje, -6), '30': mkDia(hoje, -29), '90': mkDia(hoje, -89),
+    'mes': hoje.slice(0, 8) + '01', 'ano': hoje.slice(0, 5) + '01-01'
+  };
+  if(MKT.per === 'mesant'){
+    const m = new Date(hoje.slice(0, 8) + '01T12:00:00'); m.setMonth(m.getMonth() - 1);
+    const i = m.toLocaleDateString('sv'), f = mkDia(hoje.slice(0, 8) + '01', -1);
+    return {ini: i, fim: f};
+  }
+  return {ini: ini[MKT.per] || ini['30'], fim: hoje};
+}
+function mkPeriodoAnterior(p){
+  const n = Math.round((new Date(p.fim + 'T12:00:00') - new Date(p.ini + 'T12:00:00')) / 86400000) + 1;
+  return {ini: mkDia(p.ini, -n), fim: mkDia(p.ini, -1)};
+}
+function mkTot(ini, fim){
+  const d = MKT.d, t = {ped: 0, q: 0, rec: 0, dias: 0};
+  d.dias.forEach(x => { if(x >= ini && x <= fim){ const o = d.T[x]; t.ped += o.ped; t.q += o.q; t.rec += o.rec; t.dias++; } });
+  return t;
+}
+function mkPorSku(ini, fim){
+  const d = MKT.d, m = {};
+  d.R.forEach(r => {
+    if(r.d < ini || r.d > fim) return;
+    const sk = d.S[r.i] || {s: '?', t: '?', p: '?', cat: 'Outros'};
+    const k = MKT.agrupar ? sk.p : sk.s;
+    const o = m[k] || (m[k] = {k, t: MKT.agrupar ? (sk.p) : sk.t, sub: MKT.agrupar ? '' : (sk.s + (sk.dob && sk.dob !== sk.s ? ' → ' + sk.dob : '')), cat: sk.cat,
+                                ped: 0, q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, sem: false, skus: new Set()});
+    o.ped += r.ped; o.q += r.q; o.rec += r.rec; o.cup += r.cup; o.tar += r.tar; o.env += r.env; o.imp += r.imp; o.cmv += r.cmv;
+    o.sem = o.sem || r.sem; o.skus.add(sk.s);
+  });
+  return Object.values(m);
+}
+
+/* --------------------------------------------------------------- eventos */
+function mkClique(ev){
+  const b = ev.target.closest('[data-mk]'); if(!b) return;
+  const [acao, val] = b.dataset.mk.split(':');
+  if(acao === 'aba'){ MKT.aba = val; mkDesenhar(); window.scrollTo(0, 0); }
+  else if(acao === 'atualizar') mkCarregar(true);
+  else if(acao === 'ord'){ MKT.ord = val; mkDesenhar(true); }
+}
+function mkMudou(ev){
+  const t = ev.target; if(!t || !t.id) return;
+  if(t.id === 'mkPer') MKT.per = t.value;
+  else if(t.id === 'mkAgr') MKT.agrupar = t.checked;
+  else if(t.id === 'mkLead') MKT.lead = Math.max(1, +t.value || 15);
+  else if(t.id === 'mkRitmo') MKT.ritmo = +t.value || 30;
+  else if(t.id === 'mkMes') MKT.mes = t.value;
+  else return;
+  mkDesenhar(true);
+}
+
+/* --------------------------------------------------------------- tela */
+function vMarketplace(){
+  if(!MKT.d && !MKT.carregando && !MKT.erro){ mkCarregar(false); return; }
+  mkDesenhar();
+}
+function mkDesenhar(manterScroll){
+  const alvo = document.getElementById('v-marketplace'); if(!alvo) return;
+  const y = window.scrollY;
+  Object.values(MKT.charts).forEach(c => { try{ c.destroy(); }catch(e){} }); MKT.charts = {};
+  const d = MKT.d;
+  let html = '<div class="mk-hero"><div><h2>Marketplace · Mercado Livre</h2><p>' +
+    (d ? 'Dados da API do ML até ' + mkDD(d.ult) + ' · arquivo gerado ' + new Date(d.gerado_em).toLocaleString('pt-BR') +
+         ' · à parte do resto do Portal (não entra no DRE nem nas metas)'
+       : (MKT.carregando ? 'Carregando o pacote do Mercado Livre…' : '')) +
+    '</p></div><button data-mk="atualizar">↻ Atualizar</button></div>';
+  if(MKT.erro){ alvo.innerHTML = html + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(MKT.erro) + '</div>'); return; }
+  if(!d){ alvo.innerHTML = html; return; }
+  html += '<div class="mk-tabs">' + MKT_ABAS.map(a => '<button data-mk="aba:' + a[0] + '" class="' + (MKT.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
+  try{
+    html += ({geral: mkGeral, skus: mkSkus, estoque: mkEstoque, envios: mkEnvios, margem: mkMargem, ads: mkAds}[MKT.aba] || mkGeral)();
+  }catch(e){ console.error('marketplace: tela', e); html += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
+  html += '<div class="mk-note">Atualização dos dados no banco: ' + (d.frescor || []).map(f => mkEsc(f[0]) + ' ' +
+          (f[1] ? new Date(f[1]).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '—')).join(' · ') + '</div>';
+  alvo.innerHTML = html;
+  const busca = document.getElementById('mkBusca');
+  if(busca && manterScroll && document.activeElement !== busca && MKT.busca){ /* nada */ }
+  if(manterScroll) window.scrollTo(0, y);
+  mkGraficos();
+}
+function mkBarPeriodo(extra){
+  const o = [['7','Últimos 7 dias'],['30','Últimos 30 dias'],['90','Últimos 90 dias'],['mes','Mês atual'],['mesant','Mês anterior'],['ano','Ano']];
+  const p = mkPeriodo();
+  return '<div class="mk-bar">Período <select id="mkPer">' + o.map(x => '<option value="' + x[0] + '"' + (MKT.per === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') +
+         '</select><span>' + mkDD(p.ini) + ' a ' + mkDD(p.fim) + '</span>' + (extra || '') + '</div>';
+}
+function mkBarMes(extra){
+  return '<div class="mk-bar">Mês <select id="mkMes">' + MKT.d.meses.slice().reverse().map(m =>
+    '<option value="' + m + '"' + (MKT.mes === m ? ' selected' : '') + '>' + mkNomeMes(m) + '</option>').join('') + '</select>' + (extra || '') + '</div>';
+}
+
+/* ---------------- 1) VISAO GERAL ---------------- */
+function mkGeral(){
+  const d = MKT.d, p = mkPeriodo(), pa = mkPeriodoAnterior(p);
+  const t = mkTot(p.ini, p.fim), ta = mkTot(pa.ini, pa.fim);
+  const hoje = mkHoje(), ontem = mkDia(hoje, -1);
+  const dia = x => d.T[x] || {ped: 0, q: 0, rec: 0};
+  const mesAntD = (() => { const m = new Date(ontem + 'T12:00:00'); m.setMonth(m.getMonth() - 1); return m.toLocaleDateString('sv'); })();
+  const o = dia(ontem);
+  let h = mkBarPeriodo();
+  h += '<div class="kpirow">' +
+    mkKpi('Faturamento', mkR(t.rec), mkVar(t.rec, ta.rec) + ' vs período anterior', 'accent') +
+    mkKpi('Pedidos', mkN(t.ped), mkVar(t.ped, ta.ped) + ' · ' + mkN1(t.ped / Math.max(1, t.dias)) + '/dia') +
+    mkKpi('Unidades', mkN(t.q), mkVar(t.q, ta.q)) +
+    mkKpi('Ticket médio', mkR2(t.ped ? t.rec / t.ped : 0), 'antes ' + mkR2(ta.ped ? ta.rec / ta.ped : 0)) +
+    mkKpi('Unid. por pedido', mkN1(t.ped ? t.q / t.ped : 0), 'antes ' + mkN1(ta.ped ? ta.q / ta.ped : 0)) +
+    '</div>';
+  h += '<div class="mk-cmp">' +
+    mkKpi('Hoje até agora', mkR(dia(hoje).rec), mkN(dia(hoje).ped) + ' pedidos · o dia ainda está aberto') +
+    mkKpi('Ontem (' + mkDD(ontem) + ')', mkR(o.rec), mkN(o.ped) + ' pedidos · ' + mkN(o.q) + ' un') +
+    mkKpi('vs D-1 (' + mkDD(mkDia(ontem, -1)) + ')', mkVar(o.rec, dia(mkDia(ontem, -1)).rec), mkR(dia(mkDia(ontem, -1)).rec)) +
+    mkKpi('vs D-7 (' + mkDD(mkDia(ontem, -7)) + ')', mkVar(o.rec, dia(mkDia(ontem, -7)).rec), mkR(dia(mkDia(ontem, -7)).rec) + ' · mesmo dia da semana') +
+    mkKpi('vs mês anterior (' + mkDD(mesAntD) + ')', mkVar(o.rec, dia(mesAntD).rec), mkR(dia(mesAntD).rec)) +
+    '</div>';
+  h += mkCard('Faturamento por dia', 'barras = faturamento · linha = média móvel de 7 dias', '<div style="padding:14px;height:280px"><canvas id="mkGDia"></canvas></div>');
+  /* mapa de calor dia da semana x hora (90 dias) */
+  const H = {}; let mx = 0;
+  (d.hora || []).forEach(x => { H[x[0] + '|' + x[1]] = {ped: +x[2], rec: +x[3]}; mx = Math.max(mx, +x[2]); });
+  const dn = ['', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  let heat = '<div class="mk-scroll"><table class="mk-heat"><thead><tr><th></th>' + [...Array(24).keys()].map(hh => '<th>' + hh + 'h</th>').join('') + '<th>Total</th></tr></thead><tbody>';
+  for(let w = 1; w <= 7; w++){
+    let tot = 0;
+    heat += '<tr><th>' + dn[w] + '</th>' + [...Array(24).keys()].map(hh => {
+      const c = H[w + '|' + hh]; const n = c ? c.ped : 0; tot += n;
+      const a = mx ? n / mx : 0;
+      return '<td title="' + dn[w] + ' ' + hh + 'h: ' + n + ' pedidos' + (c ? ', ' + mkR(c.rec) : '') + '" style="background:rgba(42,62,126,' + (0.06 + a * 0.85).toFixed(2) + ');color:' + (a > .5 ? '#fff' : 'var(--ink)') + '">' + (n || '') + '</td>';
+    }).join('') + '<td><b>' + tot + '</b></td></tr>';
+  }
+  heat += '</tbody></table></div>';
+  h += mkCard('Pedidos por dia da semana e hora', 'últimos 90 dias · ajuda a escolher hora de promoção e de reposição', heat);
+  /* UF */
+  const mesesP = new Set(); for(let x = p.ini; x <= p.fim; x = mkDia(x, 1)) mesesP.add(x.slice(0, 7));
+  const U = {}; let tu = 0;
+  (d.uf || []).forEach(x => { if(!mesesP.has(x[0])) return; const o2 = U[x[1]] || (U[x[1]] = {ped: 0, rec: 0}); o2.ped += +x[2]; o2.rec += +x[3]; tu += +x[3]; });
+  const ul = Object.entries(U).sort((a, b) => b[1].rec - a[1].rec).slice(0, 12);
+  h += mkCard('Venda por estado', 'meses do período · estado de entrega', '<table><thead><tr><th>UF</th><th>Pedidos</th><th>Faturamento</th><th>%</th></tr></thead><tbody>' +
+    ul.map(([k, v]) => '<tr><td>' + mkEsc(k) + '</td><td>' + mkN(v.ped) + '</td><td>' + mkR(v.rec) + '</td><td>' + mkP(tu ? v.rec / tu : 0) + '</td></tr>').join('') + '</tbody></table>');
+  MKT.gDia = {p};
+  return h;
+}
+
+/* ---------------- 2) VENDA POR SKU ---------------- */
+function mkSkus(){
+  const p = mkPeriodo();
+  const lista = mkPorSku(p.ini, p.fim);
+  const tot = lista.reduce((a, o) => (a.rec += o.rec, a.q += o.q, a), {rec: 0, q: 0});
+  const campo = MKT.ord === 'q' ? 'q' : 'rec';
+  lista.sort((a, b) => b[campo] - a[campo]);
+  let acum = 0; const totC = tot[campo] || 1;
+  lista.forEach(o => { acum += o[campo]; o.acum = acum / totC; o.abc = o.acum - o[campo] / totC < 0.8 ? 'A' : (o.acum - o[campo] / totC < 0.95 ? 'B' : 'C'); });
+  const n = {A: 0, B: 0, C: 0}; lista.forEach(o => n[o.abc]++);
+  const dias = Math.max(1, Math.round((new Date(p.fim + 'T12:00:00') - new Date(p.ini + 'T12:00:00')) / 86400000) + 1);
+  const b = (MKT.busca || '').toLowerCase();
+  const vis = b ? lista.filter(o => (o.k + ' ' + o.t + ' ' + o.cat).toLowerCase().indexOf(b) >= 0) : lista;
+  let h = mkBarPeriodo('<label><input type="checkbox" id="mkAgr"' + (MKT.agrupar ? ' checked' : '') + '> agrupar anúncios do mesmo produto</label>' +
+        '<input id="mkBusca" placeholder="buscar SKU ou nome" value="' + mkEsc(MKT.busca) + '" style="min-width:200px">');
+  h += '<div class="kpirow kpi-mini">' + mkKpi(MKT.agrupar ? 'Produtos' : 'SKUs com venda', mkN(lista.length)) +
+       mkKpi('Curva A', n.A, '80% da ' + (campo === 'q' ? 'quantidade' : 'receita')) + mkKpi('Curva B', n.B, 'próximos 15%') + mkKpi('Curva C', n.C, 'últimos 5%') + '</div>';
+  const th = (c, lab) => '<th style="cursor:pointer" data-mk="ord:' + c + '">' + lab + (MKT.ord === c ? ' ▼' : '') + '</th>';
+  h += mkCard('Ranking ' + (campo === 'q' ? 'por unidades' : 'por receita') + ' e curva ABC', 'clique em Receita ou Unidades para reordenar',
+    '<div class="mk-scroll"><table><thead><tr><th>' + (MKT.agrupar ? 'Produto' : 'Anúncio / SKU') + '</th><th>Categoria</th><th>ABC</th>' + th('rec', 'Receita') + th('q', 'Unidades') +
+    '<th>Pedidos</th><th>Preço médio</th><th>Un/dia</th><th>% do total</th><th>% acumulado</th></tr></thead><tbody>' +
+    vis.map(o => '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + (o.sub ? '<br><small style="color:var(--muted)">' + mkEsc(o.sub) + '</small>' : '') +
+      '</td><td>' + mkEsc(o.cat) + '</td><td><span class="mk-abc ' + o.abc + '">' + o.abc + '</span></td><td>' + mkR(o.rec) + '</td><td>' + mkN(o.q) +
+      '</td><td>' + mkN(o.ped) + '</td><td>' + mkR2(o.q ? o.rec / o.q : 0) + '</td><td>' + mkN1(o.q / dias) + '</td><td>' + mkP(o[campo] / totC) + '</td><td>' + mkP(o.acum) + '</td></tr>').join('') +
+    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td>' + mkR(tot.rec) + '</td><td>' + mkN(tot.q) + '</td><td></td><td>' + mkR2(tot.q ? tot.rec / tot.q : 0) + '</td><td>' + mkN1(tot.q / dias) + '</td><td></td><td></td></tr>' +
+    '</tbody></table></div>');
+  /* dia da semana por SKU (top 10) */
+  const top = lista.slice(0, 10), d = MKT.d, chave = sk => MKT.agrupar ? sk.p : sk.s;
+  const W = {}; top.forEach(o => W[o.k] = [0, 0, 0, 0, 0, 0, 0]);
+  d.R.forEach(r => { if(r.d < p.ini || r.d > p.fim) return; const k = chave(d.S[r.i] || {}); if(!W[k]) return;
+    W[k][(new Date(r.d + 'T12:00:00').getDay() + 6) % 7] += r.q; });
+  h += mkCard('Unidades por dia da semana · top 10', 'no período', '<div class="mk-scroll"><table><thead><tr><th>Produto</th><th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th><th>Dom</th></tr></thead><tbody>' +
+    top.map(o => { const w = W[o.k], m = Math.max(...w, 1);
+      return '<tr><td class="mk-t">' + mkEsc(o.t) + '</td>' + w.map(v => '<td style="background:rgba(81,136,223,' + (0.05 + 0.6 * v / m).toFixed(2) + ')">' + mkN(v) + '</td>').join('') + '</tr>'; }).join('') +
+    '</tbody></table></div>');
+  return h;
+}
+
+/* ---------------- 3) ESTOQUE & RUPTURA ---------------- */
+const MKT_INDISP = {lost:'perdido', noFiscalCoverage:'sem nota fiscal', withdrawal:'em retirada', damaged:'avariado',
+                    quarantine:'quarentena', notSupported:'não suportado', internal_process:'processo interno'};
+function mkDetalheIndisp(linhas){
+  const t = {}; linhas.forEach(o => Object.keys(o.det || {}).forEach(k => { if(k !== 'transfer' && k !== 'inbound' && k !== 'in_transfer') t[k] = (t[k] || 0) + (+o.det[k] || 0); }));
+  return Object.entries(t).filter(x => x[1]).map(x => (MKT_INDISP[x[0]] || x[0]) + ' ' + mkN(x[1])).join(' · ') || 'nenhum';
+}
+function mkEstoque(){
+  const d = MKT.d, hoje = mkHoje(), ontem = mkDia(hoje, -1);
+  const S = {}; (d.saida_dia || []).forEach(x => { (S[x[1]] || (S[x[1]] = {}))[x[0]] = (S[x[1]][x[0]] || 0) + (+x[2]); });
+  const ritmo = (inv, n) => { let t = 0; for(let i = 0; i < n; i++) t += ((S[inv] || {})[mkDia(ontem, -i)] || 0); return t / n; };
+  const ultSaida = inv => { const ds = Object.keys(S[inv] || {}).filter(k => S[inv][k] > 0).sort(); return ds[ds.length - 1] || null; };
+  /* AGRUPADO POR SKU (auditoria 09/11): 13 SKUs tem 2 inventarios no Full; a venda
+     entra num so, entao o estoque e o ritmo somam todos os inventarios do mesmo SKU */
+  const G = {};
+  (d.estoque || []).forEach(x => {
+    const det = x[8] || {}, k = String(x[1] || x[0]).toUpperCase();
+    const o = G[k] || (G[k] = {invs: [], s: x[1], t: x[2], p: x[3], cat: x[4], total: 0, disp: 0, indisp: 0, det: {}, transito: 0});
+    o.invs.push(x[0]); o.total += +x[5] || 0; o.disp += +x[6] || 0; o.indisp += +x[7] || 0;
+    o.transito += (+det.transfer || 0) + (+det.inbound || 0) + (+det.in_transfer || 0);
+    Object.keys(det).forEach(c => o.det[c] = (o.det[c] || 0) + (+det[c] || 0));
+  });
+  const linhas = Object.values(G).map(o => {
+    o.r7 = o.invs.reduce((a, v) => a + ritmo(v, 7), 0); o.r14 = o.invs.reduce((a, v) => a + ritmo(v, 14), 0);
+    o.r30 = o.invs.reduce((a, v) => a + ritmo(v, 30), 0);
+    o.ult = o.invs.map(ultSaida).filter(Boolean).sort().pop() || null;
+    o.r = MKT.ritmo === 7 ? o.r7 : (MKT.ritmo === 14 ? o.r14 : o.r30);
+    o.cob = o.r > 0 ? o.disp / o.r : null;
+    o.cobT = o.r > 0 ? (o.disp + o.transito) / o.r : null;
+    o.rup = o.cobT != null ? mkDia(hoje, Math.floor(o.cobT)) : null;
+    o.alerta = o.cobT != null && o.cobT < MKT.lead;
+    o.outros = Math.max(0, o.indisp - o.transito);     /* perdido, sem nota fiscal, retirada... */
+    o.parado = o.disp > 0 && o.r30 === 0;
+    return o;
+  });
+  const b = (MKT.busca || '').toLowerCase();
+  const vis = linhas.filter(o => !b || (o.s + ' ' + o.t + ' ' + o.cat).toLowerCase().indexOf(b) >= 0);
+  const alertas = linhas.filter(o => o.alerta).sort((a, b2) => a.cobT - b2.cobT);
+  const parados = linhas.filter(o => o.parado);
+  const zerados = linhas.filter(o => o.disp <= 0 && o.r30 > 0);
+  let h = '<div class="mk-bar">Ritmo <select id="mkRitmo">' + [7, 14, 30].map(n => '<option value="' + n + '"' + (MKT.ritmo === n ? ' selected' : '') + '>média de ' + n + ' dias</option>').join('') +
+          '</select> Alerta de ruptura abaixo de <input id="mkLead" type="number" min="1" value="' + MKT.lead + '" style="width:60px"> dias (lead time de reposição)' +
+          '<input id="mkBusca" placeholder="buscar SKU ou nome" value="' + mkEsc(MKT.busca) + '" style="min-width:200px"></div>';
+  h += '<div class="kpirow kpi-mini">' +
+    mkKpi('Unidades disponíveis', mkN(linhas.reduce((a, o) => a + o.disp, 0)), 'foto de ' + mkDD((d.estoque[0] || [])[9] || '')) +
+    mkKpi('Em transferência', mkN(linhas.reduce((a, o) => a + o.transito, 0)), 'entre centros do Full · vira disponível') +
+    mkKpi('Outros indisponíveis', mkN(linhas.reduce((a, o) => a + o.outros, 0)), mkDetalheIndisp(linhas)) +
+    mkKpi('Alerta de ruptura', alertas.length, 'cobertura < ' + MKT.lead + ' dias', alertas.length ? '' : 'pos') +
+    mkKpi('Já zerados', zerados.length, 'vendiam e estão sem estoque') +
+    mkKpi('Estoque parado', parados.length, 'com estoque, sem venda em 30 dias') + '</div>';
+  const tab = (lst, vazio) => lst.length ? '<div class="mk-scroll"><table><thead><tr><th>Anúncio / SKU</th><th>Disponível</th><th>Em transferência</th><th>Outros indisp.</th>' +
+    '<th>Ritmo 7d</th><th>Ritmo 14d</th><th>Ritmo 30d</th><th>Cobertura</th><th>Cobertura c/ transferência</th><th>Ruptura prevista</th><th>Última venda</th></tr></thead><tbody>' +
+    lst.map(o => '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<br><small style="color:var(--muted)">' + mkEsc(o.s) + '</small></td><td>' + mkN(o.disp) + '</td><td>' + (o.transito ? mkN(o.transito) : '') +
+      '</td><td>' + (o.outros ? mkN(o.outros) : '') + '</td><td>' + mkN1(o.r7) + '</td><td>' + mkN1(o.r14) + '</td><td>' + mkN1(o.r30) + '</td><td>' + (o.cob == null ? '—' : mkN1(o.cob) + ' d') +
+      '</td><td>' + (o.cobT == null ? '—' : '<span class="pill ' + (o.cobT < MKT.lead ? 'r' : (o.cobT < 2 * MKT.lead ? 'y' : 'g')) + '">' + mkN1(o.cobT) + ' d</span>') +
+      '</td><td>' + (o.rup ? mkDD(o.rup) : '—') + '</td><td>' + (o.ult ? mkDD(o.ult) : 'sem venda 60d') + '</td></tr>').join('') + '</tbody></table></div>'
+    : '<div class="mk-note">' + vazio + '</div>';
+  h += mkCard('⚠ Alerta de ruptura', 'cobertura (disponível + em transferência) ÷ ritmo abaixo de ' + MKT.lead + ' dias', tab(alertas, 'Nenhum SKU abaixo de ' + MKT.lead + ' dias de cobertura.'));
+  if(zerados.length) h += mkCard('Já sem estoque no Full', 'tinham venda nos últimos 30 dias', tab(zerados, ''));
+  h += mkCard('Estoque parado', 'com estoque disponível e zero venda em 30 dias · armazenagem correndo', tab(parados, 'Nenhum SKU parado.'));
+  h += mkCard('Todos os SKUs no Full', 'ritmo = unidades vendidas pelo Full (pedidos), média diária até ontem · SKU com mais de um inventário aparece somado',
+    tab(vis.slice().sort((a, b2) => (a.cobT == null ? 1e9 : a.cobT) - (b2.cobT == null ? 1e9 : b2.cobT)), 'Sem estoque no Full.'));
+  h += mkCard('Disponível no Full por dia', 'soma de todos os SKUs · a foto diária começou em ' + mkDD(((d.estoque_serie || [])[0] || [])[0] || ''),
+    '<div style="padding:14px;height:220px"><canvas id="mkGEst"></canvas></div>');
+  /* perdas e avarias */
+  const nomeInv = {}; (d.estoque || []).forEach(x => nomeInv[x[0]] = x[2] || x[1]);
+  const P = (d.perdas || []).filter(x => +x[4] !== 0 || x[2] === 'DAMAGED_REMOVAL').sort((a, b2) => b2[0].localeCompare(a[0]) || a[4] - b2[4]);
+  h += mkCard('Perdas, avarias e ajustes', 'movimentos do Full que não são venda nem transferência · para cobrar ou investigar',
+    P.length ? '<div class="mk-scroll"><table><thead><tr><th>Mês</th><th>Anúncio</th><th>Tipo</th><th>Ocorrências</th><th>Unidades</th></tr></thead><tbody>' +
+    P.slice(0, 60).map(x => '<tr><td>' + mkNomeMes(x[0]) + '</td><td class="mk-t">' + mkEsc(nomeInv[x[1]] || x[1]) + '</td><td>' + mkEsc(MKT_PERDA[x[2]] || x[2]) + '</td><td>' + mkN(x[3]) +
+      '</td><td class="' + (+x[4] < 0 ? 'neg' : 'pos') + '">' + mkN(x[4]) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="mk-note">Nenhum movimento de perda.</div>');
+  return h;
+}
+
+/* ---------------- 4) ENVIOS ---------------- */
+function mkEnvios(){
+  const d = MKT.d, meses = d.meses.slice(-6);
+  const E = {}; const lts = new Set();
+  (d.envio_mes || []).forEach(x => { (E[x[0]] || (E[x[0]] = {}))[x[1]] = {ped: +x[2], custo: +x[3]}; lts.add(x[1]); });
+  const L = [...lts].sort((a, b) => ((E[meses[meses.length - 1]] || {})[b] || {ped: 0}).ped - ((E[meses[meses.length - 1]] || {})[a] || {ped: 0}).ped);
+  let h = mkCard('Mix de envio por mês', 'pedidos e custo de envio pago pela Dobro',
+    '<div class="mk-scroll"><table><thead><tr><th>Mês</th>' + L.map(l => '<th>' + mkEsc(MKT_LT[l] || l) + '</th>').join('') + '<th>Pedidos</th><th>Custo de envio</th><th>Custo / pedido</th></tr></thead><tbody>' +
+    meses.slice().reverse().map(m => { const o = E[m] || {}; const tp = L.reduce((a, l) => a + ((o[l] || {}).ped || 0), 0), tc = L.reduce((a, l) => a + ((o[l] || {}).custo || 0), 0);
+      return '<tr><td>' + mkNomeMes(m) + '</td>' + L.map(l => '<td>' + mkN((o[l] || {}).ped) + ' <small style="color:var(--muted)">' + mkP(tp ? ((o[l] || {}).ped || 0) / tp : 0) + '</small></td>').join('') +
+        '<td>' + mkN(tp) + '</td><td>' + mkR(tc) + '</td><td>' + mkR2(tp ? tc / tp : 0) + '</td></tr>'; }).join('') + '</tbody></table></div>');
+  /* cancelamento */
+  const C = {}; const grupos = new Set();
+  (d.cancel_mes || []).forEach(x => { (C[x[0]] || (C[x[0]] = {}))[x[1]] = {ped: +x[2], val: +x[3]}; if(x[1] !== 'ok') grupos.add(x[1]); });
+  const G = [...grupos];
+  h += mkCard('Cancelamentos por mês', 'pedidos cancelados ÷ pedidos criados · por motivo',
+    '<div class="mk-scroll"><table><thead><tr><th>Mês</th><th>Pedidos criados</th><th>Cancelados</th><th>Taxa</th><th>Valor cancelado</th>' + G.map(g => '<th>' + mkEsc(MKT_CANC[g] || g) + '</th>').join('') + '</tr></thead><tbody>' +
+    meses.slice().reverse().map(m => { const o = C[m] || {}; const tot = Object.values(o).reduce((a, v) => a + v.ped, 0); const can = G.reduce((a, g) => a + ((o[g] || {}).ped || 0), 0);
+      const vc = G.reduce((a, g) => a + ((o[g] || {}).val || 0), 0);
+      return '<tr><td>' + mkNomeMes(m) + '</td><td>' + mkN(tot) + '</td><td>' + mkN(can) + '</td><td><span class="pill ' + (tot && can / tot > 0.03 ? 'r' : 'g') + '">' + mkP(tot ? can / tot : 0) + '</span></td><td>' + mkR(vc) + '</td>' +
+        G.map(g => '<td>' + ((o[g] || {}).ped || '') + '</td>').join('') + '</tr>'; }).join('') + '</tbody></table></div>');
+  /* custo de envio por SKU no periodo */
+  const p = mkPeriodo(), lista = mkPorSku(p.ini, p.fim).filter(o => o.q > 0).sort((a, b) => b.env - a.env);
+  h += mkBarPeriodo() + mkCard('Custo de envio por SKU', 'envio do vendedor rateado pelo valor de cada item do pedido',
+    '<div class="mk-scroll"><table><thead><tr><th>Anúncio / SKU</th><th>Unidades</th><th>Custo de envio</th><th>Por unidade</th><th>% da receita</th></tr></thead><tbody>' +
+    lista.slice(0, 40).map(o => '<tr><td class="mk-t">' + mkEsc(o.t) + '</td><td>' + mkN(o.q) + '</td><td>' + mkR(o.env) + '</td><td>' + mkR2(o.env / o.q) + '</td><td>' + mkP(o.rec ? o.env / o.rec : 0) + '</td></tr>').join('') +
+    '</tbody></table></div><div class="mk-note">Atraso contra o prazo prometido ainda não vem da API que coletamos — entra na Fase 2.</div>');
+  return h;
+}
+
+/* ---------------- 5) MARGEM ---------------- */
+function mkFaturaMes(m){
+  const F = {}; (MKT.d.fatura || []).forEach(x => { if(x[0] !== m) return; F[x[1]] = (F[x[1]] || 0) + (+x[4] || 0); });
+  return F;
+}
+function mkAdsPorSku(m){
+  const A = {}; (MKT.d.ads || []).forEach(x => { if(x[0] !== m) return; const s = (x[2] || '').toUpperCase(); if(!s) return; A[s] = (A[s] || 0) + (+x[4] || 0); });
+  return A;
+}
+function mkMargem(){
+  const d = MKT.d, m = MKT.mes, ini = m + '-01', fim = mkDia(mkDia(ini, 32).slice(0, 8) + '01', -1);
+  const ag = MKT.agrupar; MKT.agrupar = false;
+  const lista = mkPorSku(ini, fim); MKT.agrupar = ag;
+  const F = mkFaturaMes(m);
+  /* Full da fatura: armazenagem/coleta dao credito de PIS/COFINS 9,25% (Lucro Real) */
+  const armaz = (F.full || 0) * (1 - 0.0925);
+  /* OUTRAS COBRANCAS do ML (auditoria 09/11): DIFAL cobrado na fatura, Ads de seguidores,
+     Minha pagina, tarifa de devolucao... - tudo que a fatura traz e nao esta nas linhas acima */
+  let outras = 0; const outrasDet = {};
+  (d.fatura || []).forEach(x => { if(x[0] !== m) return;
+    const g = x[1], sub = x[2];
+    if(['tarifa_venda', 'envio', 'full'].indexOf(g) >= 0 || (g === 'publicidade' && sub === 'PADS')) return;
+    const rot = g === 'publicidade' ? 'Ads de seguidores' : ({difal: 'DIFAL cobrado pelo ML', minha_pagina: 'Minha página'}[g] || 'outros');
+    outras += +x[4] || 0; outrasDet[rot] = (outrasDet[rot] || 0) + (+x[4] || 0); });
+  const A = mkAdsPorSku(m), adsTot = Object.values(A).reduce((a, v) => a + v, 0);
+  const qTot = lista.reduce((a, o) => a + o.q, 0);
+  lista.forEach(o => {
+    o.contrib = o.rec - o.tar - o.env - o.imp - o.cmv;
+    o.ads = A[o.k.toUpperCase()] || 0;
+    o.arm = qTot ? armaz * o.q / qTot : 0;
+    o.liq = o.contrib - o.ads - o.arm;
+  });
+  const T = lista.reduce((a, o) => { ['ped','q','rec','cup','tar','env','imp','cmv','contrib','ads','arm','liq'].forEach(k => a[k] += o[k]); return a; },
+                         {ped: 0, q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, contrib: 0, ads: 0, arm: 0, liq: 0});
+  const pedMes = mkTot(ini, fim).ped;
+  const adsSemSku = adsTot - T.ads;
+  T.liqTot = T.liq - adsSemSku - outras;
+  const semCmv = lista.filter(o => o.sem).reduce((a, o) => a + o.rec, 0);
+  let h = mkBarMes('<span>armazenagem e Ads por mês (é como o ML cobra)</span>');
+  h += '<div class="kpirow">' + mkKpi('Receita', mkR(T.rec), mkN(pedMes) + ' pedidos', 'accent') +
+    mkKpi('Margem de contribuição', mkR(T.contrib), mkP(T.rec ? T.contrib / T.rec : 0) + ' da receita') +
+    mkKpi('Margem líquida', mkR(T.liqTot), mkP(T.rec ? T.liqTot / T.rec : 0) + ' · depois de Ads e armazenagem', T.liqTot >= 0 ? 'pos' : '') +
+    mkKpi('Por pedido', mkR2(pedMes ? T.liqTot / pedMes : 0), 'margem líquida ÷ pedidos') + '</div>';
+  const linha = (lab, v, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + lab + '</td><td>' + mkR(v) + '</td><td>' + mkP(T.rec ? v / T.rec : 0) + '</td><td>' + mkR2(pedMes ? v / pedMes : 0) + '</td></tr>';
+  h += '<div class="grid2">' + mkCard('DRE do marketplace · ' + mkNomeMes(m), 'por pedido = valor ÷ pedidos do mês',
+    '<table><thead><tr><th></th><th>R$</th><th>% receita</th><th>Por pedido</th></tr></thead><tbody>' +
+    linha('Preço dos anúncios', T.rec + T.cup) + linha('− Cupons (comprador pagou menos)', -T.cup) +
+    linha('= Receita (pago pelo comprador)', T.rec, 'mk-tot') + linha('− Tarifa de venda ML', -T.tar) + linha('− Envio pago pela Dobro', -T.env) +
+    linha('− Impostos (ICMS + DIFAL das notas · PIS/COFINS 9,25% · − crédito do frete)', -T.imp) + linha('− CMV (líquido do crédito de insumos)', -T.cmv) +
+    linha('= Margem de contribuição', T.contrib, 'mk-tot') + linha('− Ads (Product Ads)', -adsTot) + linha('− Armazenagem e serviços Full (− crédito PIS/COFINS)', -armaz) +
+    linha('− Outras cobranças do ML', -outras) +
+    linha('= Margem líquida', T.liqTot, 'mk-tot') + '</tbody></table>' +
+    (outras ? '<div class="mk-note">Outras cobranças: ' + Object.entries(outrasDet).map(e => mkEsc(e[0]) + ' ' + mkR(e[1])).join(' · ') + '</div>' : '') +
+    (d.fiscal ? '<div class="mk-note">Imposto (Lucro Real): base = valor da nota, em média ' + mkP(d.fiscal.k) + ' do preço; ICMS + FCP + DIFAL reais das ' + mkN(d.fiscal.notas) +
+      ' notas do ML no OMIE (' + mkP(d.fiscal.taxa_icms_difal) + ' da nota, por UF de destino); PIS/COFINS 9,25% da nota; crédito de 9,25% sobre frete e armazenagem. Antes de 22/10 (sem nota no banco) vale a mesma regra.</div>' : '') +
+    (semCmv ? '<div class="mk-note">⚠ ' + mkR(semCmv) + ' de receita em SKUs sem CMV cadastrado (entram com custo zero) — cadastre na aba Premissas › CMV.</div>' : '')) +
+    mkCard('O que o ML cobrou na fatura · ' + mkNomeMes(m), 'para conciliar · a fatura é por período de cobrança',
+    '<table><tbody>' + Object.entries(F).sort((a, b) => b[1] - a[1]).map(([g, v]) => '<tr><td>' + mkEsc({tarifa_venda:'Tarifas de venda', envio:'Envios', publicidade:'Publicidade', full:'Full (armazenagem, coleta…)',
+      difal:'DIFAL', minha_pagina:'Minha página', outros:'Outros'}[g] || g) + '</td><td>' + mkR(v) + '</td></tr>').join('') +
+    '<tr class="mk-tot"><td>Total da fatura</td><td>' + mkR(Object.values(F).reduce((a, v) => a + v, 0)) + '</td></tr></tbody></table>' +
+    '<div class="mk-note">Diferença normal: a tarifa e o envio da DRE são os dos pedidos do mês; a fatura traz cobranças e estornos lançados no mês.</div>') + '</div>';
+  lista.sort((a, b) => b.rec - a.rec);
+  h += mkCard('Margem por SKU · ' + mkNomeMes(m), 'Ads pelo anúncio · armazenagem rateada por unidade vendida',
+    '<div class="mk-scroll"><table><thead><tr><th>Anúncio / SKU</th><th>Un</th><th>Receita</th><th>Tarifa</th><th>Envio</th><th>Imposto</th><th>CMV</th><th>Contribuição</th><th>%</th><th>Ads</th><th>Margem líquida</th><th>%</th><th>Por unidade</th></tr></thead><tbody>' +
+    lista.map(o => '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + (o.sem ? ' <span class="pill y" title="sem CMV cadastrado">sem CMV</span>' : '') +
+      '<br><small style="color:var(--muted)">' + mkEsc(o.sub || o.k) + '</small></td><td>' + mkN(o.q) + '</td><td>' + mkR(o.rec) + '</td><td>' + mkR(o.tar) + '</td><td>' + mkR(o.env) + '</td><td>' + mkR(o.imp) +
+      '</td><td>' + mkR(o.cmv) + '</td><td>' + mkR(o.contrib) + '</td><td>' + mkP(o.rec ? o.contrib / o.rec : 0) + '</td><td>' + (o.ads ? mkR(o.ads) : '') + '</td><td class="' + (o.liq < 0 ? 'neg' : '') + '">' + mkR(o.liq) +
+      '</td><td>' + mkP(o.rec ? o.liq / o.rec : 0) + '</td><td>' + mkR2(o.q ? o.liq / o.q : 0) + '</td></tr>').join('') +
+    (adsSemSku > 1 ? '<tr><td colspan="9">Ads de anúncios sem venda no mês</td><td>' + mkR(adsSemSku) + '</td><td class="neg">' + mkR(-adsSemSku) + '</td><td></td><td></td></tr>' : '') +
+    '<tr class="mk-tot"><td>Total</td><td>' + mkN(T.q) + '</td><td>' + mkR(T.rec) + '</td><td>' + mkR(T.tar) + '</td><td>' + mkR(T.env) + '</td><td>' + mkR(T.imp) + '</td><td>' + mkR(T.cmv) + '</td><td>' + mkR(T.contrib) +
+    '</td><td>' + mkP(T.rec ? T.contrib / T.rec : 0) + '</td><td>' + mkR(adsTot) + '</td><td>' + mkR(T.liqTot) + '</td><td>' + mkP(T.rec ? T.liqTot / T.rec : 0) + '</td><td>' + mkR2(T.q ? T.liqTot / T.q : 0) + '</td></tr>' +
+    '</tbody></table></div>');
+  return h;
+}
+
+/* ---------------- 6) ADS ---------------- */
+function mkAds(){
+  const d = MKT.d, m = MKT.mes;
+  const L = (d.ads || []).filter(x => x[0] === m).map(x => ({item: x[1], s: x[2] || '', t: x[3] || x[1], custo: +x[4], cli: +x[5], imp: +x[6], rec: +x[7], un: +x[8]}));
+  const T = L.reduce((a, o) => (a.custo += o.custo, a.cli += o.cli, a.imp += o.imp, a.rec += o.rec, a.un += o.un, a), {custo: 0, cli: 0, imp: 0, rec: 0, un: 0});
+  const ini = m + '-01', fim = mkDia(mkDia(ini, 32).slice(0, 8) + '01', -1), vendas = mkTot(ini, fim).rec;
+  let h = mkBarMes();
+  h += '<div class="kpirow">' + mkKpi('Investido em Ads', mkR(T.custo), mkP(vendas ? T.custo / vendas : 0) + ' do faturamento ML (TACOS)', 'accent') +
+    mkKpi('Receita atribuída', mkR(T.rec), mkN(T.un) + ' unidades') + mkKpi('ROAS', T.custo ? mkN1(T.rec / T.custo) + 'x' : '—', 'receita ÷ investimento') +
+    mkKpi('ACOS', mkP(T.rec ? T.custo / T.rec : null), 'investimento ÷ receita') + mkKpi('CTR', mkP(T.imp ? T.cli / T.imp : null), mkN(T.cli) + ' cliques · ' + mkN(T.imp) + ' impressões') + '</div>';
+  h += mkCard('Ads por dia', 'investimento × receita atribuída (direta + indireta)', '<div style="padding:14px;height:240px"><canvas id="mkGAds"></canvas></div>');
+  L.sort((a, b) => b.custo - a.custo);
+  h += mkCard('Ads por anúncio · ' + mkNomeMes(m), 'ACOS alto e pouca venda = candidato a pausar ou rever preço',
+    '<div class="mk-scroll"><table><thead><tr><th>Anúncio</th><th>Investido</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>CPC</th><th>Receita</th><th>Unid.</th><th>ROAS</th><th>ACOS</th></tr></thead><tbody>' +
+    L.map(o => { const acos = o.rec ? o.custo / o.rec : null;
+      return '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<br><small style="color:var(--muted)">' + mkEsc(o.s || o.item) + '</small></td><td>' + mkR(o.custo) + '</td><td>' + mkN(o.imp) + '</td><td>' + mkN(o.cli) +
+        '</td><td>' + mkP(o.imp ? o.cli / o.imp : null) + '</td><td>' + mkR2(o.cli ? o.custo / o.cli : 0) + '</td><td>' + mkR(o.rec) + '</td><td>' + mkN(o.un) + '</td><td>' + (o.custo ? mkN1(o.rec / o.custo) + 'x' : '—') +
+        '</td><td>' + (acos == null ? (o.custo ? '<span class="pill r">sem venda</span>' : '—') : '<span class="pill ' + (acos > 0.3 ? 'r' : (acos > 0.15 ? 'y' : 'g')) + '">' + mkP(acos) + '</span>') + '</td></tr>'; }).join('') +
+    '</tbody></table></div>');
+  return h;
+}
+
+/* --------------------------------------------------------------- graficos */
+function mkGraficos(){
+  if(typeof Chart === 'undefined' || !MKT.d) return;
+  const d = MKT.d;
+  const c1 = document.getElementById('mkGDia');
+  if(c1){
+    const p = mkPeriodo(), xs = [], ys = [], mm = [];
+    for(let x = p.ini; x <= p.fim; x = mkDia(x, 1)){ xs.push(x); ys.push((d.T[x] || {}).rec || 0); }
+    ys.forEach((v, i) => { let s = 0, n = 0; for(let j = Math.max(0, i - 6); j <= i; j++){ s += ys[j]; n++; } mm.push(s / n); });
+    MKT.charts.dia = new Chart(c1, {type: 'bar', data: {labels: xs.map(mkDD), datasets: [
+      {type: 'line', label: 'Média 7 dias', data: mm, borderColor: '#D8C733', backgroundColor: '#D8C733', pointRadius: 0, tension: .3, borderWidth: 2},
+      {label: 'Faturamento', data: ys, backgroundColor: '#2A3E7E'}]},
+      options: {maintainAspectRatio: false, plugins: {legend: {display: true}, tooltip: {callbacks: {label: c => c.dataset.label + ': ' + mkR(c.raw)}}},
+                scales: {y: {ticks: {callback: v => mkR(v)}}}}});
+  }
+  const c2 = document.getElementById('mkGEst');
+  if(c2){
+    const S = {}; (d.estoque_serie || []).forEach(x => S[x[0]] = (S[x[0]] || 0) + (+x[2] || 0));
+    const xs = Object.keys(S).sort();
+    MKT.charts.est = new Chart(c2, {type: 'line', data: {labels: xs.map(mkDD), datasets: [{label: 'Disponível', data: xs.map(x => S[x]), borderColor: '#2A3E7E', backgroundColor: 'rgba(42,62,126,.12)', fill: true, tension: .25}]},
+      options: {maintainAspectRatio: false, plugins: {legend: {display: false}}}});
+  }
+  const c3 = document.getElementById('mkGAds');
+  if(c3){
+    const m = MKT.mes, L = (d.ads_dia || []).filter(x => x[0].slice(0, 7) === m);
+    MKT.charts.ads = new Chart(c3, {type: 'bar', data: {labels: L.map(x => mkDD(x[0])), datasets: [
+      {label: 'Investido', data: L.map(x => +x[1]), backgroundColor: '#D9534F'},
+      {label: 'Receita atribuída', data: L.map(x => +x[2]), backgroundColor: '#1F9D6B'}]},
+      options: {maintainAspectRatio: false, plugins: {tooltip: {callbacks: {label: c => c.dataset.label + ': ' + mkR(c.raw)}}}, scales: {y: {ticks: {callback: v => mkR(v)}}}}});
+  }
+}
+
+try{ mkRegistrar(); }catch(e){ console.error('marketplace: registrar', e); }
+</script>
+
+<style>
 /* ===================== UX / DESIGN UNICO (07/11/2026) ===================== */
 /* logo da Dobro no lugar do "d" (07/11/2026) */
 .ux-logo{display:block;width:auto}
@@ -19601,7 +20139,7 @@ function uxTopo(){
 /* SECOES DO MENU (Igor, 07/11/2026: "pode fazer"). Aba que nao estiver aqui vai
    para "Outros" no fim - aba nova nunca some. Resumo fica solto no topo. */
 const UX_GRUPOS = [
-  ['vendas',   'Vendas',   ['dre', 'canais', 'metas', 'orcamento', 'comparativos']],
+  ['vendas',   'Vendas',   ['dre', 'canais', 'metas', 'orcamento', 'comparativos', 'marketplace']],
   ['clientes', 'Clientes', ['carteira', 'ranking', 'cnpj', 'penetracao', 'crm', 'geo']],
   ['produtos', 'Produtos', ['mix', 'gestcat', 'calc']],
   ['operacao', 'Operação', ['sla', 'degustacoes', 'links']],
