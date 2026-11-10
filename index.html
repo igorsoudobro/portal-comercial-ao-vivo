@@ -19487,6 +19487,16 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 #v-marketplace .mk-legenda span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
 #v-marketplace .mk-legenda .r:before{background:var(--mk-neg)}#v-marketplace .mk-legenda .y:before{background:var(--mk-warn)}
 #v-marketplace .mk-legenda .g:before{background:var(--mk-pos)}
+#v-marketplace .kpirow.kpi-mini .kpi .val{font-size:30px}
+#v-marketplace .kpi.alerta{border-top-color:var(--mk-neg)}#v-marketplace .kpi.alerta .val{color:var(--mk-neg)}
+#v-marketplace .kpi.atencao{border-top-color:var(--mk-warn)}#v-marketplace .kpi.atencao .val{color:var(--mk-warn)}
+#v-marketplace .mk-alerta td{font-size:14px;padding:12px}
+#v-marketplace .mk-alerta td .pill{font-size:14px;font-weight:800;padding:4px 12px}
+#v-marketplace .card-h .mk-bar{margin:0;font-size:12px}
+#v-marketplace table.mk-dre td:first-child{font-weight:600;color:var(--ink)}
+#v-marketplace table.mk-dre tr.mk-pct td{font-size:11.5px;color:var(--mk-muted);background:#FBFCFE;font-weight:600}
+#v-marketplace table.mk-dre tr.mk-tot td{font-size:13.5px}
+#v-marketplace table.mk-dre td.mk-col-tot,#v-marketplace table.mk-dre th.mk-col-tot{background:#EEF2FB;font-weight:800}
 @media (max-width:760px){#v-marketplace .grid2{grid-template-columns:1fr}#v-marketplace .mk-hero{padding:16px}
   #v-marketplace .mk-hero h2{font-size:24px}#v-marketplace .kpi .val{font-size:24px}}
 </style>
@@ -19495,7 +19505,7 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', ord: 'rec', fam: '', gs: {k: 'dias', dir: 1}, proj: false, tend: false, ev: {},
              agrupar: false, lead: 15, ritmo: 30, mes: null, busca: '', charts: {}, patch: false};
 const MKT_ABAS = [['geral','Visão geral'],['gerencial','Tabela gerencial por SKU'],['skus','Venda por SKU'],
-                  ['estoque','Estoque & ruptura'],['envios','Envios'],['margem','Margem'],['ads','Ads']];
+                  ['estoque','Estoque & ruptura'],['envios','Envios'],['margem','DRE'],['financas','Finanças'],['ads','Ads']];
 const MKT_LT = {fulfillment:'Full', self_service:'Flex', xd_drop_off:'Drop-off (agência)',
                 cross_docking:'Coleta', drop_off:'Correios', '?':'Sem envio'};
 const MKT_CANC = {buyer:'Comprador desistiu', shipment:'Problema no envio', internal:'Interno do ML',
@@ -19506,6 +19516,9 @@ const MKT_PERDA = {DAMAGED_REMOVAL:'Avaria retirada', ADJUSTMENT:'Ajuste de inve
                    QUARANTINE_RESTOCK:'Quarentena (voltou)', WITHDRAWAL_DELIVERY:'Retirada do Full',
                    TRANSFER_ADJUSTMENT:'Ajuste de transferência'};
 const MKT_MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const MKT_TIPO = {gold_pro: 'Premium', gold_special: 'Clássico', gold: 'Ouro', free: 'Grátis'};
+function mkTipo(t){ return t ? (MKT_TIPO[t] || t) : '—'; }
+function mkTipoPill(t){ const n = mkTipo(t); return t ? '<span class="mk-chip ' + (t === 'gold_pro' ? 'up' : 'nt') + '">' + n + '</span>' : '—'; }
 
 function mkEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -19581,6 +19594,8 @@ function mkPreparar(d){
                                      imp: +x[7], cmv: +x[8], sem: !!x[9], cup: +x[10] || 0}));
   d.T = {}; (d.dia_tot || []).forEach(x => d.T[x[0]] = {ped: +x[1], q: +x[2], rec: +x[3], preco: +x[4] || 0, canc: +x[5] || 0});
   d.dias = Object.keys(d.T).sort();
+  /* anuncio -> tipo (Premium / Classico) e Ads dos ultimos 30 dias */
+  d.I = {}; (d.itens || []).forEach(x => d.I[x[0]] = {tipo: x[1], ads: +x[2] || 0, adsRec: +x[3] || 0, s: x[4]});
   d.ult = d.dias[d.dias.length - 1];
   d.meses = [...new Set(d.dias.map(x => x.slice(0, 7)))].sort();
 }
@@ -19610,7 +19625,9 @@ function mkPeriodo(){
 function mkMesesFrac(p){
   const r = {};
   for(let x = p.ini; x <= p.fim; x = mkDia(x, 1)){ const m = x.slice(0, 7); r[m] = (r[m] || 0) + 1; }
-  Object.keys(r).forEach(m => { const dm = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(); r[m] = r[m] / dm; });
+  /* mes corrente: a fatura e os Ads so tem os dias que ja passaram - divide por eles, nao pelo mes inteiro */
+  const hj = mkHoje();
+  Object.keys(r).forEach(m => { const dm = m === hj.slice(0, 7) ? +hj.slice(8, 10) : new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(); r[m] = Math.min(1, r[m] / dm); });
   return r;
 }
 function mkPeriodoAnterior(p){
@@ -19680,7 +19697,7 @@ function mkDesenhar(manterScroll){
   if(!d){ alvo.innerHTML = html; return; }
   html += '<div class="mk-tabs">' + MKT_ABAS.map(a => '<button data-mk="aba:' + a[0] + '" class="' + (MKT.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
   try{
-    html += ({geral: mkGeral, gerencial: mkGerencial, skus: mkSkus, estoque: mkEstoque, envios: mkEnvios, margem: mkMargem, ads: mkAds}[MKT.aba] || mkGeral)();
+    html += ({geral: mkGeral, gerencial: mkGerencial, skus: mkSkus, estoque: mkEstoque, envios: mkEnvios, margem: mkMargem, financas: mkFinancas, ads: mkAds}[MKT.aba] || mkGeral)();
   }catch(e){ console.error('marketplace: tela', e); html += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
   html += '<div class="mk-note">Atualização dos dados no banco: ' + (d.frescor || []).map(f => mkEsc(f[0]) + ' ' +
           (f[1] ? new Date(f[1]).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '—')).join(' · ') + '</div>';
@@ -19711,7 +19728,7 @@ function mkGeral(){
   h += '<div class="kpirow">' +
     mkKpi('Faturamento bruto', mkR(bruto), mkVar(bruto, brutoA) + ' vs período anterior<br>preço cheio, como no painel do ML') +
     mkKpi('Cancelamento', mkR(t.canc), mkP(bruto ? t.canc / bruto : 0) + ' do bruto') +
-    mkKpi('Faturamento líquido', mkR(t.rec), mkVar(t.rec, ta.rec) + ' vs período anterior<br>pago pelo comprador · cupons ' + mkR(cup), 'accent') +
+    mkKpi('Faturamento líquido', mkR(t.rec), mkVar(t.rec, ta.rec) + ' vs período anterior<br>preço − descontos e cupons pagos pela Dobro (' + mkR(cup) + ')', 'accent') +
     mkKpi('Pedidos', mkN(t.ped), mkVar(t.ped, ta.ped) + ' · ' + mkN(t.q) + ' un') +
     mkKpi('Unidades', mkN(t.q), mkVar(t.q, ta.q) + ' · ' + mkN1(t.ped ? t.q / t.ped : 0) + ' por pedido') +
     mkKpi('Ticket médio', mkR2(t.ped ? t.rec / t.ped : 0), 'antes ' + mkR2(ta.ped ? ta.rec / ta.ped : 0)) +
@@ -19727,7 +19744,7 @@ function mkGeral(){
       (MKT.proj ? 'Fechar projeção' : '📈 Ver projeção') + '</button></div>' +
     '</div>';
   if(MKT.proj) h += mkProjecao();
-  h += mkCard('Faturamento líquido por dia', 'barras = líquido (pago pelo comprador) · linha = média móvel de 7 dias', '<div style="padding:14px;height:280px"><canvas id="mkGDia"></canvas></div>');
+  h += mkCard('Faturamento líquido por dia', 'barras = líquido (preço − descontos pagos pela Dobro) · linha = média móvel de 7 dias', '<div style="padding:14px;height:280px"><canvas id="mkGDia"></canvas></div>');
   /* mapa de calor dia da semana x hora (90 dias) */
   const H = {}; let mx = 0;
   (d.hora || []).forEach(x => { H[x[0] + '|' + x[1]] = {ped: +x[2], rec: +x[3]}; mx = Math.max(mx, +x[2]); });
@@ -19770,10 +19787,16 @@ function mkGerencial(){
     const g7 = soma(x[0], 7, 'u'), g15 = soma(x[0], 15, 'u'), g30 = soma(x[0], 30, 'u'), g60 = soma(x[0], 60, 'u');
     const r30 = soma(x[0], 30, 'rec');
     const media = (g7 / 7 + g15 / 15 + g30 / 30) / 3;
-    const est = disp + transf, dias = media > 0 ? est / media : null;
-    return {inv: x[0], s: dob[String(x[1]).toUpperCase()] || x[1], sml: x[1], t: x[2], fam: x[11] || 'Outros', disp, transf, est, g7, g15, g30, media, dias,
+    const est = disp + transf, dias = media > 0 ? est / media : null, dias0 = media > 0 ? disp / media : null;
+    /* anuncios do inventario: tipo e Ads dos ultimos 30 dias */
+    const its = (x[10] || []).map(id => d.I[id]).filter(Boolean);
+    const tipos = [...new Set(its.map(i => i.tipo).filter(Boolean))];
+    const ads = its.reduce((a, i) => a + i.ads, 0), adsRec = its.reduce((a, i) => a + i.adsRec, 0);
+    return {inv: x[0], s: dob[String(x[1]).toUpperCase()] || x[1], sml: x[1], t: x[2], fam: x[11] || 'Outros', disp, transf, est, g7, g15, g30, media, dias, dias0,
             preco: ultPreco(x[0]), pago: g30 ? r30 / g30 : null,
-            data: dias != null ? mkDia(hoje, Math.floor(dias)) : null, morto: (+x[5] || 0) <= 0 && g60 === 0};
+            tipo: tipos.map(mkTipo).sort().join(' + ') || '', tipoRaw: tipos, ads, roas: ads > 0 ? adsRec / ads : null,
+            data: dias != null ? mkDia(hoje, Math.floor(dias)) : null, data0: dias0 != null ? mkDia(hoje, Math.floor(dias0)) : null,
+            morto: (+x[5] || 0) <= 0 && g60 === 0};
   }).filter(o => !o.morto);
   const fams = [...new Set(L.map(o => o.fam))].sort((a, b) => a === 'Outros' ? 1 : (b === 'Outros' ? -1 : a.localeCompare(b)));
   if(MKT.fam) L = L.filter(o => o.fam === MKT.fam);
@@ -19783,30 +19806,42 @@ function mkGerencial(){
   L.sort((a, c) => { const va = val(a), vc = val(c); return (typeof va === 'string' ? va.localeCompare(vc) : va - vc) * g.dir; });
   const cor = dd => dd == null ? '' : (dd < MKT.lead ? 'r' : (dd < 2 * MKT.lead ? 'y' : 'g'));
   const nR = L.filter(o => cor(o.dias) === 'r').length, nY = L.filter(o => cor(o.dias) === 'y').length;
-  const T = L.reduce((a, o) => (a.est += o.est, a.g7 += o.g7, a.g15 += o.g15, a.g30 += o.g30, a), {est: 0, g7: 0, g15: 0, g30: 0});
+  const T = L.reduce((a, o) => (a.est += o.est, a.g7 += o.g7, a.g15 += o.g15, a.g30 += o.g30, a.ads += o.ads, a.adsRec += o.ads * (o.roas || 0), a), {est: 0, g7: 0, g15: 0, g30: 0, ads: 0, adsRec: 0});
   const th = (k, lab) => '<th data-mk="gsort:' + k + '" style="cursor:pointer;white-space:nowrap" title="clique para ordenar">' + lab +
     (g.k === k ? (g.dir > 0 ? ' ▲' : ' ▼') : ' <span style="opacity:.35">↕</span>') + '</th>';
-  let h = '<div class="mk-bar">Família <select id="mkFam"><option value="">todas</option>' + fams.map(f => '<option' + (MKT.fam === f ? ' selected' : '') + '>' + mkEsc(f) + '</option>').join('') + '</select>' +
-          'Vermelho abaixo de <input id="mkLead" type="number" min="1" value="' + MKT.lead + '" style="width:64px"> dias' +
-          '<input id="mkBusca" placeholder="buscar SKU ou produto" value="' + mkEsc(MKT.busca) + '" style="min-width:220px;margin-left:auto"></div>';
-  h += '<div class="kpirow kpi-mini">' + mkKpi('SKUs no Full', mkN(L.length), MKT.fam ? 'família ' + mkEsc(MKT.fam) : 'com estoque ou venda nos últimos 60 dias', 'accent') +
-       mkKpi('Ruptura em < ' + MKT.lead + ' dias', nR, 'repor já', nR ? '' : 'pos') + mkKpi('Entre ' + MKT.lead + ' e ' + (2 * MKT.lead) + ' dias', nY, 'programar reposição') +
+  const nR0 = L.filter(o => cor(o.dias0) === 'r').length;
+  const filtros = '<div class="mk-bar">Família <select id="mkFam"><option value="">todas</option>' + fams.map(f => '<option' + (MKT.fam === f ? ' selected' : '') + '>' + mkEsc(f) + '</option>').join('') + '</select>' +
+          'Vermelho abaixo de <input id="mkLead" type="number" min="1" value="' + MKT.lead + '" style="width:60px"> dias' +
+          '<input id="mkBusca" placeholder="buscar SKU ou produto" value="' + mkEsc(MKT.busca) + '" style="min-width:200px"></div>';
+  const rup = (dd, dt, est) => dd == null ? '<span class="mk-chip nt">sem giro</span>' :
+    '<span class="mk-dias ' + cor(dd) + '"><b>' + (est <= 0 ? 'sem estoque' : mkDD(dt)) + '</b><small>' + (est <= 0 ? 'zerado' : mkN1(dd) + ' dias') + '</small></span>';
+  let h = '<div class="kpirow kpi-mini">' + mkKpi('SKUs no Full', mkN(L.length), MKT.fam ? 'família ' + mkEsc(MKT.fam) : 'com estoque ou venda nos últimos 60 dias', 'accent') +
+       mkKpi('Ruptura em < ' + MKT.lead + ' dias', nR, 'mesmo depois de chegar o que está a caminho · com o estoque de hoje: ' + nR0, nR ? 'alerta' : 'pos') +
+       mkKpi('Entre ' + MKT.lead + ' e ' + (2 * MKT.lead) + ' dias', nY, 'programar reposição', nY ? 'atencao' : '') +
        mkKpi('Unidades em estoque', mkN(T.est), 'disponível + a caminho') + mkKpi('Giro do mês', mkN(T.g30), 'unidades vendidas em 30 dias') + '</div>';
-  h += mkCard('Tabela gerencial por SKU', 'clique no título da coluna para ordenar · giro = unidades vendidas pelo Full até ontem · previsão = estoque ÷ média dos giros diários de 7, 15 e 30 dias',
-    '<div class="mk-legenda"><span class="r">ruptura antes de ' + MKT.lead + ' dias</span><span class="y">até ' + (2 * MKT.lead) + ' dias</span><span class="g">confortável</span></div>' +
+  h += '<div class="card"><div class="card-h"><h3>Tabela gerencial por SKU</h3>' + filtros + '</div>' +
+    '<div class="mk-legenda"><span class="r">ruptura antes de ' + MKT.lead + ' dias</span><span class="y">até ' + (2 * MKT.lead) + ' dias</span><span class="g">confortável</span>' +
+    '<span style="margin-left:auto">clique no título da coluna para ordenar · giro = unidades vendidas pelo Full até ontem</span></div>' +
     '<div class="mk-scroll"><table class="mk-ger"><thead><tr>' + th('s', 'SKU') + th('t', 'Descrição') + th('fam', 'Família') + th('preco', 'Preço do anúncio') + th('pago', 'Preço médio pago') +
-    th('est', 'Estoque') + th('g7', 'Giro 7 dias') + th('g15', 'Giro 15 dias') + th('g30', 'Giro mês') + th('media', 'Média/dia') + th('dias', 'Previsão de ruptura') + '</tr></thead><tbody>' +
+    th('disp', 'Estoque hoje') + th('transf', 'A caminho') + th('g7', 'Giro 7 dias') + th('g15', 'Giro 15 dias') + th('g30', 'Giro mês') + th('media', 'Média/dia') +
+    th('dias0', 'Ruptura com o estoque de hoje') + th('dias', 'Ruptura após chegar o que está a caminho') +
+    th('tipo', 'Tipo de anúncio') + th('ads', 'Investido Ads (30 dias)') + th('roas', 'ROAS') + '</tr></thead><tbody>' +
     L.map(o => '<tr><td class="mk-sku"><b>' + mkEsc(o.s) + '</b>' + (o.sml && o.sml !== o.s ? '<small class="mk-sub">ML: ' + mkEsc(o.sml) + '</small>' : '') + '</td>' +
       '<td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '</td><td style="text-align:left;white-space:nowrap">' + mkEsc(o.fam) + '</td>' +
       '<td>' + (o.preco != null ? mkR2(o.preco) : '—') + '</td>' +
       '<td>' + (o.pago != null ? mkR2(o.pago) + (o.preco ? '<small class="mk-sub">' + mkP(o.pago / o.preco - 1) + ' do anúncio</small>' : '') : '—') + '</td>' +
-      '<td>' + mkN(o.disp) + (o.transf ? '<small class="mk-sub">+' + mkN(o.transf) + ' a caminho</small>' : '') + '</td>' +
+      '<td>' + mkN(o.disp) + '</td><td>' + (o.transf ? mkN(o.transf) : '<span style="color:var(--mk-muted)">—</span>') + '</td>' +
       '<td>' + mkN(o.g7) + '</td><td>' + mkN(o.g15) + '</td><td>' + mkN(o.g30) + '</td><td>' + mkN1(o.media) + '</td>' +
-      '<td>' + (o.dias == null ? '<span class="mk-chip nt">sem giro</span>' : '<span class="mk-dias ' + cor(o.dias) + '"><b>' + (o.est <= 0 ? 'sem estoque' : mkDD(o.data)) + '</b><small>' +
-        (o.est <= 0 ? 'zerado' : mkN1(o.dias) + ' dias') + '</small></span>') + '</td></tr>').join('') +
-    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td></td><td></td><td>' + mkN(T.est) + '</td><td>' + mkN(T.g7) + '</td><td>' + mkN(T.g15) + '</td><td>' + mkN(T.g30) + '</td><td></td><td></td></tr>' +
+      '<td>' + rup(o.dias0, o.data0, o.disp) + '</td><td>' + rup(o.dias, o.data, o.est) + '</td>' +
+      '<td style="white-space:nowrap">' + (o.tipoRaw.length ? o.tipoRaw.map(mkTipoPill).join(' ') : '—') + '</td>' +
+      '<td>' + (o.ads ? mkR(o.ads) : '—') + '</td>' +
+      '<td>' + (o.roas != null ? '<b style="color:' + (o.roas >= 5 ? 'var(--mk-pos)' : (o.roas >= 3 ? 'var(--mk-warn)' : 'var(--mk-neg)')) + '">' + mkN1(o.roas) + 'x</b>' : '—') + '</td></tr>').join('') +
+    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td></td><td></td><td>' + mkN(L.reduce((a, o) => a + o.disp, 0)) + '</td><td>' + mkN(L.reduce((a, o) => a + o.transf, 0)) + '</td><td>' + mkN(T.g7) + '</td><td>' + mkN(T.g15) + '</td><td>' + mkN(T.g30) +
+    '</td><td></td><td></td><td></td><td></td><td>' + mkR(T.ads) + '</td><td>' + (T.ads ? mkN1(T.adsRec / T.ads) + 'x' : '—') + '</td></tr>' +
     '</tbody></table></div>' +
-    '<div class="mk-note">Preço do anúncio = preço cheio da última venda (o preço atual do anúncio entra na Fase 2, quando coletarmos os anúncios). Preço médio pago = líquido ÷ unidades nos últimos 30 dias, já sem cupom.</div>');
+    '<div class="mk-note">Ruptura = estoque ÷ média dos giros diários de 7, 15 e 30 dias. "Com o estoque de hoje" usa só o disponível; "após chegar" soma o que está a caminho (transferência entre centros do Full). ' +
+    'Preço do anúncio = preço cheio da última venda (o preço atual do anúncio entra na Fase 2). Preço médio pago = líquido ÷ unidades em 30 dias. ' +
+    'Investido e ROAS = Product Ads dos anúncios desse SKU nos últimos 30 dias (ROAS = receita atribuída ÷ investido).</div></div>';
   return h;
 }
 
@@ -19915,7 +19950,7 @@ function mkSkus(){
 
 /* ---------------- 3) ESTOQUE & RUPTURA ---------------- */
 const MKT_INDISP = {lost:'perdido', noFiscalCoverage:'sem nota fiscal', withdrawal:'em retirada', damaged:'avariado',
-                    quarantine:'quarentena', notSupported:'não suportado', internal_process:'processo interno'};
+                    quarantine:'quarentena', notSupported:'não suportado', internal_process:'processo interno', internalProcess:'processo interno'};
 function mkDetalheIndisp(linhas){
   const t = {}; linhas.forEach(o => Object.keys(o.det || {}).forEach(k => { if(k !== 'transfer' && k !== 'inbound' && k !== 'in_transfer') t[k] = (t[k] || 0) + (+o.det[k] || 0); }));
   return Object.entries(t).filter(x => x[1]).map(x => (MKT_INDISP[x[0]] || x[0]) + ' ' + mkN(x[1])).join(' · ') || 'nenhum';
@@ -19960,7 +19995,7 @@ function mkEstoque(){
     mkKpi('Unidades disponíveis', mkN(linhas.reduce((a, o) => a + o.disp, 0)), 'foto de ' + mkDD((d.estoque[0] || [])[9] || '')) +
     mkKpi('Em transferência', mkN(linhas.reduce((a, o) => a + o.transito, 0)), 'entre centros do Full · vira disponível') +
     mkKpi('Outros indisponíveis', mkN(linhas.reduce((a, o) => a + o.outros, 0)), mkDetalheIndisp(linhas)) +
-    mkKpi('Alerta de ruptura', alertas.length, 'cobertura < ' + MKT.lead + ' dias', alertas.length ? '' : 'pos') +
+    mkKpi('Alerta de ruptura', alertas.length, 'cobertura < ' + MKT.lead + ' dias', alertas.length ? 'alerta' : 'pos') +
     mkKpi('Já zerados', zerados.length, 'vendiam e estão sem estoque') +
     mkKpi('Estoque parado', parados.length, 'com estoque, sem venda em 30 dias') + '</div>';
   const tab = (lst, vazio) => lst.length ? '<div class="mk-scroll"><table><thead><tr><th>Anúncio / SKU</th><th>Disponível</th><th>Em transferência</th><th>Outros indisp.</th>' +
@@ -19970,7 +20005,7 @@ function mkEstoque(){
       '</td><td>' + (o.cobT == null ? '—' : '<span class="pill ' + (o.cobT < MKT.lead ? 'r' : (o.cobT < 2 * MKT.lead ? 'y' : 'g')) + '">' + mkN1(o.cobT) + ' d</span>') +
       '</td><td>' + (o.rup ? mkDD(o.rup) : '—') + '</td><td>' + (o.ult ? mkDD(o.ult) : 'sem venda 60d') + '</td></tr>').join('') + '</tbody></table></div>'
     : '<div class="mk-note">' + vazio + '</div>';
-  h += mkCard('⚠ Alerta de ruptura', 'cobertura (disponível + em transferência) ÷ ritmo abaixo de ' + MKT.lead + ' dias', tab(alertas, 'Nenhum SKU abaixo de ' + MKT.lead + ' dias de cobertura.'));
+  h += mkCard('⚠ Alerta de ruptura', 'cobertura (disponível + em transferência) ÷ ritmo abaixo de ' + MKT.lead + ' dias', '<div class="mk-alerta">' + tab(alertas, 'Nenhum SKU abaixo de ' + MKT.lead + ' dias de cobertura.') + '</div>');
   if(zerados.length) h += mkCard('Já sem estoque no Full', 'tinham venda nos últimos 30 dias', tab(zerados, ''));
   h += mkCard('Estoque parado', 'com estoque disponível e zero venda em 30 dias · armazenagem correndo', tab(parados, 'Nenhum SKU parado.'));
   h += mkCard('Todos os SKUs no Full', 'ritmo = unidades vendidas pelo Full (pedidos), média diária até ontem · anúncios zerados e sem venda há 60 dias ficam de fora',
@@ -20031,22 +20066,32 @@ function mkAdsPorSku(p){
   (MKT.d.ads || []).forEach(x => { const f = fr[x[0]]; if(!f) return; const s = (x[2] || '').toUpperCase(); if(!s) return; A[s] = (A[s] || 0) + (+x[4] || 0) * f; });
   return A;
 }
-function mkMargem(){
-  const d = MKT.d, p = mkPeriodo(), ini = p.ini, fim = p.fim, fr = mkMesesFrac(p), rotP = mkDD(ini) + ' a ' + mkDD(fim);
+/* DRE de um intervalo de dias. Ads, Full e fatura vem por mes: entram proporcionais
+   aos dias do intervalo dentro de cada mes. */
+function mkDreCalc(ini, fim){
+  const d = MKT.d, p = {ini, fim}, fr = mkMesesFrac(p);
   const ag = MKT.agrupar; MKT.agrupar = false;
   const lista = mkPorSku(ini, fim); MKT.agrupar = ag;
   const F = mkFaturaPer(p);
-  /* Full da fatura: armazenagem/coleta dao credito de PIS/COFINS 9,25% (Lucro Real) */
-  const armaz = (F.full || 0) * (1 - 0.0925);
-  /* OUTRAS COBRANCAS do ML (auditoria 09/11): DIFAL cobrado na fatura, Ads de seguidores,
-     Minha pagina, tarifa de devolucao... - tudo que a fatura traz e nao esta nas linhas acima */
+  const armaz = (F.full || 0) * (1 - 0.0925);      /* Full da fatura, com credito de PIS/COFINS 9,25% */
   let outras = 0; const outrasDet = {};
   (d.fatura || []).forEach(x => { const f = fr[x[0]]; if(!f) return;
     const g = x[1], sub = x[2];
     if(['tarifa_venda', 'envio', 'full'].indexOf(g) >= 0 || (g === 'publicidade' && sub === 'PADS')) return;
     const rot = g === 'publicidade' ? 'Ads de seguidores' : ({difal: 'DIFAL cobrado pelo ML', minha_pagina: 'Minha página'}[g] || 'outros');
     outras += (+x[4] || 0) * f; outrasDet[rot] = (outrasDet[rot] || 0) + (+x[4] || 0) * f; });
-  const A = mkAdsPorSku(p), adsTot = Object.values(A).reduce((a, v) => a + v, 0);
+  const A = mkAdsPorSku(p);
+  /* ADS por mes: o detalhe por anuncio (ads_item_dia) so existe desde 30/07/2026; nos meses
+     sem ele vale o Product Ads da fatura (PADS) - senao jan-jul saiam sem Ads (auditoria 10/11) */
+  let adsTot = 0; const adsFonte = {};
+  Object.keys(fr).forEach(m => {
+    /* com detalhe diario: soma exata dos dias do periodo; sem: fatura (PADS) proporcional */
+    const dias = (d.ads_dia || []).filter(x => x[0].slice(0, 7) === m);
+    let fat = 0; (d.fatura || []).forEach(x => { if(x[0] === m && x[1] === 'publicidade' && x[2] === 'PADS') fat += +x[4] || 0; });
+    const adsIni = ((d.ads_dia || [])[0] || [])[0];   /* detalhe diario comeca em 30/07: so vale para mes coberto inteiro */
+    if(dias.length && adsIni && adsIni <= m + '-01'){ adsTot += dias.filter(x => x[0] >= ini && x[0] <= fim).reduce((a, x) => a + (+x[1] || 0), 0); adsFonte[m] = 'anúncio'; }
+    else { adsTot += fat * fr[m]; adsFonte[m] = fat ? 'fatura' : '—'; }
+  });
   const qTot = lista.reduce((a, o) => a + o.q, 0);
   lista.forEach(o => {
     o.contrib = o.rec - o.tar - o.env - o.imp - o.cmv;
@@ -20054,46 +20099,97 @@ function mkMargem(){
     o.arm = qTot ? armaz * o.q / qTot : 0;
     o.liq = o.contrib - o.ads - o.arm;
   });
-  const T = lista.reduce((a, o) => { ['ped','q','rec','cup','tar','env','imp','cmv','contrib','ads','arm','liq'].forEach(k => a[k] += o[k]); return a; },
-                         {ped: 0, q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, contrib: 0, ads: 0, arm: 0, liq: 0});
-  const pedMes = mkTot(ini, fim).ped;
-  const adsSemSku = adsTot - T.ads;
-  T.liqTot = T.liq - adsSemSku - outras;
-  const semCmv = lista.filter(o => o.sem).reduce((a, o) => a + o.rec, 0);
+  const T = lista.reduce((a, o) => { ['q','rec','cup','tar','env','imp','cmv','contrib','ads','arm','liq'].forEach(k => a[k] += o[k]); return a; },
+                         {q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, contrib: 0, ads: 0, arm: 0, liq: 0});
+  T.ped = mkTot(ini, fim).ped; T.preco = T.rec + T.cup; T.adsTot = adsTot; T.armaz = armaz; T.outras = outras;
+  T.liqTot = T.contrib - adsTot - armaz - outras;
+  T.semCmv = lista.filter(o => o.sem).reduce((a, o) => a + o.rec, 0);
+  return {lista, T, F, outrasDet, adsFonte};
+}
+const MKT_DRE_LINHAS = [
+  ['Preço dos anúncios', T => T.preco], ['− Descontos e cupons pagos pela Dobro', T => -T.cup],
+  ['= Receita líquida', T => T.rec, 'tot'],
+  ['− Tarifa de venda ML', T => -T.tar], ['− Envio pago pela Dobro', T => -T.env],
+  ['− Impostos (ICMS + DIFAL · PIS/COFINS 9,25% · − crédito do frete)', T => -T.imp], ['− CMV (líquido do crédito de insumos)', T => -T.cmv],
+  ['= Margem de contribuição', T => T.contrib, 'tot'], ['% margem de contribuição', T => T.rec ? T.contrib / T.rec : null, 'pct'],
+  ['− Ads (Product Ads)', T => -T.adsTot], ['− Armazenagem e serviços Full', T => -T.armaz], ['− Outras cobranças do ML', T => -T.outras],
+  ['= Margem líquida', T => T.liqTot, 'tot'], ['% margem líquida', T => T.rec ? T.liqTot / T.rec : null, 'pct'],
+  ['Pedidos', T => T.ped, 'n'], ['Ticket médio', T => T.ped ? T.rec / T.ped : null, 'r2']
+];
+function mkFmtDre(v, tipo){ if(v == null) return '—'; return tipo === 'pct' ? mkP(v) : (tipo === 'n' ? mkN(v) : (tipo === 'r2' ? mkR2(v) : mkR(v))); }
+function mkMargem(){
+  const d = MKT.d, p = mkPeriodo(), ini = p.ini, fim = p.fim, rotP = mkDD(ini) + ' a ' + mkDD(fim);
+  const G = mkDreCalc(ini, fim), T = G.T, lista = G.lista;
+  /* meses do periodo: um mes so = colunas R$ / % / por pedido; varios = meses lado a lado + Total (igual ao DRE do comercial) */
+  const meses = [...new Set(Object.keys(mkMesesFrac(p)))].sort();
   let h = mkBarPeriodo('<span>Ads, Full e outras cobranças vêm por mês na fatura; num período parcial entram proporcionais aos dias</span>');
-  h += '<div class="kpirow">' + mkKpi('Receita', mkR(T.rec), mkN(pedMes) + ' pedidos', 'accent') +
+  h += '<div class="kpirow">' + mkKpi('Receita', mkR(T.rec), mkN(T.ped) + ' pedidos', 'accent') +
     mkKpi('Margem de contribuição', mkR(T.contrib), mkP(T.rec ? T.contrib / T.rec : 0) + ' da receita') +
-    mkKpi('Margem líquida', mkR(T.liqTot), mkP(T.rec ? T.liqTot / T.rec : 0) + ' · depois de Ads e armazenagem', T.liqTot >= 0 ? 'pos' : '') +
-    mkKpi('Por pedido', mkR2(pedMes ? T.liqTot / pedMes : 0), 'margem líquida ÷ pedidos') + '</div>';
-  const linha = (lab, v, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + lab + '</td><td>' + mkR(v) + '</td><td>' + mkP(T.rec ? v / T.rec : 0) + '</td><td>' + mkR2(pedMes ? v / pedMes : 0) + '</td></tr>';
-  h += '<div class="grid2">' + mkCard('DRE do marketplace · ' + rotP, 'por pedido = valor ÷ pedidos do período',
-    '<table><thead><tr><th></th><th>R$</th><th>% receita</th><th>Por pedido</th></tr></thead><tbody>' +
-    linha('Preço dos anúncios', T.rec + T.cup) + linha('− Cupons (comprador pagou menos)', -T.cup) +
-    linha('= Receita (pago pelo comprador)', T.rec, 'mk-tot') + linha('− Tarifa de venda ML', -T.tar) + linha('− Envio pago pela Dobro', -T.env) +
-    linha('− Impostos (ICMS + DIFAL das notas · PIS/COFINS 9,25% · − crédito do frete)', -T.imp) + linha('− CMV (líquido do crédito de insumos)', -T.cmv) +
-    linha('= Margem de contribuição', T.contrib, 'mk-tot') + linha('− Ads (Product Ads)', -adsTot) + linha('− Armazenagem e serviços Full (− crédito PIS/COFINS)', -armaz) +
-    linha('− Outras cobranças do ML', -outras) +
-    linha('= Margem líquida', T.liqTot, 'mk-tot') + '</tbody></table>' +
-    (outras ? '<div class="mk-note">Outras cobranças: ' + Object.entries(outrasDet).map(e => mkEsc(e[0]) + ' ' + mkR(e[1])).join(' · ') + '</div>' : '') +
+    mkKpi('Margem líquida', mkR(T.liqTot), mkP(T.rec ? T.liqTot / T.rec : 0) + ' · depois de Ads, Full e outras cobranças', T.liqTot >= 0 ? 'pos' : 'alerta') +
+    mkKpi('Por pedido', mkR2(T.ped ? T.liqTot / T.ped : 0), 'margem líquida ÷ pedidos') + '</div>';
+  let tabela;
+  if(meses.length > 1){
+    const C = meses.map(m => { const a = (m + '-01') < ini ? ini : m + '-01', ult = mkDia(mkDia(m + '-01', 32).slice(0, 8) + '01', -1);
+      return {m, T: mkDreCalc(a, ult > fim ? fim : ult).T}; });
+    tabela = '<div class="mk-scroll"><table class="mk-dre"><thead><tr><th>DRE · Mercado Livre</th>' + C.map(c => '<th>' + mkNomeMes(c.m) + '</th>').join('') +
+      '<th class="mk-col-tot">Total</th><th>% receita</th></tr></thead><tbody>' +
+      MKT_DRE_LINHAS.map(l => '<tr class="' + (l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '')) + '"><td>' + l[0] + '</td>' +
+        C.map(c => '<td>' + mkFmtDre(l[1](c.T), l[2]) + '</td>').join('') + '<td class="mk-col-tot">' + mkFmtDre(l[1](T), l[2]) + '</td>' +
+        '<td>' + (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkP(T.rec ? l[1](T) / T.rec : 0)) + '</td></tr>').join('') + '</tbody></table></div>';
+  } else {
+    tabela = '<table class="mk-dre"><thead><tr><th>DRE · Mercado Livre</th><th>R$</th><th>% receita</th><th>Por pedido</th></tr></thead><tbody>' +
+      MKT_DRE_LINHAS.map(l => { const v = l[1](T);
+        return '<tr class="' + (l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '')) + '"><td>' + l[0] + '</td><td>' + mkFmtDre(v, l[2]) + '</td><td>' +
+          (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkP(T.rec ? v / T.rec : 0)) + '</td><td>' + (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkR2(T.ped ? v / T.ped : 0)) + '</td></tr>'; }).join('') +
+      '</tbody></table>';
+  }
+  h += mkCard('DRE do Mercado Livre · ' + rotP, meses.length > 1 ? 'meses lado a lado · última coluna = total do período' : 'por pedido = valor ÷ pedidos do período', tabela +
+    (Object.values(G.adsFonte).indexOf('fatura') >= 0 ? '<div class="mk-note">Ads: o detalhe por anúncio só existe desde 30/07/2026; antes disso o DRE usa o Product Ads da fatura do ML (sem quebra por SKU).</div>' : '') +
+    '<div class="mk-note">Descontos e cupons pagos pela Dobro vêm da tabela de descontos dos pedidos (meli.pedido_desconto), que começa em mai/26 — de jan a abr eles aparecem zerados.</div>' +
+    (T.outras ? '<div class="mk-note">Outras cobranças: ' + Object.entries(G.outrasDet).map(e => mkEsc(e[0]) + ' ' + mkR(e[1])).join(' · ') + '</div>' : '') +
     (d.fiscal ? '<div class="mk-note">Imposto (Lucro Real): base = valor da nota, em média ' + mkP(d.fiscal.k) + ' do preço; ICMS + FCP + DIFAL reais das ' + mkN(d.fiscal.notas) +
       ' notas do ML no OMIE (' + mkP(d.fiscal.taxa_icms_difal) + ' da nota, por UF de destino); PIS/COFINS 9,25% da nota; crédito de 9,25% sobre frete e armazenagem. Antes de 22/10 (sem nota no banco) vale a mesma regra.</div>' : '') +
-    (semCmv ? '<div class="mk-note">⚠ ' + mkR(semCmv) + ' de receita em SKUs sem CMV cadastrado (entram com custo zero) — cadastre na aba Premissas › CMV.</div>' : '')) +
-    mkCard('O que o ML cobrou na fatura · ' + rotP, 'para conciliar · proporcional aos dias do período',
-    '<table><tbody>' + Object.entries(F).sort((a, b) => b[1] - a[1]).map(([g, v]) => '<tr><td>' + mkEsc({tarifa_venda:'Tarifas de venda', envio:'Envios', publicidade:'Publicidade', full:'Full (armazenagem, coleta…)',
-      difal:'DIFAL', minha_pagina:'Minha página', outros:'Outros'}[g] || g) + '</td><td>' + mkR(v) + '</td></tr>').join('') +
-    '<tr class="mk-tot"><td>Total da fatura</td><td>' + mkR(Object.values(F).reduce((a, v) => a + v, 0)) + '</td></tr></tbody></table>' +
-    '<div class="mk-note">Diferença normal: a tarifa e o envio da DRE são os dos pedidos do mês; a fatura traz cobranças e estornos lançados no mês.</div>') + '</div>';
+    (T.semCmv ? '<div class="mk-note warn">⚠ ' + mkR(T.semCmv) + ' de receita em SKUs sem CMV cadastrado (entram com custo zero) — cadastre na aba Premissas › CMV.</div>' : ''));
   lista.sort((a, b) => b.rec - a.rec);
   h += mkCard('Margem por SKU · ' + rotP, 'Ads pelo anúncio · armazenagem rateada por unidade vendida',
     '<div class="mk-scroll"><table><thead><tr><th>Anúncio / SKU</th><th>Un</th><th>Receita</th><th>Tarifa</th><th>Envio</th><th>Imposto</th><th>CMV</th><th>Contribuição</th><th>%</th><th>Ads</th><th>Margem líquida</th><th>%</th><th>Por unidade</th></tr></thead><tbody>' +
     lista.map(o => '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + (o.sem ? ' <span class="pill y" title="sem CMV cadastrado">sem CMV</span>' : '') +
-      '<br><small style="color:var(--muted)">' + mkEsc(o.sub || o.k) + '</small></td><td>' + mkN(o.q) + '</td><td>' + mkR(o.rec) + '</td><td>' + mkR(o.tar) + '</td><td>' + mkR(o.env) + '</td><td>' + mkR(o.imp) +
+      '<small class="mk-sub">' + mkEsc(o.sub || o.k) + '</small></td><td>' + mkN(o.q) + '</td><td>' + mkR(o.rec) + '</td><td>' + mkR(o.tar) + '</td><td>' + mkR(o.env) + '</td><td>' + mkR(o.imp) +
       '</td><td>' + mkR(o.cmv) + '</td><td>' + mkR(o.contrib) + '</td><td>' + mkP(o.rec ? o.contrib / o.rec : 0) + '</td><td>' + (o.ads ? mkR(o.ads) : '') + '</td><td class="' + (o.liq < 0 ? 'neg' : '') + '">' + mkR(o.liq) +
       '</td><td>' + mkP(o.rec ? o.liq / o.rec : 0) + '</td><td>' + mkR2(o.q ? o.liq / o.q : 0) + '</td></tr>').join('') +
-    (adsSemSku > 1 ? '<tr><td colspan="9">Ads de anúncios sem venda no período</td><td>' + mkR(adsSemSku) + '</td><td class="neg">' + mkR(-adsSemSku) + '</td><td></td><td></td></tr>' : '') +
-    '<tr class="mk-tot"><td>Total</td><td>' + mkN(T.q) + '</td><td>' + mkR(T.rec) + '</td><td>' + mkR(T.tar) + '</td><td>' + mkR(T.env) + '</td><td>' + mkR(T.imp) + '</td><td>' + mkR(T.cmv) + '</td><td>' + mkR(T.contrib) +
-    '</td><td>' + mkP(T.rec ? T.contrib / T.rec : 0) + '</td><td>' + mkR(adsTot) + '</td><td>' + mkR(T.liqTot) + '</td><td>' + mkP(T.rec ? T.liqTot / T.rec : 0) + '</td><td>' + mkR2(T.q ? T.liqTot / T.q : 0) + '</td></tr>' +
-    '</tbody></table></div>');
+    '<tr class="mk-tot"><td>Total dos SKUs</td><td>' + mkN(T.q) + '</td><td>' + mkR(T.rec) + '</td><td>' + mkR(T.tar) + '</td><td>' + mkR(T.env) + '</td><td>' + mkR(T.imp) + '</td><td>' + mkR(T.cmv) + '</td><td>' + mkR(T.contrib) +
+    '</td><td>' + mkP(T.rec ? T.contrib / T.rec : 0) + '</td><td>' + mkR(T.ads) + '</td><td>' + mkR(T.liq) + '</td><td>' + mkP(T.rec ? T.liq / T.rec : 0) + '</td><td>' + mkR2(T.q ? T.liq / T.q : 0) + '</td></tr>' +
+    '</tbody></table></div><div class="mk-note">A linha "Total dos SKUs" não inclui Ads de anúncios sem venda nem as outras cobranças do ML — essas entram só no DRE acima.</div>');
+  return h;
+}
+
+/* ---------------- FINANCAS: o que o ML cobrou na fatura ---------------- */
+const MKT_FAT_GRUPO = {tarifa_venda: 'Tarifas de venda', envio: 'Envios', publicidade: 'Publicidade', full: 'Full (armazenagem, coleta…)',
+                       difal: 'DIFAL', minha_pagina: 'Minha página', outros: 'Outros'};
+function mkFinancas(){
+  const d = MKT.d, p = mkPeriodo(), fr = mkMesesFrac(p), meses = Object.keys(fr).sort();
+  const G = {}, Sb = {};
+  (d.fatura || []).forEach(x => { const f = fr[x[0]]; if(!f) return; const g = x[1];
+    (G[g] || (G[g] = {}))[x[0]] = ((G[g] || {})[x[0]] || 0) + (+x[4] || 0) * f;
+    const k = g + '|' + x[2]; const o = Sb[k] || (Sb[k] = {g, sub: x[2], desc: x[3], v: 0}); o.v += (+x[4] || 0) * f; });
+  const tot = m => Object.values(G).reduce((a, o) => a + (o[m] || 0), 0);
+  const totG = g => meses.reduce((a, m) => a + (G[g][m] || 0), 0);
+  const grupos = Object.keys(G).sort((a, b) => totG(b) - totG(a));
+  const T = meses.reduce((a, m) => a + tot(m), 0), receita = mkTot(p.ini, p.fim).rec;
+  let h = mkBarPeriodo(Object.values(fr).some(f => f < 0.999) ? '<span>a fatura vem por mês: num período parcial, proporcional aos dias</span>' : '');
+  h += '<div class="kpirow">' + mkKpi('Cobrado pelo ML', mkR(T), mkP(receita ? T / receita : 0) + ' do faturamento líquido', 'accent') +
+    grupos.slice(0, 4).map(g => mkKpi(MKT_FAT_GRUPO[g] || g, mkR(totG(g)), mkP(T ? totG(g) / T : 0) + ' da fatura')).join('') + '</div>';
+  h += mkCard('Fatura do Mercado Livre por mês', 'o que o ML cobrou e estornou, por grupo · para conciliar com o DRE',
+    '<div class="mk-scroll"><table class="mk-dre"><thead><tr><th>Grupo</th>' + meses.map(m => '<th>' + mkNomeMes(m) + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% fatura</th></tr></thead><tbody>' +
+    grupos.map(g => '<tr><td>' + mkEsc(MKT_FAT_GRUPO[g] || g) + '</td>' + meses.map(m => '<td>' + mkR(G[g][m] || 0) + '</td>').join('') +
+      '<td class="mk-col-tot">' + mkR(totG(g)) + '</td><td>' + mkP(T ? totG(g) / T : 0) + '</td></tr>').join('') +
+    '<tr class="mk-tot"><td>Total da fatura</td>' + meses.map(m => '<td>' + mkR(tot(m)) + '</td>').join('') + '<td class="mk-col-tot">' + mkR(T) + '</td><td></td></tr>' +
+    '</tbody></table></div><div class="mk-note">Diferença normal com o DRE: lá a tarifa e o envio são os dos pedidos do período; a fatura traz cobranças e estornos lançados no mês.</div>');
+  const subs = Object.values(Sb).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
+  h += mkCard('Detalhe das cobranças', 'cada tipo de cobrança da fatura no período',
+    '<div class="mk-scroll"><table><thead><tr><th>Cobrança</th><th>Grupo</th><th>Código</th><th>Valor</th></tr></thead><tbody>' +
+    subs.map(o => '<tr><td class="mk-t" title="' + mkEsc(o.desc) + '">' + mkEsc(o.desc) + '</td><td style="text-align:left">' + mkEsc(MKT_FAT_GRUPO[o.g] || o.g) + '</td><td>' + mkEsc(o.sub) +
+      '</td><td class="' + (o.v < 0 ? 'pos' : '') + '">' + mkR(o.v) + '</td></tr>').join('') + '</tbody></table></div>');
   return h;
 }
 
@@ -20101,7 +20197,7 @@ function mkMargem(){
 function mkAds(){
   const d = MKT.d, p = mkPeriodo(), fr = mkMesesFrac(p), M = {};
   (d.ads || []).forEach(x => { const f = fr[x[0]]; if(!f) return;
-    const o = M[x[1]] || (M[x[1]] = {item: x[1], s: x[2] || '', t: x[3] || x[1], custo: 0, cli: 0, imp: 0, rec: 0, un: 0});
+    const o = M[x[1]] || (M[x[1]] = {item: x[1], s: x[2] || '', t: x[3] || x[1], tipo: x[9] || ((d.I || {})[x[1]] || {}).tipo || '', custo: 0, cli: 0, imp: 0, rec: 0, un: 0});
     o.custo += +x[4] * f; o.cli += +x[5] * f; o.imp += +x[6] * f; o.rec += +x[7] * f; o.un += +x[8] * f; });
   const L = Object.values(M);
   const T = L.reduce((a, o) => (a.custo += o.custo, a.cli += o.cli, a.imp += o.imp, a.rec += o.rec, a.un += o.un, a), {custo: 0, cli: 0, imp: 0, rec: 0, un: 0});
@@ -20113,9 +20209,9 @@ function mkAds(){
   h += mkCard('Ads por dia', 'investimento × receita atribuída (direta + indireta)', '<div style="padding:14px;height:240px"><canvas id="mkGAds"></canvas></div>');
   L.sort((a, b) => b.custo - a.custo);
   h += mkCard('Ads por anúncio · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), 'ACOS alto e pouca venda = candidato a pausar ou rever preço',
-    '<div class="mk-scroll"><table><thead><tr><th>Anúncio</th><th>Investido</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>CPC</th><th>Receita</th><th>Unid.</th><th>ROAS</th><th>ACOS</th></tr></thead><tbody>' +
+    '<div class="mk-scroll"><table><thead><tr><th>Anúncio</th><th>Tipo de anúncio</th><th>Investido</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>CPC</th><th>Receita</th><th>Unid.</th><th>ROAS</th><th>ACOS</th></tr></thead><tbody>' +
     L.map(o => { const acos = o.rec ? o.custo / o.rec : null;
-      return '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<br><small style="color:var(--muted)">' + mkEsc(o.s || o.item) + '</small></td><td>' + mkR(o.custo) + '</td><td>' + mkN(o.imp) + '</td><td>' + mkN(o.cli) +
+      return '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<small class="mk-sub">' + mkEsc(o.s || o.item) + '</small></td><td>' + mkTipoPill(o.tipo) + '</td><td>' + mkR(o.custo) + '</td><td>' + mkN(o.imp) + '</td><td>' + mkN(o.cli) +
         '</td><td>' + mkP(o.imp ? o.cli / o.imp : null) + '</td><td>' + mkR2(o.cli ? o.custo / o.cli : 0) + '</td><td>' + mkR(o.rec) + '</td><td>' + mkN(o.un) + '</td><td>' + (o.custo ? mkN1(o.rec / o.custo) + 'x' : '—') +
         '</td><td>' + (acos == null ? (o.custo ? '<span class="pill r">sem venda</span>' : '—') : '<span class="pill ' + (acos > 0.3 ? 'r' : (acos > 0.15 ? 'y' : 'g')) + '">' + mkP(acos) + '</span>') + '</td></tr>'; }).join('') +
     '</tbody></table></div>');
