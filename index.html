@@ -19502,7 +19502,7 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 </style>
 <script>
 /* ===================== ABA MARKETPLACE (Mercado Livre) ===================== */
-const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', ord: 'rec', fam: '', gs: {k: 'dias', dir: 1}, proj: false, tend: false, ev: {},
+const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', ord: 'rec', fam: '', gs: {k: 'dias', dir: 1}, proj: false, tend: false, ev: {}, base: 'meli',
              agrupar: false, lead: 15, ritmo: 30, mes: null, busca: '', charts: {}, patch: false};
 const MKT_ABAS = [['geral','Visão geral'],['gerencial','Tabela gerencial por SKU'],['skus','Venda por SKU'],
                   ['estoque','Estoque & ruptura'],['envios','Envios'],['margem','DRE'],['financas','Finanças'],['ads','Ads']];
@@ -19661,6 +19661,7 @@ function mkClique(ev){
   else if(acao === 'atualizar') mkCarregar(true);
   else if(acao === 'ord'){ MKT.ord = val; mkDesenhar(true); }
   else if(acao === 'gsort'){ MKT.gs = {k: val, dir: MKT.gs.k === val ? -MKT.gs.dir : (val === 's' || val === 't' || val === 'fam' || val === 'dias' ? 1 : -1)}; mkDesenhar(true); }
+  else if(acao === 'base'){ MKT.base = val; mkDesenhar(true); }
   else if(acao === 'proj'){ MKT.proj = !MKT.proj; mkDesenhar(true); if(MKT.proj){ const c = document.getElementById('mkProjCard'); if(c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); } }
 }
 function mkMudou(ev){
@@ -19711,6 +19712,32 @@ function mkBarPeriodo(extra){
   return extra ? '<div class="mk-bar">' + extra + '</div>' : '';
 }
 
+/* ---------------- MELI x OMIE (10/11/2026) ----------------
+   De cada pedido do ML: onde esta a nota (meli.vw_pedido_nota, do Luca). Ate 21/10 as notas do
+   ML eram emitidas no Bling; depois, no OMIE. "So no ML" = o ML tem a nota, o ERP nao. */
+const MKT_ONDE = {omie: 'No OMIE', bling: 'No Bling (até 21/10)', so_no_ml: 'Nota só no ML — não caiu no OMIE', sem_nota: 'Sem nota emitida', nao_consultado: 'Ainda não consultado'};
+function mkNotas(ini, fim){
+  const r = {}; (MKT.d.nota_dia || []).forEach(x => { if(x[0] < ini || x[0] > fim) return;
+    const o = r[x[1]] || (r[x[1]] = {ped: 0, preco: 0, rec: 0, tar: 0, env: 0, imp: 0, cmv: 0});
+    o.ped += +x[2]; o.preco += +x[3]; o.rec += +x[4]; o.tar += +x[6]; o.env += +x[7]; o.imp += +x[8]; o.cmv += +x[9]; });
+  return r;
+}
+function mkCardOmie(p){
+  const N = mkNotas(p.ini, p.fim), tot = Object.values(N).reduce((a, o) => a + o.rec, 0);
+  const erp = (N.omie || {rec: 0, ped: 0}).rec + (N.bling || {rec: 0}).rec, pedErp = (N.omie || {ped: 0}).ped + (N.bling || {ped: 0}).ped;
+  const fora = ['so_no_ml', 'sem_nota', 'nao_consultado'].reduce((a, k) => a + ((N[k] || {}).rec || 0), 0);
+  const ordem = ['omie', 'bling', 'so_no_ml', 'sem_nota', 'nao_consultado'].filter(k => N[k]);
+  return mkCard('Faturamento MELI × OMIE', 'o que o ML vendeu × o que tem nota no ERP · líquido (preço − descontos pagos pela Dobro)',
+    '<div class="kpirow kpi-mini" style="padding:14px 16px 0">' +
+      mkKpi('Vendido no ML', mkR(tot), mkN(Object.values(N).reduce((a, o) => a + o.ped, 0)) + ' pedidos', 'accent') +
+      mkKpi('Com nota no ERP', mkR(erp), mkP(tot ? erp / tot : 0) + ' · ' + mkN(pedErp) + ' pedidos', 'pos') +
+      mkKpi('Divergência', mkR(fora), mkP(tot ? fora / tot : 0) + ' do vendido sem nota no ERP', fora > 1 ? 'alerta' : 'pos') + '</div>' +
+    '<table><thead><tr><th>Situação da nota</th><th>Pedidos</th><th>Líquido</th><th>% do vendido</th></tr></thead><tbody>' +
+    ordem.map(k => '<tr' + (['so_no_ml', 'sem_nota'].indexOf(k) >= 0 ? ' style="color:var(--mk-neg);font-weight:700"' : '') + '><td>' + MKT_ONDE[k] + '</td><td>' + mkN(N[k].ped) + '</td><td>' + mkR(N[k].rec) +
+      '</td><td><div class="mk-share">' + mkP(tot ? N[k].rec / tot : 0) + '<i style="width:' + Math.max(2, Math.round(70 * (tot ? N[k].rec / tot : 0))) + 'px"></i></div></td></tr>').join('') +
+    '</tbody></table><div class="mk-note">A lista dos pedidos com nota fora do OMIE fica na aba Finanças. O DRE tem a opção "OMIE", que mostra só o que tem nota no ERP.</div>');
+}
+
 /* ---------------- 1) VISAO GERAL ---------------- */
 function mkGeral(){
   const d = MKT.d, p = mkPeriodo(), pa = mkPeriodoAnterior(p);
@@ -19744,6 +19771,7 @@ function mkGeral(){
       (MKT.proj ? 'Fechar projeção' : '📈 Ver projeção') + '</button></div>' +
     '</div>';
   if(MKT.proj) h += mkProjecao();
+  h += mkCardOmie(p);
   h += mkCard('Faturamento líquido por dia', 'barras = líquido (preço − descontos pagos pela Dobro) · linha = média móvel de 7 dias', '<div style="padding:14px;height:280px"><canvas id="mkGDia"></canvas></div>');
   /* mapa de calor dia da semana x hora (90 dias) */
   const H = {}; let mx = 0;
@@ -20071,7 +20099,10 @@ function mkAdsPorSku(p){
 function mkDreCalc(ini, fim){
   const d = MKT.d, p = {ini, fim}, fr = mkMesesFrac(p);
   const ag = MKT.agrupar; MKT.agrupar = false;
-  const lista = mkPorSku(ini, fim); MKT.agrupar = ag;
+  let lista = mkPorSku(ini, fim); MKT.agrupar = ag;
+  /* base OMIE: so os pedidos com nota no ERP (OMIE, ou Bling ate 21/10); sem quebra por SKU */
+  const omie = MKT.base === 'omie';
+  if(omie) lista = [];
   const F = mkFaturaPer(p);
   const armaz = (F.full || 0) * (1 - 0.0925);      /* Full da fatura, com credito de PIS/COFINS 9,25% */
   let outras = 0; const outrasDet = {};
@@ -20101,7 +20132,13 @@ function mkDreCalc(ini, fim){
   });
   const T = lista.reduce((a, o) => { ['q','rec','cup','tar','env','imp','cmv','contrib','ads','arm','liq'].forEach(k => a[k] += o[k]); return a; },
                          {q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, contrib: 0, ads: 0, arm: 0, liq: 0});
-  T.ped = mkTot(ini, fim).ped; T.preco = T.rec + T.cup; T.adsTot = adsTot; T.armaz = armaz; T.outras = outras;
+  T.ped = mkTot(ini, fim).ped;
+  if(omie){
+    const N = mkNotas(ini, fim); T.ped = 0;
+    ['omie', 'bling'].forEach(k => { const o = N[k]; if(!o) return;
+      T.ped += o.ped; T.rec += o.rec; T.cup += o.preco - o.rec; T.tar += o.tar; T.env += o.env; T.imp += o.imp; T.cmv += o.cmv; });
+    T.contrib = T.rec - T.tar - T.env - T.imp - T.cmv;
+  } T.preco = T.rec + T.cup; T.adsTot = adsTot; T.armaz = armaz; T.outras = outras;
   T.liqTot = T.contrib - adsTot - armaz - outras;
   T.semCmv = lista.filter(o => o.sem).reduce((a, o) => a + o.rec, 0);
   return {lista, T, F, outrasDet, adsFonte};
@@ -20122,7 +20159,13 @@ function mkMargem(){
   const G = mkDreCalc(ini, fim), T = G.T, lista = G.lista;
   /* meses do periodo: um mes so = colunas R$ / % / por pedido; varios = meses lado a lado + Total (igual ao DRE do comercial) */
   const meses = [...new Set(Object.keys(mkMesesFrac(p)))].sort();
-  let h = mkBarPeriodo('<span>Ads, Full e outras cobranças vêm por mês na fatura; num período parcial entram proporcionais aos dias</span>');
+  const bt = (k, lab) => '<button data-mk="base:' + k + '" style="border:none;border-radius:8px;padding:7px 16px;font-weight:800;cursor:pointer;' +
+    (MKT.base === k ? 'background:var(--mk-navy);color:#fff' : 'background:transparent;color:var(--mk-muted)') + '">' + lab + '</button>';
+  let h = '<div class="mk-bar"><span style="display:inline-flex;background:#fff;border:1.5px solid var(--mk-line);border-radius:10px;padding:3px">' +
+    bt('meli', 'MELI') + bt('omie', 'OMIE') + '</span><span>' + (MKT.base === 'omie'
+      ? '<b>OMIE</b>: só os pedidos com nota no ERP (OMIE; até 21/10, Bling) — como a contabilidade enxerga. Ads, Full e outras cobranças entram inteiros.'
+      : '<b>MELI</b>: tudo o que o Mercado Livre vendeu, tenha ou não nota no ERP.') + '</span></div>';
+  h += mkBarPeriodo('<span>Ads, Full e outras cobranças vêm por mês na fatura; num período parcial entram proporcionais aos dias</span>');
   h += '<div class="kpirow">' + mkKpi('Receita', mkR(T.rec), mkN(T.ped) + ' pedidos', 'accent') +
     mkKpi('Margem de contribuição', mkR(T.contrib), mkP(T.rec ? T.contrib / T.rec : 0) + ' da receita') +
     mkKpi('Margem líquida', mkR(T.liqTot), mkP(T.rec ? T.liqTot / T.rec : 0) + ' · depois de Ads, Full e outras cobranças', T.liqTot >= 0 ? 'pos' : 'alerta') +
@@ -20143,13 +20186,14 @@ function mkMargem(){
           (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkP(T.rec ? v / T.rec : 0)) + '</td><td>' + (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkR2(T.ped ? v / T.ped : 0)) + '</td></tr>'; }).join('') +
       '</tbody></table>';
   }
-  h += mkCard('DRE do Mercado Livre · ' + rotP, meses.length > 1 ? 'meses lado a lado · última coluna = total do período' : 'por pedido = valor ÷ pedidos do período', tabela +
+  h += mkCard('DRE do Mercado Livre · ' + (MKT.base === 'omie' ? 'base OMIE' : 'base MELI') + ' · ' + rotP, meses.length > 1 ? 'meses lado a lado · última coluna = total do período' : 'por pedido = valor ÷ pedidos do período', tabela +
     (Object.values(G.adsFonte).indexOf('fatura') >= 0 ? '<div class="mk-note">Ads: o detalhe por anúncio só existe desde 30/07/2026; antes disso o DRE usa o Product Ads da fatura do ML (sem quebra por SKU).</div>' : '') +
     '<div class="mk-note">Descontos e cupons pagos pela Dobro vêm da tabela de descontos dos pedidos (meli.pedido_desconto), que começa em mai/26 — de jan a abr eles aparecem zerados.</div>' +
     (T.outras ? '<div class="mk-note">Outras cobranças: ' + Object.entries(G.outrasDet).map(e => mkEsc(e[0]) + ' ' + mkR(e[1])).join(' · ') + '</div>' : '') +
     (d.fiscal ? '<div class="mk-note">Imposto (Lucro Real): base = valor da nota, em média ' + mkP(d.fiscal.k) + ' do preço; ICMS + FCP + DIFAL reais das ' + mkN(d.fiscal.notas) +
       ' notas do ML no OMIE (' + mkP(d.fiscal.taxa_icms_difal) + ' da nota, por UF de destino); PIS/COFINS 9,25% da nota; crédito de 9,25% sobre frete e armazenagem. Antes de 22/10 (sem nota no banco) vale a mesma regra.</div>' : '') +
     (T.semCmv ? '<div class="mk-note warn">⚠ ' + mkR(T.semCmv) + ' de receita em SKUs sem CMV cadastrado (entram com custo zero) — cadastre na aba Premissas › CMV.</div>' : ''));
+  if(MKT.base === 'omie') return h + '<div class="mk-note">Na base OMIE não há quebra por SKU (a nota do ERP não traz o anúncio). Para margem por SKU, volte para MELI.</div>';
   lista.sort((a, b) => b.rec - a.rec);
   h += mkCard('Margem por SKU · ' + rotP, 'Ads pelo anúncio · armazenagem rateada por unidade vendida',
     '<div class="mk-scroll"><table><thead><tr><th>Anúncio / SKU</th><th>Un</th><th>Receita</th><th>Tarifa</th><th>Envio</th><th>Imposto</th><th>CMV</th><th>Contribuição</th><th>%</th><th>Ads</th><th>Margem líquida</th><th>%</th><th>Por unidade</th></tr></thead><tbody>' +
@@ -20185,6 +20229,14 @@ function mkFinancas(){
       '<td class="mk-col-tot">' + mkR(totG(g)) + '</td><td>' + mkP(T ? totG(g) / T : 0) + '</td></tr>').join('') +
     '<tr class="mk-tot"><td>Total da fatura</td>' + meses.map(m => '<td>' + mkR(tot(m)) + '</td>').join('') + '<td class="mk-col-tot">' + mkR(T) + '</td><td></td></tr>' +
     '</tbody></table></div><div class="mk-note">Diferença normal com o DRE: lá a tarifa e o envio são os dos pedidos do período; a fatura traz cobranças e estornos lançados no mês.</div>');
+  /* pedidos cuja nota nao esta no ERP (so no ML / sem nota) */
+  const SE = (d.sem_erp || []).filter(x => x[0] >= p.ini && x[0] <= p.fim);
+  const tSE = SE.reduce((a, x) => a + (+x[3] || 0), 0);
+  h += mkCard('Pedidos com nota fora do OMIE', SE.length ? SE.length + ' pedidos · ' + mkR(tSE) + ' · para importar a nota no OMIE (ou emitir)' : 'nenhum no período',
+    SE.length ? '<div class="mk-scroll"><table><thead><tr><th>Dia</th><th>Pedido ML</th><th>Situação</th><th>Nota (nº / série)</th><th>Líquido</th><th>Itens</th></tr></thead><tbody>' +
+      SE.map(x => '<tr><td>' + mkDD(x[0]) + '</td><td>' + mkEsc(x[1]) + '</td><td style="text-align:left">' + (x[2] === 'so_no_ml' ? '<span class="mk-chip dn">só no ML</span>' : '<span class="mk-chip nt">sem nota</span>') +
+        '</td><td>' + (x[4] ? mkEsc(x[4]) + ' / ' + mkEsc(x[5]) : '—') + '</td><td>' + mkR2(+x[3]) + '</td><td class="mk-t" style="max-width:260px" title="' + mkEsc(x[6]) + '">' + mkEsc(x[6]) + '</td></tr>').join('') +
+      '</tbody></table></div>' : '<div class="mk-note">Todos os pedidos do período têm nota no ERP.</div>');
   const subs = Object.values(Sb).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
   h += mkCard('Detalhe das cobranças', 'cada tipo de cobrança da fatura no período',
     '<div class="mk-scroll"><table><thead><tr><th>Cobrança</th><th>Grupo</th><th>Código</th><th>Valor</th></tr></thead><tbody>' +
