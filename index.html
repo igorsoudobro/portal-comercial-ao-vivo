@@ -19755,15 +19755,14 @@ function mkCardOmie(p){
       mkKpi('Vendido no ML', mkR(meli), mkN(pedMeli) + ' pedidos · líquido de descontos pagos pela Dobro', 'accent') +
       mkKpi('Faturado no OMIE', mkR(erp), mkN(E.T.n) + ' notas' + ((E.F.bling || {}).n ? ' (inclui Bling até 21/10)' : ''), 'pos') +
       mkKpi('Diferença', mkR(dif), mkP(meli ? dif / meli : 0) + ' do vendido', Math.abs(dif) > 0.02 * meli ? 'alerta' : 'pos') + '</div>' +
-    '<table><thead><tr><th>De onde vem a diferença</th><th>Pedidos</th><th>Valor</th></tr></thead><tbody>' +
-    linha('Nota emitida só no ML — não caiu no OMIE', soML.ped, soML.rec, 'color:var(--mk-neg);font-weight:700', 'precisa importar no OMIE') +
-    linha('Pedido sem nota emitida', semN.ped, semN.rec, semN.rec ? 'color:var(--mk-neg);font-weight:700' : '') +
-    (naoC.rec ? linha('Pedido ainda não conferido contra a nota', naoC.ped, naoC.rec, '', 'a conferência roda junto com a sincronização do ML') : '') +
-    linha('Data e valor (nota em outro dia que o pedido, frete, arredondamento)', null, resto, '', 'normal: o pedido de 31/10 vira nota em 01/11, por exemplo') +
-    '<tr class="mk-tot"><td>Diferença total</td><td></td><td>' + mkR(dif) + '</td></tr>' +
-    '</tbody></table>' +
-    '<table style="margin-top:6px"><thead><tr><th>Notas no ERP</th><th>Notas</th><th>Valor</th></tr></thead><tbody>' +
-    ['omie', 'bling'].filter(k => E.F[k]).map(k => linha(k === 'omie' ? 'OMIE' : 'Bling (até 21/10)', E.F[k].n, E.F[k].vnf)).join('') +
+    /* PONTE: do que o ML vendeu ate o que esta no OMIE, uma linha por motivo */
+    '<table><thead><tr><th>Do ML até o OMIE</th><th>Pedidos / notas</th><th>Valor</th></tr></thead><tbody>' +
+    '<tr class="mk-tot"><td>Vendido no ML (pedidos do período)</td><td>' + mkN(pedMeli) + ' pedidos</td><td>' + mkR(meli) + '</td></tr>' +
+    linha('(−) Pedidos com nota só no ML — a nota não caiu no OMIE', soML.ped, -soML.rec, 'color:var(--mk-neg);font-weight:700', 'precisa importar no OMIE · lista na aba Finanças') +
+    linha('(−) Pedidos sem nota emitida', semN.ped, -semN.rec, semN.rec ? 'color:var(--mk-neg);font-weight:700' : '', 'ainda não faturados') +
+    (naoC.rec ? linha('(−) Pedidos ainda não conferidos contra a nota', naoC.ped, -naoC.rec, '', 'a conferência roda junto com a sincronização do ML') : '') +
+    linha('(+) Notas do período de pedidos de outros dias e diferença de valor', null, -resto, '', 'ex.: pedido de 31/10 com nota em 01/11 entra aqui no OMIE, mas não no ML') +
+    '<tr class="mk-tot"><td>= Notas no OMIE' + ((E.F.bling || {}).n ? ' (e Bling até 21/10)' : '') + ' <small class="mk-sub">igual ao relatório do OMIE (canal Mkt Place, Mercado Livre)</small></td><td>' + mkN(E.T.n) + ' notas</td><td>' + mkR(erp) + '</td></tr>' +
     '</tbody></table><div class="mk-note">A lista dos pedidos com nota fora do OMIE está na aba Finanças. O DRE tem a opção "OMIE", que usa as notas.</div>');
 }
 
