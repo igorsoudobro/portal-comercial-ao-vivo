@@ -19471,6 +19471,14 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 :is(#v-marketplace,#v-tiktok) .mk-note.warn{background:#FFF8E1;color:#7A5B00;border-radius:10px;margin:10px 20px}
 :is(#v-marketplace,#v-tiktok) td.mk-t{max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
 :is(#v-marketplace,#v-tiktok) table.mk-ger th:nth-child(2){text-align:left}
+/* SKU e Descricao congelados ao rolar para o lado (Igor, 10/11) */
+:is(#v-marketplace,#v-tiktok) table.mk-ger td:nth-child(1),:is(#v-marketplace,#v-tiktok) table.mk-ger th:nth-child(1){position:sticky;left:0;z-index:2;background:#fff;min-width:175px;max-width:175px}
+:is(#v-marketplace,#v-tiktok) table.mk-ger td:nth-child(2),:is(#v-marketplace,#v-tiktok) table.mk-ger th:nth-child(2){position:sticky;left:175px;z-index:2;background:#fff;min-width:260px;max-width:260px;box-shadow:4px 0 6px -4px rgba(30,46,95,.25)}
+:is(#v-marketplace,#v-tiktok) table.mk-ger thead th:nth-child(1),:is(#v-marketplace,#v-tiktok) table.mk-ger thead th:nth-child(2){z-index:4;background:var(--mk-soft)}
+:is(#v-marketplace,#v-tiktok) table.mk-ger tr.mk-tot td:nth-child(1),:is(#v-marketplace,#v-tiktok) table.mk-ger tr.mk-tot td:nth-child(2){background:var(--mk-soft)}
+:is(#v-marketplace,#v-tiktok) table.mk-ger tbody tr:hover td:nth-child(-n+2){background:#FAFBFE}
+:is(#v-marketplace,#v-tiktok) .mk-repor{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+:is(#v-marketplace,#v-tiktok) .mk-repor b{font-family:'Barlow Condensed',sans-serif;font-size:17px;color:var(--mk-navy)}
 :is(#v-marketplace,#v-tiktok) td.mk-sku{white-space:nowrap}
 :is(#v-marketplace,#v-tiktok) td small.mk-sub{display:block;white-space:nowrap;color:var(--mk-muted)}
 :is(#v-marketplace,#v-tiktok) .mk-abc{display:inline-block;width:22px;text-align:center;border-radius:6px;font-weight:800;font-size:11px;padding:2px 0}
@@ -19502,7 +19510,7 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 </style>
 <script>
 /* ===================== ABA MARKETPLACE (Mercado Livre) ===================== */
-const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', ord: 'rec', fam: '', gs: {k: 'dias', dir: 1}, proj: false, tend: false, ev: {}, base: 'meli',
+const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', ord: 'rec', fam: '', gs: {k: 'dias', dir: 1}, proj: false, tend: false, ev: {}, base: 'meli', lt: 5,
              agrupar: false, lead: 15, ritmo: 30, mes: null, busca: '', charts: {}, patch: false};
 const MKT_ABAS = [['geral','Visão geral'],['gerencial','Tabela gerencial por SKU'],['skus','Venda por SKU'],
                   ['estoque','Estoque & ruptura'],['envios','Envios'],['margem','DRE'],['financas','Finanças'],['ads','Ads']];
@@ -19668,6 +19676,7 @@ function mkMudou(ev){
   const t = ev.target; if(!t || !t.id) return;
   if(t.id === 'mkAgr') MKT.agrupar = t.checked;
   else if(t.id === 'mkFam') MKT.fam = t.value;
+  else if(t.id === 'mkLt') MKT.lt = Math.max(0, +t.value || 0);
   else if(t.id === 'mkTend') MKT.tend = t.checked;
   else if(t.id.indexOf('mkEv_') === 0) MKT.ev[t.id.slice(5)] = Math.max(0, +String(t.value).replace(',', '.') || 0);
   else if(t.id === 'mkLead') MKT.lead = Math.max(1, +t.value || 15);
@@ -19844,13 +19853,17 @@ function mkGerencial(){
     const r30 = soma(x[0], 30, 'rec');
     const media = (g7 / 7 + g15 / 15 + g30 / 30) / 3;
     const est = disp + transf, dias = media > 0 ? est / media : null, dias0 = media > 0 ? disp / media : null;
+    /* SUGESTAO DE REPOSICAO (10/11, Igor): entre subir o envio e chegar no Full ha ~5 dias de lead time.
+       O estoque (hoje + a caminho) tem de cobrir o lead time E mais 30 dias depois da chegada. */
+    const repor = media > 0 ? Math.max(0, Math.ceil(media * (30 + MKT.lt) - est)) : 0;
+    const urgente = dias != null && dias < MKT.lt;     /* acaba antes de a reposicao chegar */
     /* anuncios do inventario: tipo e Ads dos ultimos 30 dias */
     const its = (x[10] || []).map(id => d.I[id]).filter(Boolean);
     const tipos = [...new Set(its.map(i => i.tipo).filter(Boolean))];
     const ads = its.reduce((a, i) => a + i.ads, 0), adsRec = its.reduce((a, i) => a + i.adsRec, 0);
     return {inv: x[0], s: dob[String(x[1]).toUpperCase()] || x[1], sml: x[1], t: x[2], fam: x[11] || 'Outros', disp, transf, est, g7, g15, g30, media, dias, dias0,
             preco: ultPreco(x[0]), pago: g30 ? r30 / g30 : null,
-            tipo: tipos.map(mkTipo).sort().join(' + ') || '', tipoRaw: tipos, ads, roas: ads > 0 ? adsRec / ads : null,
+            tipo: tipos.map(mkTipo).sort().join(' + ') || '', tipoRaw: tipos, ads, roas: ads > 0 ? adsRec / ads : null, repor, urgente,
             data: dias != null ? mkDia(hoje, Math.floor(dias)) : null, data0: dias0 != null ? mkDia(hoje, Math.floor(dias0)) : null,
             morto: (+x[5] || 0) <= 0 && g60 === 0};
   }).filter(o => !o.morto);
@@ -19868,6 +19881,7 @@ function mkGerencial(){
   const nR0 = L.filter(o => cor(o.dias0) === 'r').length;
   const filtros = '<div class="mk-bar">Família <select id="mkFam"><option value="">todas</option>' + fams.map(f => '<option' + (MKT.fam === f ? ' selected' : '') + '>' + mkEsc(f) + '</option>').join('') + '</select>' +
           'Vermelho abaixo de <input id="mkLead" type="number" min="1" value="' + MKT.lead + '" style="width:60px"> dias' +
+          '<span title="dias entre subir a solicitação de envio e a mercadoria ficar disponível no Full">Lead time do envio <input id="mkLt" type="number" min="0" value="' + MKT.lt + '" style="width:56px"> dias</span>' +
           '<input id="mkBusca" placeholder="buscar SKU ou produto" value="' + mkEsc(MKT.busca) + '" style="min-width:200px"></div>';
   const rup = (dd, dt, est) => dd == null ? '<span class="mk-chip nt">sem giro</span>' :
     '<span class="mk-dias ' + cor(dd) + '"><b>' + (est <= 0 ? 'sem estoque' : mkDD(dt)) + '</b><small>' + (est <= 0 ? 'zerado' : mkN1(dd) + ' dias') + '</small></span>';
@@ -19880,7 +19894,7 @@ function mkGerencial(){
     '<span style="margin-left:auto">clique no título da coluna para ordenar · giro = unidades vendidas pelo Full até ontem</span></div>' +
     '<div class="mk-scroll"><table class="mk-ger"><thead><tr>' + th('s', 'SKU') + th('t', 'Descrição') + th('fam', 'Família') + th('preco', 'Preço do anúncio') + th('pago', 'Preço médio pago') +
     th('disp', 'Estoque hoje') + th('transf', 'A caminho') + th('g7', 'Giro 7 dias') + th('g15', 'Giro 15 dias') + th('g30', 'Giro mês') + th('media', 'Média/dia') +
-    th('dias0', 'Ruptura com o estoque de hoje') + th('dias', 'Ruptura após chegar o que está a caminho') +
+    th('dias0', 'Ruptura com o estoque de hoje') + th('dias', 'Ruptura após chegar o que está a caminho') + th('repor', 'Sugestão de reposição (30 dias + lead time)') +
     th('tipo', 'Tipo de anúncio') + th('ads', 'Investido Ads (30 dias)') + th('roas', 'ROAS') + '</tr></thead><tbody>' +
     L.map(o => '<tr><td class="mk-sku"><b>' + mkEsc(o.s) + '</b>' + (o.sml && o.sml !== o.s ? '<small class="mk-sub">ML: ' + mkEsc(o.sml) + '</small>' : '') + '</td>' +
       '<td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '</td><td style="text-align:left;white-space:nowrap">' + mkEsc(o.fam) + '</td>' +
@@ -19889,13 +19903,15 @@ function mkGerencial(){
       '<td>' + mkN(o.disp) + '</td><td>' + (o.transf ? mkN(o.transf) : '<span style="color:var(--mk-muted)">—</span>') + '</td>' +
       '<td>' + mkN(o.g7) + '</td><td>' + mkN(o.g15) + '</td><td>' + mkN(o.g30) + '</td><td>' + mkN1(o.media) + '</td>' +
       '<td>' + rup(o.dias0, o.data0, o.disp) + '</td><td>' + rup(o.dias, o.data, o.est) + '</td>' +
+      '<td>' + (o.repor > 0 ? '<span class="mk-repor"><b>' + mkN(o.repor) + ' un</b><small style="color:var(--mk-muted)">' + mkN(Math.round(o.media * (30 + MKT.lt))) + ' un para ' + (30 + MKT.lt) + ' dias</small>' +
+        (o.urgente ? '<small style="color:var(--mk-neg);font-weight:800">⚠ acaba antes de chegar</small>' : '') + '</span>' : (o.media > 0 ? '<span class="mk-chip up">já cobre</span>' : '—')) + '</td>' +
       '<td style="white-space:nowrap">' + (o.tipoRaw.length ? o.tipoRaw.map(mkTipoPill).join(' ') : '—') + '</td>' +
       '<td>' + (o.ads ? mkR(o.ads) : '—') + '</td>' +
       '<td>' + (o.roas != null ? '<b style="color:' + (o.roas >= 5 ? 'var(--mk-pos)' : (o.roas >= 3 ? 'var(--mk-warn)' : 'var(--mk-neg)')) + '">' + mkN1(o.roas) + 'x</b>' : '—') + '</td></tr>').join('') +
     '<tr class="mk-tot"><td>Total</td><td></td><td></td><td></td><td></td><td>' + mkN(L.reduce((a, o) => a + o.disp, 0)) + '</td><td>' + mkN(L.reduce((a, o) => a + o.transf, 0)) + '</td><td>' + mkN(T.g7) + '</td><td>' + mkN(T.g15) + '</td><td>' + mkN(T.g30) +
-    '</td><td></td><td></td><td></td><td></td><td>' + mkR(T.ads) + '</td><td>' + (T.ads ? mkN1(T.adsRec / T.ads) + 'x' : '—') + '</td></tr>' +
+    '</td><td></td><td></td><td></td><td>' + mkN(L.reduce((a, o) => a + o.repor, 0)) + ' un</td><td></td><td>' + mkR(T.ads) + '</td><td>' + (T.ads ? mkN1(T.adsRec / T.ads) + 'x' : '—') + '</td></tr>' +
     '</tbody></table></div>' +
-    '<div class="mk-note">Ruptura = estoque ÷ média dos giros diários de 7, 15 e 30 dias. "Com o estoque de hoje" usa só o disponível; "após chegar" soma o que está a caminho (transferência entre centros do Full). ' +
+    '<div class="mk-note">Ruptura = estoque ÷ média dos giros diários de 7, 15 e 30 dias. Sugestão de reposição = média diária × (30 dias + lead time do envio) − (estoque de hoje + a caminho), arredondado para cima: o estoque precisa durar até a mercadoria chegar ao Full e mais 30 dias depois. "Acaba antes de chegar" = a cobertura atual é menor que o lead time. "Com o estoque de hoje" usa só o disponível; "após chegar" soma o que está a caminho (transferência entre centros do Full). ' +
     'Preço do anúncio = preço cheio da última venda (o preço atual do anúncio entra na Fase 2). Preço médio pago = líquido ÷ unidades em 30 dias. ' +
     'Investido e ROAS = Product Ads dos anúncios desse SKU nos últimos 30 dias (ROAS = receita atribuída ÷ investido).</div></div>';
   return h;
