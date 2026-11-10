@@ -19415,90 +19415,90 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 /* ===== MARKETPLACE · design (09/11/2026) =====
    Identidade Dobro: navy #2A3E7E, amarelo #D8C733, Barlow Condensed nos titulos.
    Amarelo do ML (#FFE600) so como marca do canal, nunca em numero. */
-#v-marketplace{--mk-navy:#2A3E7E;--mk-navy2:#1E2E5F;--mk-ml:#FFE600;--mk-line:#E6EAF3;--mk-soft:#F6F8FC;
+:is(#v-marketplace,#v-tiktok){--mk-navy:#2A3E7E;--mk-navy2:#1E2E5F;--mk-ml:#FFE600;--mk-line:#E6EAF3;--mk-soft:#F6F8FC;
   --mk-pos:#1F9D6B;--mk-neg:#D9534F;--mk-warn:#C98A00;--mk-muted:#6B7490}
-#v-marketplace .mk-hero{background:linear-gradient(120deg,var(--mk-navy) 0%,var(--mk-navy2) 100%);color:#fff;border-radius:18px;
+:is(#v-marketplace,#v-tiktok) .mk-hero{background:linear-gradient(120deg,var(--mk-navy) 0%,var(--mk-navy2) 100%);color:#fff;border-radius:18px;
   padding:20px 24px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
   box-shadow:0 10px 30px rgba(30,46,95,.18);position:relative;overflow:hidden}
-#v-marketplace .mk-hero:after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;
+:is(#v-marketplace,#v-tiktok) .mk-hero:after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;
   background:radial-gradient(circle,rgba(255,230,0,.22),rgba(255,230,0,0) 70%)}
-#v-marketplace .mk-hero .mk-canal{display:inline-flex;align-items:center;gap:8px;background:var(--mk-ml);color:#2D3277;font-weight:800;
+:is(#v-marketplace,#v-tiktok) .mk-hero .mk-canal{display:inline-flex;align-items:center;gap:8px;background:var(--mk-ml);color:#2D3277;font-weight:800;
   font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:20px}
-#v-marketplace .mk-hero h2{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:.01em}
-#v-marketplace .mk-hero p{margin:0;font-size:12px;opacity:.8}
-#v-marketplace .mk-hero .mk-hero-dir{display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:1}
-#v-marketplace .mk-hero .mk-per{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;font-size:12px}
-#v-marketplace .mk-hero .mk-per b{font-size:14px;display:block;font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em}
-#v-marketplace .mk-hero button{background:#fff;color:var(--mk-navy);border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
-#v-marketplace .mk-hero button:hover{background:var(--mk-ml)}
-#v-marketplace .mk-tabs{display:flex;gap:4px;overflow-x:auto;background:#fff;border-radius:14px;padding:5px;margin:0 0 18px;
+:is(#v-marketplace,#v-tiktok) .mk-hero h2{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:.01em}
+:is(#v-marketplace,#v-tiktok) .mk-hero p{margin:0;font-size:12px;opacity:.8}
+:is(#v-marketplace,#v-tiktok) .mk-hero .mk-hero-dir{display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:1}
+:is(#v-marketplace,#v-tiktok) .mk-hero .mk-per{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;font-size:12px}
+:is(#v-marketplace,#v-tiktok) .mk-hero .mk-per b{font-size:14px;display:block;font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em}
+:is(#v-marketplace,#v-tiktok) .mk-hero button{background:#fff;color:var(--mk-navy);border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+:is(#v-marketplace,#v-tiktok) .mk-hero button:hover{background:var(--mk-ml)}
+:is(#v-marketplace,#v-tiktok) .mk-tabs{display:flex;gap:4px;overflow-x:auto;background:#fff;border-radius:14px;padding:5px;margin:0 0 18px;
   box-shadow:0 1px 3px rgba(30,46,95,.08);scrollbar-width:none}
-#v-marketplace .mk-tabs button{flex:0 0 auto;border:none;background:transparent;color:var(--mk-muted);border-radius:10px;padding:9px 15px;
+:is(#v-marketplace,#v-tiktok) .mk-tabs button{flex:0 0 auto;border:none;background:transparent;color:var(--mk-muted);border-radius:10px;padding:9px 15px;
   font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;transition:.15s}
-#v-marketplace .mk-tabs button:hover{color:var(--mk-navy);background:var(--mk-soft)}
-#v-marketplace .mk-tabs button.on{background:var(--mk-navy);color:#fff;box-shadow:0 4px 12px rgba(42,62,126,.25)}
-#v-marketplace .mk-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-size:12.5px;color:var(--mk-muted)}
-#v-marketplace .mk-bar select,#v-marketplace .mk-bar input{border:1.5px solid var(--mk-line);border-radius:10px;padding:7px 11px;font-size:13px;
+:is(#v-marketplace,#v-tiktok) .mk-tabs button:hover{color:var(--mk-navy);background:var(--mk-soft)}
+:is(#v-marketplace,#v-tiktok) .mk-tabs button.on{background:var(--mk-navy);color:#fff;box-shadow:0 4px 12px rgba(42,62,126,.25)}
+:is(#v-marketplace,#v-tiktok) .mk-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-size:12.5px;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok) .mk-bar select,:is(#v-marketplace,#v-tiktok) .mk-bar input{border:1.5px solid var(--mk-line);border-radius:10px;padding:7px 11px;font-size:13px;
   font-weight:600;color:var(--mk-navy);background:#fff}
-#v-marketplace .mk-bar input:focus,#v-marketplace .mk-bar select:focus{outline:none;border-color:var(--mk-navy)}
-#v-marketplace .kpirow{gap:12px}
-#v-marketplace .kpi{border-left:none;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(30,46,95,.08);position:relative;
+:is(#v-marketplace,#v-tiktok) .mk-bar input:focus,:is(#v-marketplace,#v-tiktok) .mk-bar select:focus{outline:none;border-color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok) .kpirow{gap:12px}
+:is(#v-marketplace,#v-tiktok) .kpi{border-left:none;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(30,46,95,.08);position:relative;
   border-top:3px solid #DCE3F2}
-#v-marketplace .kpi.accent{border-top-color:var(--mk-navy)}
-#v-marketplace .kpi.pos{border-top-color:var(--mk-pos)}
-#v-marketplace .kpi .lab{font-size:10.5px;letter-spacing:.08em}
-#v-marketplace .kpi .val{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;letter-spacing:.01em;line-height:1.1}
-#v-marketplace .kpi .sub{font-size:11.5px;line-height:1.45;margin-top:4px}
-#v-marketplace .mk-chip{display:inline-block;border-radius:20px;padding:1px 8px;font-weight:700;font-size:11px}
-#v-marketplace .mk-chip.up{background:#E4F5EE;color:var(--mk-pos)}#v-marketplace .mk-chip.dn{background:#FBE7E6;color:var(--mk-neg)}
-#v-marketplace .mk-chip.nt{background:#EEF0F6;color:var(--mk-muted)}
-#v-marketplace .mk-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
-#v-marketplace .mk-cmp .kpi{background:var(--mk-soft);box-shadow:none;border-top:none;border:1px solid var(--mk-line)}
-#v-marketplace .mk-cmp .kpi .val{font-size:24px}
-#v-marketplace .card{border-radius:16px;box-shadow:0 1px 3px rgba(30,46,95,.08);border:1px solid #EEF1F7}
-#v-marketplace .card-h{padding:15px 20px;background:#fff}
-#v-marketplace .card-h h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:.01em;text-transform:none}
-#v-marketplace .card-h .hint{font-size:11.5px;max-width:520px;text-align:right}
-#v-marketplace .mk-scroll{overflow:auto;max-height:640px}
-#v-marketplace table thead th{position:sticky;top:0;z-index:1;background:var(--mk-soft);color:var(--mk-muted);font-size:10.5px;
+:is(#v-marketplace,#v-tiktok) .kpi.accent{border-top-color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok) .kpi.pos{border-top-color:var(--mk-pos)}
+:is(#v-marketplace,#v-tiktok) .kpi .lab{font-size:10.5px;letter-spacing:.08em}
+:is(#v-marketplace,#v-tiktok) .kpi .val{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;letter-spacing:.01em;line-height:1.1}
+:is(#v-marketplace,#v-tiktok) .kpi .sub{font-size:11.5px;line-height:1.45;margin-top:4px}
+:is(#v-marketplace,#v-tiktok) .mk-chip{display:inline-block;border-radius:20px;padding:1px 8px;font-weight:700;font-size:11px}
+:is(#v-marketplace,#v-tiktok) .mk-chip.up{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok) .mk-chip.dn{background:#FBE7E6;color:var(--mk-neg)}
+:is(#v-marketplace,#v-tiktok) .mk-chip.nt{background:#EEF0F6;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok) .mk-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
+:is(#v-marketplace,#v-tiktok) .mk-cmp .kpi{background:var(--mk-soft);box-shadow:none;border-top:none;border:1px solid var(--mk-line)}
+:is(#v-marketplace,#v-tiktok) .mk-cmp .kpi .val{font-size:24px}
+:is(#v-marketplace,#v-tiktok) .card{border-radius:16px;box-shadow:0 1px 3px rgba(30,46,95,.08);border:1px solid #EEF1F7}
+:is(#v-marketplace,#v-tiktok) .card-h{padding:15px 20px;background:#fff}
+:is(#v-marketplace,#v-tiktok) .card-h h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:.01em;text-transform:none}
+:is(#v-marketplace,#v-tiktok) .card-h .hint{font-size:11.5px;max-width:520px;text-align:right}
+:is(#v-marketplace,#v-tiktok) .mk-scroll{overflow:auto;max-height:640px}
+:is(#v-marketplace,#v-tiktok) table thead th{position:sticky;top:0;z-index:1;background:var(--mk-soft);color:var(--mk-muted);font-size:10.5px;
   text-transform:uppercase;letter-spacing:.06em;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--mk-line)}
-#v-marketplace table td{padding:10px 12px;font-size:12.5px;border-bottom:1px solid #F0F2F8}
-#v-marketplace table tbody tr:hover td{background:#FAFBFE}
-#v-marketplace td small{font-size:10.5px}
-#v-marketplace .mk-heat td{padding:5px 2px;text-align:center;font-size:10px;min-width:26px;border-radius:4px;border:2px solid #fff}
-#v-marketplace .mk-heat th{padding:4px 2px;font-size:10px;text-align:center;background:#fff;position:static}
-#v-marketplace .mk-note{font-size:12px;color:var(--mk-muted);padding:10px 20px;line-height:1.5}
-#v-marketplace .mk-note.warn{background:#FFF8E1;color:#7A5B00;border-radius:10px;margin:10px 20px}
-#v-marketplace td.mk-t{max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
-#v-marketplace table.mk-ger th:nth-child(2){text-align:left}
-#v-marketplace td.mk-sku{white-space:nowrap}
-#v-marketplace td small.mk-sub{display:block;white-space:nowrap;color:var(--mk-muted)}
-#v-marketplace .mk-abc{display:inline-block;width:22px;text-align:center;border-radius:6px;font-weight:800;font-size:11px;padding:2px 0}
-#v-marketplace .mk-abc.A{background:#E4F5EE;color:var(--mk-pos)}#v-marketplace .mk-abc.B{background:#FDF6E0;color:var(--mk-warn)}
-#v-marketplace .mk-abc.C{background:#EEF0F6;color:var(--mk-muted)}
-#v-marketplace tr.mk-tot td{font-weight:800;background:var(--mk-soft);color:var(--mk-navy)}
-#v-marketplace .mk-share{display:flex;align-items:center;gap:8px;justify-content:flex-end}
-#v-marketplace .mk-share i{display:block;height:6px;border-radius:3px;background:linear-gradient(90deg,#5188DF,var(--mk-navy));min-width:2px}
-#v-marketplace .mk-dias{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
-#v-marketplace .mk-dias b{font-family:'Barlow Condensed',sans-serif;font-size:17px}
-#v-marketplace .mk-dias small{color:var(--mk-muted)}
-#v-marketplace .mk-dias.r b{color:var(--mk-neg)}#v-marketplace .mk-dias.y b{color:var(--mk-warn)}#v-marketplace .mk-dias.g b{color:var(--mk-pos)}
-#v-marketplace .mk-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mk-muted);padding:0 20px 12px}
-#v-marketplace .mk-legenda span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
-#v-marketplace .mk-legenda .r:before{background:var(--mk-neg)}#v-marketplace .mk-legenda .y:before{background:var(--mk-warn)}
-#v-marketplace .mk-legenda .g:before{background:var(--mk-pos)}
-#v-marketplace .kpirow.kpi-mini .kpi .val{font-size:30px}
-#v-marketplace .kpi.alerta{border-top-color:var(--mk-neg)}#v-marketplace .kpi.alerta .val{color:var(--mk-neg)}
-#v-marketplace .kpi.atencao{border-top-color:var(--mk-warn)}#v-marketplace .kpi.atencao .val{color:var(--mk-warn)}
-#v-marketplace .mk-alerta td{font-size:14px;padding:12px}
-#v-marketplace .mk-alerta td .pill{font-size:14px;font-weight:800;padding:4px 12px}
-#v-marketplace .card-h .mk-bar{margin:0;font-size:12px}
-#v-marketplace table.mk-dre td:first-child{font-weight:600;color:var(--ink)}
-#v-marketplace table.mk-dre tr.mk-pct td{font-size:11.5px;color:var(--mk-muted);background:#FBFCFE;font-weight:600}
-#v-marketplace table.mk-dre tr.mk-tot td{font-size:13.5px}
-#v-marketplace table.mk-dre td.mk-col-tot,#v-marketplace table.mk-dre th.mk-col-tot{background:#EEF2FB;font-weight:800}
-@media (max-width:760px){#v-marketplace .grid2{grid-template-columns:1fr}#v-marketplace .mk-hero{padding:16px}
-  #v-marketplace .mk-hero h2{font-size:24px}#v-marketplace .kpi .val{font-size:24px}}
+:is(#v-marketplace,#v-tiktok) table td{padding:10px 12px;font-size:12.5px;border-bottom:1px solid #F0F2F8}
+:is(#v-marketplace,#v-tiktok) table tbody tr:hover td{background:#FAFBFE}
+:is(#v-marketplace,#v-tiktok) td small{font-size:10.5px}
+:is(#v-marketplace,#v-tiktok) .mk-heat td{padding:5px 2px;text-align:center;font-size:10px;min-width:26px;border-radius:4px;border:2px solid #fff}
+:is(#v-marketplace,#v-tiktok) .mk-heat th{padding:4px 2px;font-size:10px;text-align:center;background:#fff;position:static}
+:is(#v-marketplace,#v-tiktok) .mk-note{font-size:12px;color:var(--mk-muted);padding:10px 20px;line-height:1.5}
+:is(#v-marketplace,#v-tiktok) .mk-note.warn{background:#FFF8E1;color:#7A5B00;border-radius:10px;margin:10px 20px}
+:is(#v-marketplace,#v-tiktok) td.mk-t{max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+:is(#v-marketplace,#v-tiktok) table.mk-ger th:nth-child(2){text-align:left}
+:is(#v-marketplace,#v-tiktok) td.mk-sku{white-space:nowrap}
+:is(#v-marketplace,#v-tiktok) td small.mk-sub{display:block;white-space:nowrap;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok) .mk-abc{display:inline-block;width:22px;text-align:center;border-radius:6px;font-weight:800;font-size:11px;padding:2px 0}
+:is(#v-marketplace,#v-tiktok) .mk-abc.A{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok) .mk-abc.B{background:#FDF6E0;color:var(--mk-warn)}
+:is(#v-marketplace,#v-tiktok) .mk-abc.C{background:#EEF0F6;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok) tr.mk-tot td{font-weight:800;background:var(--mk-soft);color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok) .mk-share{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+:is(#v-marketplace,#v-tiktok) .mk-share i{display:block;height:6px;border-radius:3px;background:linear-gradient(90deg,#5188DF,var(--mk-navy));min-width:2px}
+:is(#v-marketplace,#v-tiktok) .mk-dias{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+:is(#v-marketplace,#v-tiktok) .mk-dias b{font-family:'Barlow Condensed',sans-serif;font-size:17px}
+:is(#v-marketplace,#v-tiktok) .mk-dias small{color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok) .mk-dias.r b{color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok) .mk-dias.y b{color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok) .mk-dias.g b{color:var(--mk-pos)}
+:is(#v-marketplace,#v-tiktok) .mk-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mk-muted);padding:0 20px 12px}
+:is(#v-marketplace,#v-tiktok) .mk-legenda span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+:is(#v-marketplace,#v-tiktok) .mk-legenda .r:before{background:var(--mk-neg)}:is(#v-marketplace,#v-tiktok) .mk-legenda .y:before{background:var(--mk-warn)}
+:is(#v-marketplace,#v-tiktok) .mk-legenda .g:before{background:var(--mk-pos)}
+:is(#v-marketplace,#v-tiktok) .kpirow.kpi-mini .kpi .val{font-size:30px}
+:is(#v-marketplace,#v-tiktok) .kpi.alerta{border-top-color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok) .kpi.alerta .val{color:var(--mk-neg)}
+:is(#v-marketplace,#v-tiktok) .kpi.atencao{border-top-color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok) .kpi.atencao .val{color:var(--mk-warn)}
+:is(#v-marketplace,#v-tiktok) .mk-alerta td{font-size:14px;padding:12px}
+:is(#v-marketplace,#v-tiktok) .mk-alerta td .pill{font-size:14px;font-weight:800;padding:4px 12px}
+:is(#v-marketplace,#v-tiktok) .card-h .mk-bar{margin:0;font-size:12px}
+:is(#v-marketplace,#v-tiktok) table.mk-dre td:first-child{font-weight:600;color:var(--ink)}
+:is(#v-marketplace,#v-tiktok) table.mk-dre tr.mk-pct td{font-size:11.5px;color:var(--mk-muted);background:#FBFCFE;font-weight:600}
+:is(#v-marketplace,#v-tiktok) table.mk-dre tr.mk-tot td{font-size:13.5px}
+:is(#v-marketplace,#v-tiktok) table.mk-dre td.mk-col-tot,:is(#v-marketplace,#v-tiktok) table.mk-dre th.mk-col-tot{background:#EEF2FB;font-weight:800}
+@media (max-width:760px){:is(#v-marketplace,#v-tiktok) .grid2{grid-template-columns:1fr}:is(#v-marketplace,#v-tiktok) .mk-hero{padding:16px}
+  :is(#v-marketplace,#v-tiktok) .mk-hero h2{font-size:24px}:is(#v-marketplace,#v-tiktok) .kpi .val{font-size:24px}}
 </style>
 <script>
 /* ===================== ABA MARKETPLACE (Mercado Livre) ===================== */
@@ -20344,6 +20344,222 @@ function mkGraficos(){
 try{ mkRegistrar(); }catch(e){ console.error('marketplace: registrar', e); }
 </script>
 
+<script>
+/* ===================== ABA TIKTOK SHOP (notas do Bling) ===================== */
+const TTK = {d: null, carregando: false, erro: null, aba: 'geral', fam: '', busca: '', gs: {k: 'liq', dir: -1}, charts: {}, patch: false};
+const TTK_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['amostras', 'Amostras para criadores'], ['dre', 'DRE'], ['notas', 'Notas (conferir OMIE)']];
+
+function ttRegistrar(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  if(!VIEWS.find(x => x.id === 'tiktok')) VIEWS.push({id: 'tiktok', lab: 'TikTok Shop', fn: vTiktok});
+  if(!document.getElementById('v-tiktok')){
+    const irmao = document.querySelector('.view');
+    if(irmao && irmao.parentNode){
+      const div = document.createElement('div'); div.className = 'view'; div.id = 'v-tiktok';
+      irmao.parentNode.appendChild(div);
+      div.addEventListener('click', ev => { const b = ev.target.closest('[data-tt]'); if(!b) return;
+        const [a, v] = b.dataset.tt.split(':');
+        if(a === 'aba'){ TTK.aba = v; ttDesenhar(); window.scrollTo(0, 0); }
+        else if(a === 'atualizar') ttCarregar(true);
+        else if(a === 'sort'){ TTK.gs = {k: v, dir: TTK.gs.k === v ? -TTK.gs.dir : (v === 'd' || v === 'fam' ? 1 : -1)}; ttDesenhar(true); } });
+      div.addEventListener('change', ev => { const t = ev.target; if(t.id === 'ttFam'){ TTK.fam = t.value; ttDesenhar(true); } });
+      div.addEventListener('input', ev => { if(ev.target.id === 'ttBusca'){ TTK.busca = ev.target.value; clearTimeout(TTK.tm); TTK.tm = setTimeout(() => ttDesenhar(true), 250); } });
+    }
+  }
+  if(!TTK.patch && typeof abasPermitidas === 'function'){
+    const orig = abasPermitidas;
+    abasPermitidas = function(){ const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin); return orig().filter(x => x.id !== 'tiktok' || adm); };
+    TTK.patch = true;
+  }
+  const nav = document.getElementById('nav');
+  if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
+}
+async function ttCarregar(forcar){
+  if(TTK.carregando) return; TTK.carregando = true; TTK.erro = null; if(forcar) TTK.d = null; ttDesenhar();
+  try{
+    const d = (typeof aovivoBaixarArquivo === 'function') ? await aovivoBaixarArquivo('tiktok.json') : null;
+    if(!d || !Array.isArray(d.dia)) throw new Error('o arquivo tiktok.json ainda não foi publicado');
+    d.S = (d.skus || []).map(x => ({c: x[0], d: x[1] || x[0], p: x[2] || '', fam: x[3] || 'Outros', temCmv: !!x[4]}));
+    d.V = (d.venda || []).map(x => ({d: x[0], i: x[1], n: +x[2], q: +x[3], b: +x[4], l: +x[5], imp: +x[6], cmv: +x[7], sem: !!x[8]}));
+    d.A = (d.amostra || []).map(x => ({d: x[0], i: x[1], q: +x[3], v: +x[4], cmv: +x[5]}));
+    d.D = {}; d.dia.forEach(x => d.D[x[0]] = {pv: +x[1], qv: +x[2], bv: +x[3] || 0, lv: +x[4] || 0, dv: +x[5] || 0, fv: +x[6] || 0, nd: +x[7], vd: +x[8] || 0, na: +x[9]});
+    TTK.d = d;
+  }catch(e){ TTK.erro = e.message || String(e); console.error('tiktok:', e); }
+  TTK.carregando = false;
+  if(typeof CURRENT !== 'undefined' && CURRENT === 'tiktok') ttDesenhar();
+}
+function vTiktok(){ if(!TTK.d && !TTK.carregando && !TTK.erro){ ttCarregar(false); return; } ttDesenhar(); }
+
+function ttTot(ini, fim){
+  const t = {pv: 0, qv: 0, bv: 0, lv: 0, dv: 0, fv: 0, nd: 0, vd: 0, na: 0, dias: 0};
+  Object.keys(TTK.d.D).forEach(x => { if(x < ini || x > fim) return; const o = TTK.d.D[x]; Object.keys(o).forEach(k => t[k] += o[k]); t.dias++; });
+  return t;
+}
+function ttPorSku(ini, fim, fonte){
+  const d = TTK.d, m = {};
+  (fonte === 'A' ? d.A : d.V).forEach(r => { if(r.d < ini || r.d > fim) return; const s = d.S[r.i] || {c: '?', d: '?', fam: 'Outros'};
+    const o = m[s.c] || (m[s.c] = {c: s.c, d: s.d, p: s.p, fam: s.fam, q: 0, b: 0, l: 0, imp: 0, cmv: 0, v: 0, sem: false});
+    o.q += r.q; o.b += r.b || 0; o.l += r.l || 0; o.imp += r.imp || 0; o.cmv += r.cmv; o.v += r.v || 0; o.sem = o.sem || r.sem; });
+  return Object.values(m);
+}
+function ttDesenhar(manter){
+  const alvo = document.getElementById('v-tiktok'); if(!alvo) return;
+  const y = window.scrollY; Object.values(TTK.charts).forEach(c => { try{ c.destroy(); }catch(e){} }); TTK.charts = {};
+  const d = TTK.d, pr = d ? mkPeriodo() : null;
+  let h = '<div class="mk-hero"><div><span class="mk-canal" style="background:#111;color:#fff">Marketplace</span><h2>TikTok Shop</h2><p>' +
+    (d ? 'Notas do Bling (uma por pedido) · arquivo de ' + new Date(d.gerado_em).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) +
+         ' · à parte do resto do Portal' : (TTK.carregando ? 'Carregando o TikTok Shop…' : '')) + '</p></div><div class="mk-hero-dir">' +
+    (pr ? '<div class="mk-per">Período (filtro do topo)<b>' + mkDD(pr.ini) + ' a ' + mkDD(pr.fim) + '</b></div>' : '') +
+    '<button data-tt="atualizar">↻ Atualizar</button></div></div>';
+  if(TTK.erro){ alvo.innerHTML = h + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(TTK.erro) + '</div>'); return; }
+  if(!d){ alvo.innerHTML = h; return; }
+  h += '<div class="mk-tabs">' + TTK_ABAS.map(a => '<button data-tt="aba:' + a[0] + '" class="' + (TTK.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
+  try{ h += ({geral: ttGeral, skus: ttSkus, amostras: ttAmostras, dre: ttDre, notas: ttNotas}[TTK.aba] || ttGeral)(pr); }
+  catch(e){ console.error('tiktok: tela', e); h += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
+  h += '<div class="mk-note">Fonte: notas do Bling, canal Tiktok Shop. O OMIE recebe essas notas por importação manual e costuma ficar alguns dias atrás — confira na aba "Notas".</div>';
+  alvo.innerHTML = h;
+  if(manter) window.scrollTo(0, y);
+  ttGraficos(pr);
+}
+
+/* ---------------- visao geral ---------------- */
+function ttGeral(p){
+  const pa = mkPeriodoAnterior(p), t = ttTot(p.ini, p.fim), ta = ttTot(pa.ini, pa.fim);
+  const nd = Math.round((new Date(p.fim + 'T12:00:00') - new Date(p.ini + 'T12:00:00')) / 86400000) + 1;
+  const hoje = mkHoje(), ontem = mkDia(hoje, -1), dia = x => TTK.d.D[x] || {pv: 0, lv: 0};
+  let h = '<div class="kpirow">' +
+    mkKpi('Faturamento bruto', mkR(t.bv), mkVar(t.bv, ta.bv) + ' vs período anterior<br>preço de tabela dos itens') +
+    mkKpi('Descontos', mkR(t.dv), mkP(t.bv ? t.dv / t.bv : 0) + ' do bruto') +
+    mkKpi('Faturamento líquido', mkR(t.lv), mkVar(t.lv, ta.lv) + ' vs período anterior<br>valor das notas', 'accent') +
+    mkKpi('Pedidos', mkN(t.pv), mkVar(t.pv, ta.pv) + ' · ' + mkN1(t.pv / Math.max(1, nd)) + '/dia') +
+    mkKpi('Unidades', mkN(t.qv), mkN1(t.pv ? t.qv / t.pv : 0) + ' por pedido') +
+    mkKpi('Ticket médio', mkR2(t.pv ? t.lv / t.pv : 0), 'antes ' + mkR2(ta.pv ? ta.lv / ta.pv : 0)) + '</div>';
+  h += '<div class="mk-cmp">' +
+    mkKpi('Vendas hoje', mkR(dia(hoje).lv), mkN(dia(hoje).pv) + ' pedidos · as notas saem ao longo do dia') +
+    mkKpi('Vendas ontem', mkR(dia(ontem).lv), mkN(dia(ontem).pv) + ' pedidos · ' + mkVar(dia(ontem).lv, dia(mkDia(ontem, -7)).lv) + ' vs D-7') +
+    mkKpi('Média por dia', mkR(t.lv / Math.max(1, nd)), 'líquido ÷ ' + nd + ' dias · antes ' + mkR(ta.lv / Math.max(1, nd))) +
+    mkKpi('Amostras enviadas', mkN(t.na), 'notas de bonificação para criadores · ver a aba Amostras', t.na > t.pv ? 'atencao' : '') +
+    (t.nd ? mkKpi('Devoluções', mkN(t.nd), mkR(t.vd)) : '') + '</div>';
+  h += mkCard('Faturamento líquido por dia', 'barras = valor das notas de venda · linha = média móvel de 7 dias', '<div style="padding:14px;height:260px"><canvas id="ttGDia"></canvas></div>');
+  const mesesP = new Set(Object.keys(mkMesesFrac(p))), U = {}; let tu = 0;
+  (TTK.d.uf || []).forEach(x => { if(!mesesP.has(x[0])) return; const o = U[x[1]] || (U[x[1]] = {n: 0, l: 0}); o.n += +x[2]; o.l += +x[3]; tu += +x[3]; });
+  const ul = Object.entries(U).sort((a, b) => b[1].l - a[1].l).slice(0, 12);
+  const H = {}; let mx = 0; (TTK.d.semana || []).forEach(x => { H[x[0] + '|' + x[1]] = +x[2]; mx = Math.max(mx, +x[2]); });
+  const dn = ['', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  let heat = '<div class="mk-scroll"><table class="mk-heat"><thead><tr><th></th>' + [...Array(24).keys()].map(x => '<th>' + x + 'h</th>').join('') + '</tr></thead><tbody>';
+  for(let w = 1; w <= 7; w++) heat += '<tr><th>' + dn[w] + '</th>' + [...Array(24).keys()].map(x => { const n = H[w + '|' + x] || 0, a = mx ? n / mx : 0;
+    return '<td style="background:rgba(17,17,17,' + (0.05 + a * 0.8).toFixed(2) + ');color:' + (a > .5 ? '#fff' : 'var(--ink)') + '">' + (n || '') + '</td>'; }).join('') + '</tr>';
+  heat += '</tbody></table></div>';
+  h += '<div class="grid2">' + mkCard('Venda por estado', 'meses do período', '<table><thead><tr><th>UF</th><th>Pedidos</th><th>Líquido</th><th>%</th></tr></thead><tbody>' +
+    ul.map(([k, v]) => '<tr><td>' + mkEsc(k) + '</td><td>' + mkN(v.n) + '</td><td>' + mkR(v.l) + '</td><td>' + mkP(tu ? v.l / tu : 0) + '</td></tr>').join('') + '</tbody></table>') +
+    mkCard('Notas por dia da semana e hora', 'últimos 90 dias · hora da emissão da nota (não do pedido)', heat) + '</div>';
+  return h;
+}
+
+/* ---------------- venda por SKU ---------------- */
+function ttSkus(p){
+  let L = ttPorSku(p.ini, p.fim, 'V');
+  const fams = [...new Set(L.map(o => o.fam))].sort();
+  if(TTK.fam) L = L.filter(o => o.fam === TTK.fam);
+  const b = (TTK.busca || '').toLowerCase(); if(b) L = L.filter(o => (o.c + ' ' + o.d + ' ' + o.p).toLowerCase().indexOf(b) >= 0);
+  L.forEach(o => { o.preco = o.q ? o.l / o.q : 0; o.m = o.l ? o.cmv / o.l : null; });
+  const tot = L.reduce((a, o) => a + o.l, 0);
+  L.sort((a, c) => c.l - a.l); let ac = 0; L.forEach(o => { const ant = ac; ac += o.l; o.abc = ant / (tot || 1) < 0.8 ? 'A' : (ant / (tot || 1) < 0.95 ? 'B' : 'C'); o.acum = ac / (tot || 1); });
+  const g = TTK.gs, val = o => { const v = o[g.k]; return v == null ? -Infinity : v; };
+  L.sort((a, c) => { const va = val(a), vc = val(c); return (typeof va === 'string' ? va.localeCompare(vc) : va - vc) * g.dir; });
+  const th = (k, lab) => '<th data-tt="sort:' + k + '" style="cursor:pointer;white-space:nowrap">' + lab + (g.k === k ? (g.dir > 0 ? ' ▲' : ' ▼') : ' <span style="opacity:.35">↕</span>') + '</th>';
+  const filtros = '<div class="mk-bar">Família <select id="ttFam"><option value="">todas</option>' + fams.map(f => '<option' + (TTK.fam === f ? ' selected' : '') + '>' + mkEsc(f) + '</option>').join('') +
+    '</select><input id="ttBusca" placeholder="buscar SKU ou produto" value="' + mkEsc(TTK.busca) + '" style="min-width:200px"></div>';
+  return '<div class="card"><div class="card-h"><h3>Venda por SKU · curva ABC</h3>' + filtros + '</div><div class="mk-scroll"><table><thead><tr>' +
+    th('c', 'SKU TikTok') + th('d', 'Produto') + th('fam', 'Família') + '<th>ABC</th>' + th('q', 'Unidades') + th('b', 'Bruto') + th('l', 'Líquido') + th('preco', 'Preço médio') + th('m', 'CMV / líquido') + '<th>% do total</th></tr></thead><tbody>' +
+    L.map(o => '<tr><td class="mk-sku"><b>' + mkEsc(o.c) + '</b>' + (o.p ? '<small class="mk-sub">' + mkEsc(o.p) + '</small>' : '') + '</td><td class="mk-t" title="' + mkEsc(o.d) + '">' + mkEsc(o.d) + '</td>' +
+      '<td style="text-align:left">' + mkEsc(o.fam) + '</td><td><span class="mk-abc ' + o.abc + '">' + o.abc + '</span></td><td>' + mkN(o.q) + '</td><td>' + mkR(o.b) + '</td><td>' + mkR(o.l) + '</td>' +
+      '<td>' + mkR2(o.preco) + '</td><td>' + (o.sem ? '<span class="pill y">sem CMV</span>' : mkP(o.m)) + '</td><td>' + mkP(tot ? o.l / tot : 0) + '</td></tr>').join('') +
+    '</tbody></table></div></div>';
+}
+
+/* ---------------- amostras para criadores ---------------- */
+function ttAmostras(p){
+  const t = ttTot(p.ini, p.fim), L = ttPorSku(p.ini, p.fim, 'A').sort((a, b) => b.cmv - a.cmv);
+  const T = L.reduce((a, o) => (a.q += o.q, a.v += o.v, a.cmv += o.cmv, a), {q: 0, v: 0, cmv: 0});
+  /* por mes: amostras x venda */
+  const M = {}; Object.keys(TTK.d.D).forEach(x => { const m = x.slice(0, 7), o = M[m] || (M[m] = {pv: 0, lv: 0, na: 0, cmvA: 0}); o.pv += TTK.d.D[x].pv; o.lv += TTK.d.D[x].lv; o.na += TTK.d.D[x].na; });
+  TTK.d.A.forEach(r => { const o = M[r.d.slice(0, 7)]; if(o) o.cmvA += r.cmv; });
+  const meses = Object.keys(M).sort().slice(-12).reverse();
+  let h = '<div class="kpirow">' + mkKpi('Amostras enviadas', mkN(t.na), 'notas de bonificação no período', 'accent') + mkKpi('Unidades', mkN(T.q)) +
+    mkKpi('Custo das amostras (CMV)', mkR(T.cmv), mkP(t.lv ? T.cmv / t.lv : 0) + ' do faturamento líquido do TikTok', T.cmv > 0.3 * t.lv ? 'alerta' : '') +
+    mkKpi('Valor nas notas', mkR(T.v), 'preço de tabela — não é custo') + '</div>';
+  h += mkCard('Amostras × venda por mês', 'quanto se gasta em amostra para cada real vendido',
+    '<table class="mk-dre"><thead><tr><th>Mês</th><th>Pedidos de venda</th><th>Líquido vendido</th><th>Amostras (notas)</th><th>Custo das amostras</th><th>Custo ÷ venda</th></tr></thead><tbody>' +
+    meses.map(m => { const o = M[m]; return '<tr><td>' + mkNomeMes(m) + '</td><td>' + mkN(o.pv) + '</td><td>' + mkR(o.lv) + '</td><td>' + mkN(o.na) + '</td><td>' + mkR(o.cmvA) +
+      '</td><td><span class="mk-chip ' + (o.lv && o.cmvA / o.lv > 0.3 ? 'dn' : 'nt') + '">' + mkP(o.lv ? o.cmvA / o.lv : null) + '</span></td></tr>'; }).join('') + '</tbody></table>');
+  h += mkCard('Amostras por produto', 'no período · custo = CMV das unidades enviadas',
+    '<div class="mk-scroll"><table><thead><tr><th>SKU TikTok</th><th>Produto</th><th>Unidades</th><th>Custo (CMV)</th><th>Valor na nota</th></tr></thead><tbody>' +
+    L.map(o => '<tr><td class="mk-sku"><b>' + mkEsc(o.c) + '</b></td><td class="mk-t" title="' + mkEsc(o.d) + '">' + mkEsc(o.d) + '</td><td>' + mkN(o.q) + '</td><td>' + mkR(o.cmv) + '</td><td>' + mkR(o.v) + '</td></tr>').join('') +
+    '<tr class="mk-tot"><td>Total</td><td></td><td>' + mkN(T.q) + '</td><td>' + mkR(T.cmv) + '</td><td>' + mkR(T.v) + '</td></tr></tbody></table></div>');
+  return h;
+}
+
+/* ---------------- DRE (antes das taxas do TikTok) ---------------- */
+function ttDreCalc(ini, fim){
+  const t = ttTot(ini, fim), V = ttPorSku(ini, fim, 'V'), A = ttPorSku(ini, fim, 'A');
+  const imp = V.reduce((a, o) => a + o.imp, 0), cmv = V.reduce((a, o) => a + o.cmv, 0), cmvA = A.reduce((a, o) => a + o.cmv, 0);
+  const T = {bv: t.bv, dv: t.dv, lv: t.lv, vd: t.vd, imp, cmv, cmvA, pv: t.pv};
+  T.rec = t.lv - t.vd; T.contrib = T.rec - imp - cmv; T.res = T.contrib - cmvA;
+  return T;
+}
+const TT_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
+  ['− Devoluções', T => -T.vd], ['= Receita líquida', T => T.rec, 'tot'], ['− Impostos (estimado: % real do ML por UF + PIS/COFINS 9,25%)', T => -T.imp],
+  ['− CMV (líquido do crédito de insumos)', T => -T.cmv], ['= Margem de contribuição (antes das taxas do TikTok)', T => T.contrib, 'tot'],
+  ['% margem de contribuição', T => T.rec ? T.contrib / T.rec : null, 'pct'], ['− Amostras para criadores (CMV)', T => -T.cmvA],
+  ['= Resultado antes das taxas do TikTok', T => T.res, 'tot'], ['% resultado', T => T.rec ? T.res / T.rec : null, 'pct'], ['Pedidos', T => T.pv, 'n']];
+function ttDre(p){
+  const meses = Object.keys(mkMesesFrac(p)).sort(), T = ttDreCalc(p.ini, p.fim);
+  const fmt = (v, k) => v == null ? '—' : (k === 'pct' ? mkP(v) : (k === 'n' ? mkN(v) : mkR(v)));
+  let cab, corpo;
+  if(meses.length > 1){
+    const C = meses.map(m => { const a = (m + '-01') < p.ini ? p.ini : m + '-01', u = mkDia(mkDia(m + '-01', 32).slice(0, 8) + '01', -1); return {m, T: ttDreCalc(a, u > p.fim ? p.fim : u)}; });
+    cab = '<th>DRE · TikTok Shop</th>' + C.map(c => '<th>' + mkNomeMes(c.m) + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% receita</th>';
+    corpo = TT_DRE.map(l => '<tr class="' + (l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '')) + '"><td>' + l[0] + '</td>' + C.map(c => '<td>' + fmt(l[1](c.T), l[2]) + '</td>').join('') +
+      '<td class="mk-col-tot">' + fmt(l[1](T), l[2]) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.rec ? l[1](T) / T.rec : 0)) + '</td></tr>').join('');
+  } else {
+    cab = '<th>DRE · TikTok Shop</th><th>R$</th><th>% receita</th><th>Por pedido</th>';
+    corpo = TT_DRE.map(l => { const v = l[1](T); return '<tr class="' + (l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '')) + '"><td>' + l[0] + '</td><td>' + fmt(v, l[2]) + '</td><td>' +
+      (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.rec ? v / T.rec : 0)) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkR2(T.pv ? v / T.pv : 0)) + '</td></tr>'; }).join('');
+  }
+  return '<div class="mk-note warn">⚠ Faltam as taxas do TikTok (comissão da plataforma e frete cobrado pelo TikTok): elas não vêm na nota. A margem real é MENOR do que a mostrada. Para fechar, precisamos do relatório de pagamentos do TikTok Seller Center ou da API.</div>' +
+    '<div class="kpirow">' + mkKpi('Receita líquida', mkR(T.rec), mkN(T.pv) + ' pedidos', 'accent') + mkKpi('Margem de contribuição', mkR(T.contrib), mkP(T.rec ? T.contrib / T.rec : 0) + ' · antes das taxas do TikTok') +
+    mkKpi('Amostras (CMV)', mkR(T.cmvA), mkP(T.rec ? T.cmvA / T.rec : 0) + ' da receita') + mkKpi('Resultado antes das taxas', mkR(T.res), mkP(T.rec ? T.res / T.rec : 0), T.res >= 0 ? 'pos' : 'alerta') + '</div>' +
+    mkCard('DRE do TikTok Shop · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), meses.length > 1 ? 'meses lado a lado · última coluna = total' : 'por pedido = valor ÷ pedidos',
+      '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
+      '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(TTK.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real). As notas do TikTok no Bling não trazem o imposto.</div>');
+}
+
+/* ---------------- notas (conferir a importacao no OMIE) ---------------- */
+function ttNotas(p){
+  const N = (TTK.d.notas || []).filter(x => x[0] >= p.ini && x[0] <= p.fim);
+  const tipo = m => m === 1 ? '<span class="mk-chip up">venda</span>' : (m === 0 ? '<span class="mk-chip nt">amostra</span>' : '<span class="mk-chip dn">devolução</span>');
+  const vend = N.filter(x => +x[3] === 1);
+  return mkCard('Notas do TikTok no Bling', N.length + ' notas no período (' + vend.length + ' de venda, ' + mkR(vend.reduce((a, x) => a + (+x[4] || 0), 0)) + ') · últimos 45 dias',
+    '<div class="mk-note">Para conferir o OMIE: exporte o relatório do canal Mkt Place, filtre Tiktok Shop e compare os números. Em 10/11 o OMIE tinha as notas até a 239061 (06/11), faltando a 239025 e a 239027 (02/11).</div>' +
+    '<div class="mk-scroll"><table><thead><tr><th>Dia</th><th>Nota</th><th>Série</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>' +
+    N.map(x => '<tr><td>' + mkDD(x[0]) + '</td><td><b>' + mkEsc(x[1]) + '</b></td><td>' + mkEsc(x[2]) + '</td><td>' + tipo(+x[3]) + '</td><td>' + mkR2(+x[4]) + '</td></tr>').join('') + '</tbody></table></div>');
+}
+
+function ttGraficos(p){
+  if(typeof Chart === 'undefined' || !TTK.d || !p) return;
+  const c = document.getElementById('ttGDia'); if(!c) return;
+  const xs = [], ys = [], mm = []; for(let x = p.ini; x <= p.fim; x = mkDia(x, 1)){ xs.push(x); ys.push((TTK.d.D[x] || {}).lv || 0); }
+  ys.forEach((v, i) => { let s = 0, n = 0; for(let j = Math.max(0, i - 6); j <= i; j++){ s += ys[j]; n++; } mm.push(s / n); });
+  TTK.charts.dia = new Chart(c, {type: 'bar', data: {labels: xs.map(mkDD), datasets: [
+    {type: 'line', label: 'Média 7 dias', data: mm, borderColor: '#FE2C55', backgroundColor: '#FE2C55', pointRadius: 0, tension: .3, borderWidth: 2},
+    {label: 'Líquido', data: ys, backgroundColor: '#111'}]},
+    options: {maintainAspectRatio: false, plugins: {tooltip: {callbacks: {label: k => k.dataset.label + ': ' + mkR(k.raw)}}}, scales: {y: {ticks: {callback: v => mkR(v)}}}}});
+}
+
+try{ ttRegistrar(); }catch(e){ console.error('tiktok: registrar', e); }
+</script>
+
 <style>
 /* ===================== UX / DESIGN UNICO (07/11/2026) ===================== */
 /* logo da Dobro no lugar do "d" (07/11/2026) */
@@ -20538,7 +20754,7 @@ const UX_GRUPOS = [
   ['clientes', 'Clientes', ['carteira', 'ranking', 'cnpj', 'penetracao', 'crm', 'geo']],
   ['produtos', 'Produtos', ['mix', 'gestcat', 'calc']],
   ['operacao', 'Operação', ['sla', 'degustacoes', 'links']],
-  ['marketplace', 'Marketplace', ['marketplace']],
+  ['marketplace', 'Marketplace', ['marketplace', 'tiktok']],
   ['admin',    'Admin',    ['premissas', 'pendencias', 'acessos']],
 ];
 function uxGrupoAberto(id){
