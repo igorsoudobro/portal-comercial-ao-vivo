@@ -19578,7 +19578,10 @@ function mkRegistrar(){
     const orig = abasPermitidas;
     abasPermitidas = function(){
       const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin);
-      return orig().filter(x => x.id !== 'marketplace' || adm);
+      /* 11/11/2026: com o menu do banco (Admin > Menu) quem decide e ele - o uxPodeVer
+         filtra pelos perfis. Sem o menu do banco, continua so admin. */
+      const banco = !!(window.AOVIVO_MENU && AOVIVO_MENU.abas && AOVIVO_MENU.abas.marketplace);
+      return orig().filter(x => x.id !== 'marketplace' || adm || banco);
     };
     MKT.patch = true;
   }
@@ -19655,12 +19658,23 @@ function mkTot(ini, fim){
 }
 function mkPorSku(ini, fim){
   const d = MKT.d, m = {};
+  /* PRECO DO ANUNCIO (11/11, Igor): preco cheio (pago + cupom) ÷ unidades do ULTIMO dia
+     com venda ate o fim do periodo - a mesma regra da tabela gerencial. */
+  const ult = {};
+  d.R.forEach(r => {
+    if(r.d > fim || !(r.q > 0)) return;
+    const sk = d.S[r.i] || {s: '?', p: '?'}; const k = MKT.agrupar ? sk.p : sk.s;
+    const u = ult[k];
+    if(!u || r.d > u.d) ult[k] = {d: r.d, v: r.rec + r.cup, q: r.q};
+    else if(r.d === u.d){ u.v += r.rec + r.cup; u.q += r.q; }
+  });
   d.R.forEach(r => {
     if(r.d < ini || r.d > fim) return;
     const sk = d.S[r.i] || {s: '?', t: '?', p: '?', cat: 'Outros'};
     const k = MKT.agrupar ? sk.p : sk.s;
-    const o = m[k] || (m[k] = {k, t: MKT.agrupar ? (sk.p) : sk.t, sub: MKT.agrupar ? '' : (sk.s + (sk.dob && sk.dob !== sk.s ? ' → ' + sk.dob : '')), cat: sk.cat,
-                                ped: 0, q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, sem: false, skus: new Set()});
+    const o = m[k] || (m[k] = {k, t: MKT.agrupar ? (sk.p) : sk.t, sub: '', dob: sk.dob && sk.dob !== sk.s ? sk.dob : '', cat: sk.cat,
+                                ped: 0, q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, sem: false, skus: new Set(),
+                                anun: ult[k] && ult[k].q ? ult[k].v / ult[k].q : null});
     o.ped += r.ped; o.q += r.q; o.rec += r.rec; o.cup += r.cup; o.tar += r.tar; o.env += r.env; o.imp += r.imp; o.cmv += r.cmv;
     o.sem = o.sem || r.sem; o.skus.add(sk.s);
   });
@@ -20007,12 +20021,14 @@ function mkSkus(){
        mkKpi('Curva A', n.A, '80% da ' + (campo === 'q' ? 'quantidade' : 'receita')) + mkKpi('Curva B', n.B, 'próximos 15%') + mkKpi('Curva C', n.C, 'últimos 5%') + '</div>';
   const th = (c, lab) => '<th style="cursor:pointer" data-mk="ord:' + c + '">' + lab + (MKT.ord === c ? ' ▼' : '') + '</th>';
   h += mkCard('Ranking ' + (campo === 'q' ? 'por unidades' : 'por receita') + ' e curva ABC', 'clique em Receita ou Unidades para reordenar',
-    '<div class="mk-scroll"><table><thead><tr><th>' + (MKT.agrupar ? 'Produto' : 'Anúncio / SKU') + '</th><th>Categoria</th><th>ABC</th>' + th('rec', 'Receita') + th('q', 'Unidades') +
-    '<th>Pedidos</th><th>Preço médio</th><th>Un/dia</th><th>% do total</th><th>% acumulado</th></tr></thead><tbody>' +
-    vis.map(o => '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + (o.sub ? '<br><small style="color:var(--muted)">' + mkEsc(o.sub) + '</small>' : '') +
+    '<div class="mk-scroll"><table><thead><tr><th style="text-align:left">SKU</th><th>' + (MKT.agrupar ? 'Produto' : 'Anúncio') + '</th><th>Categoria</th><th>ABC</th>' + th('rec', 'Receita') + th('q', 'Unidades') +
+    '<th>Pedidos</th><th title="preço cheio da última venda (sem cupom)">Preço do anúncio</th><th title="receita ÷ unidades no período (depois do cupom pago pela Dobro)">Preço médio pago</th><th>Un/dia</th><th>% do total</th><th>% acumulado</th></tr></thead><tbody>' +
+    vis.map(o => '<tr><td style="text-align:left;white-space:nowrap;font-size:12px">' + [...o.skus].map(mkEsc).join('<br>') + (o.dob ? '<br><small style="color:var(--muted)">Dobro: ' + mkEsc(o.dob) + '</small>' : '') +
+      '</td><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) +
       '</td><td>' + mkEsc(o.cat) + '</td><td><span class="mk-abc ' + o.abc + '">' + o.abc + '</span></td><td>' + mkR(o.rec) + '</td><td>' + mkN(o.q) +
-      '</td><td>' + mkN(o.ped) + '</td><td>' + mkR2(o.q ? o.rec / o.q : 0) + '</td><td>' + mkN1(o.q / dias) + '</td><td><div class="mk-share">' + mkP(o[campo] / totC) + '<i style="width:' + Math.max(2, Math.round(60 * o[campo] / (lista[0] ? lista[0][campo] : 1))) + 'px"></i></div></td><td>' + mkP(o.acum) + '</td></tr>').join('') +
-    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td>' + mkR(tot.rec) + '</td><td>' + mkN(tot.q) + '</td><td></td><td>' + mkR2(tot.q ? tot.rec / tot.q : 0) + '</td><td>' + mkN1(tot.q / dias) + '</td><td></td><td></td></tr>' +
+      '</td><td>' + mkN(o.ped) + '</td><td>' + (o.anun != null ? mkR2(o.anun) : '—') + '</td><td>' + mkR2(o.q ? o.rec / o.q : 0) +
+      (o.anun ? '<small class="mk-sub">' + mkP((o.q ? o.rec / o.q : 0) / o.anun - 1) + ' do anúncio</small>' : '') + '</td><td>' + mkN1(o.q / dias) + '</td><td><div class="mk-share">' + mkP(o[campo] / totC) + '<i style="width:' + Math.max(2, Math.round(60 * o[campo] / (lista[0] ? lista[0][campo] : 1))) + 'px"></i></div></td><td>' + mkP(o.acum) + '</td></tr>').join('') +
+    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td></td><td>' + mkR(tot.rec) + '</td><td>' + mkN(tot.q) + '</td><td></td><td></td><td>' + mkR2(tot.q ? tot.rec / tot.q : 0) + '</td><td>' + mkN1(tot.q / dias) + '</td><td></td><td></td></tr>' +
     '</tbody></table></div>');
   /* dia da semana por SKU (top 10) */
   const top = lista.slice(0, 10), d = MKT.d, chave = sk => MKT.agrupar ? sk.p : sk.s;
@@ -20390,7 +20406,7 @@ function ttRegistrar(){
   }
   if(!TTK.patch && typeof abasPermitidas === 'function'){
     const orig = abasPermitidas;
-    abasPermitidas = function(){ const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin); return orig().filter(x => x.id !== 'tiktok' || adm); };
+    abasPermitidas = function(){ const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin); const banco = !!(window.AOVIVO_MENU && AOVIVO_MENU.abas && AOVIVO_MENU.abas.tiktok); /* 11/11: menu do banco decide (uxPodeVer) */ return orig().filter(x => x.id !== 'tiktok' || adm || banco); };
     TTK.patch = true;
   }
   const nav = document.getElementById('nav');
