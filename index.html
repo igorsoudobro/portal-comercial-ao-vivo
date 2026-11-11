@@ -19421,100 +19421,100 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 /* ===== MARKETPLACE · design (09/11/2026) =====
    Identidade Dobro: navy #2A3E7E, amarelo #D8C733, Barlow Condensed nos titulos.
    Amarelo do ML (#FFE600) so como marca do canal, nunca em numero. */
-:is(#v-marketplace,#v-tiktok,#v-amazon){--mk-navy:#2A3E7E;--mk-navy2:#1E2E5F;--mk-ml:#FFE600;--mk-line:#E6EAF3;--mk-soft:#F6F8FC;
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral){--mk-navy:#2A3E7E;--mk-navy2:#1E2E5F;--mk-ml:#FFE600;--mk-line:#E6EAF3;--mk-soft:#F6F8FC;
   --mk-pos:#1F9D6B;--mk-neg:#D9534F;--mk-warn:#C98A00;--mk-muted:#6B7490}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero{background:linear-gradient(120deg,var(--mk-navy) 0%,var(--mk-navy2) 100%);color:#fff;border-radius:18px;
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero{background:linear-gradient(120deg,var(--mk-navy) 0%,var(--mk-navy2) 100%);color:#fff;border-radius:18px;
   padding:20px 24px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
   box-shadow:0 10px 30px rgba(30,46,95,.18);position:relative;overflow:hidden}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero:after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero:after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;
   background:radial-gradient(circle,rgba(255,230,0,.22),rgba(255,230,0,0) 70%)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero .mk-canal{display:inline-flex;align-items:center;gap:8px;background:var(--mk-ml);color:#2D3277;font-weight:800;
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero .mk-canal{display:inline-flex;align-items:center;gap:8px;background:var(--mk-ml);color:#2D3277;font-weight:800;
   font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:20px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero h2{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:.01em}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero p{margin:0;font-size:12px;opacity:.8}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero .mk-hero-dir{display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:1}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero .mk-per{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;font-size:12px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero .mk-per b{font-size:14px;display:block;font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero button{background:#fff;color:var(--mk-navy);border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero button:hover{background:var(--mk-ml)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-tabs{display:flex;gap:4px;overflow-x:auto;background:#fff;border-radius:14px;padding:5px;margin:0 0 18px;
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero h2{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:.01em}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero p{margin:0;font-size:12px;opacity:.8}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero .mk-hero-dir{display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:1}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero .mk-per{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;font-size:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero .mk-per b{font-size:14px;display:block;font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero button{background:#fff;color:var(--mk-navy);border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero button:hover{background:var(--mk-ml)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-tabs{display:flex;gap:4px;overflow-x:auto;background:#fff;border-radius:14px;padding:5px;margin:0 0 18px;
   box-shadow:0 1px 3px rgba(30,46,95,.08);scrollbar-width:none}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-tabs button{flex:0 0 auto;border:none;background:transparent;color:var(--mk-muted);border-radius:10px;padding:9px 15px;
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-tabs button{flex:0 0 auto;border:none;background:transparent;color:var(--mk-muted);border-radius:10px;padding:9px 15px;
   font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;transition:.15s}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-tabs button:hover{color:var(--mk-navy);background:var(--mk-soft)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-tabs button.on{background:var(--mk-navy);color:#fff;box-shadow:0 4px 12px rgba(42,62,126,.25)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-size:12.5px;color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar select,:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar input{border:1.5px solid var(--mk-line);border-radius:10px;padding:7px 11px;font-size:13px;
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-tabs button:hover{color:var(--mk-navy);background:var(--mk-soft)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-tabs button.on{background:var(--mk-navy);color:#fff;box-shadow:0 4px 12px rgba(42,62,126,.25)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-size:12.5px;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-bar select,:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-bar input{border:1.5px solid var(--mk-line);border-radius:10px;padding:7px 11px;font-size:13px;
   font-weight:600;color:var(--mk-navy);background:#fff}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar input:focus,:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar select:focus{outline:none;border-color:var(--mk-navy)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpirow{gap:12px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi{border-left:none;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(30,46,95,.08);position:relative;
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-bar input:focus,:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-bar select:focus{outline:none;border-color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpirow{gap:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi{border-left:none;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(30,46,95,.08);position:relative;
   border-top:3px solid #DCE3F2}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.accent{border-top-color:var(--mk-navy)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.pos{border-top-color:var(--mk-pos)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi .lab{font-size:10.5px;letter-spacing:.08em}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi .val{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;letter-spacing:.01em;line-height:1.1}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi .sub{font-size:11.5px;line-height:1.45;margin-top:4px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-chip{display:inline-block;border-radius:20px;padding:1px 8px;font-weight:700;font-size:11px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-chip.up{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-chip.dn{background:#FBE7E6;color:var(--mk-neg)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-chip.nt{background:#EEF0F6;color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-cmp .kpi{background:var(--mk-soft);box-shadow:none;border-top:none;border:1px solid var(--mk-line)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-cmp .kpi .val{font-size:24px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .card{border-radius:16px;box-shadow:0 1px 3px rgba(30,46,95,.08);border:1px solid #EEF1F7}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .card-h{padding:15px 20px;background:#fff}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .card-h h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:.01em;text-transform:none}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .card-h .hint{font-size:11.5px;max-width:520px;text-align:right}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-scroll{overflow:auto;max-height:640px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table thead th{position:sticky;top:0;z-index:1;background:var(--mk-soft);color:var(--mk-muted);font-size:10.5px;
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi.accent{border-top-color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi.pos{border-top-color:var(--mk-pos)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi .lab{font-size:10.5px;letter-spacing:.08em}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi .val{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;letter-spacing:.01em;line-height:1.1}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi .sub{font-size:11.5px;line-height:1.45;margin-top:4px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-chip{display:inline-block;border-radius:20px;padding:1px 8px;font-weight:700;font-size:11px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-chip.up{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-chip.dn{background:#FBE7E6;color:var(--mk-neg)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-chip.nt{background:#EEF0F6;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-cmp .kpi{background:var(--mk-soft);box-shadow:none;border-top:none;border:1px solid var(--mk-line)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-cmp .kpi .val{font-size:24px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .card{border-radius:16px;box-shadow:0 1px 3px rgba(30,46,95,.08);border:1px solid #EEF1F7}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .card-h{padding:15px 20px;background:#fff}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .card-h h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:.01em;text-transform:none}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .card-h .hint{font-size:11.5px;max-width:520px;text-align:right}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-scroll{overflow:auto;max-height:640px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table thead th{position:sticky;top:0;z-index:1;background:var(--mk-soft);color:var(--mk-muted);font-size:10.5px;
   text-transform:uppercase;letter-spacing:.06em;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--mk-line)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table td{padding:10px 12px;font-size:12.5px;border-bottom:1px solid #F0F2F8}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table tbody tr:hover td{background:#FAFBFE}
-:is(#v-marketplace,#v-tiktok,#v-amazon) td small{font-size:10.5px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-heat td{padding:5px 2px;text-align:center;font-size:10px;min-width:26px;border-radius:4px;border:2px solid #fff}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-heat th{padding:4px 2px;font-size:10px;text-align:center;background:#fff;position:static}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-note{font-size:12px;color:var(--mk-muted);padding:10px 20px;line-height:1.5}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-note.warn{background:#FFF8E1;color:#7A5B00;border-radius:10px;margin:10px 20px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) td.mk-t{max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger th:nth-child(2){text-align:left}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table td{padding:10px 12px;font-size:12.5px;border-bottom:1px solid #F0F2F8}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table tbody tr:hover td{background:#FAFBFE}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) td small{font-size:10.5px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-heat td{padding:5px 2px;text-align:center;font-size:10px;min-width:26px;border-radius:4px;border:2px solid #fff}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-heat th{padding:4px 2px;font-size:10px;text-align:center;background:#fff;position:static}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-note{font-size:12px;color:var(--mk-muted);padding:10px 20px;line-height:1.5}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-note.warn{background:#FFF8E1;color:#7A5B00;border-radius:10px;margin:10px 20px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) td.mk-t{max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger th:nth-child(2){text-align:left}
 /* SKU e Descricao congelados ao rolar para o lado (Igor, 10/11) */
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger td:nth-child(1),:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger th:nth-child(1){position:sticky;left:0;z-index:2;background:#fff;min-width:175px;max-width:175px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger td:nth-child(2),:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger th:nth-child(2){position:sticky;left:175px;z-index:2;background:#fff;min-width:260px;max-width:260px;box-shadow:4px 0 6px -4px rgba(30,46,95,.25)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger thead th:nth-child(1),:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger thead th:nth-child(2){z-index:4;background:var(--mk-soft)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger tr.mk-tot td:nth-child(1),:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger tr.mk-tot td:nth-child(2){background:var(--mk-soft)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger tbody tr:hover td:nth-child(-n+2){background:#FAFBFE}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-repor{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-repor b{font-family:'Barlow Condensed',sans-serif;font-size:17px;color:var(--mk-navy)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) td.mk-sku{white-space:nowrap}
-:is(#v-marketplace,#v-tiktok,#v-amazon) td small.mk-sub{display:block;white-space:nowrap;color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-abc{display:inline-block;width:22px;text-align:center;border-radius:6px;font-weight:800;font-size:11px;padding:2px 0}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-abc.A{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-abc.B{background:#FDF6E0;color:var(--mk-warn)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-abc.C{background:#EEF0F6;color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) tr.mk-tot td{font-weight:800;background:var(--mk-soft);color:var(--mk-navy)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-share{display:flex;align-items:center;gap:8px;justify-content:flex-end}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-share i{display:block;height:6px;border-radius:3px;background:linear-gradient(90deg,#5188DF,var(--mk-navy));min-width:2px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias b{font-family:'Barlow Condensed',sans-serif;font-size:17px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias small{color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias.r b{color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias.y b{color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias.g b{color:var(--mk-pos)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mk-muted);padding:0 20px 12px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda .r:before{background:var(--mk-neg)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda .y:before{background:var(--mk-warn)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda .g:before{background:var(--mk-pos)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpirow.kpi-mini .kpi .val{font-size:30px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.alerta{border-top-color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.alerta .val{color:var(--mk-neg)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.atencao{border-top-color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.atencao .val{color:var(--mk-warn)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-alerta td{font-size:14px;padding:12px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-alerta td .pill{font-size:14px;font-weight:800;padding:4px 12px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) .card-h .mk-bar{margin:0;font-size:12px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre td:first-child{font-weight:600;color:var(--ink)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre tr.mk-pct td{font-size:11.5px;color:var(--mk-muted);background:#FBFCFE;font-weight:600}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre tr.mk-tot td{font-size:13.5px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre tr.mk-subl td{background:#F1F3F6;color:var(--mk-muted);font-size:12px}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre tr.mk-subl td:first-child{padding-left:34px;font-weight:500;color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre td.mk-col-tot,:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre th.mk-col-tot{background:#EEF2FB;font-weight:800}
-@media (max-width:760px){:is(#v-marketplace,#v-tiktok,#v-amazon) .grid2{grid-template-columns:1fr}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero{padding:16px}
-  :is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero h2{font-size:24px}:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi .val{font-size:24px}}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger td:nth-child(1),:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger th:nth-child(1){position:sticky;left:0;z-index:2;background:#fff;min-width:175px;max-width:175px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger td:nth-child(2),:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger th:nth-child(2){position:sticky;left:175px;z-index:2;background:#fff;min-width:260px;max-width:260px;box-shadow:4px 0 6px -4px rgba(30,46,95,.25)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger thead th:nth-child(1),:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger thead th:nth-child(2){z-index:4;background:var(--mk-soft)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger tr.mk-tot td:nth-child(1),:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger tr.mk-tot td:nth-child(2){background:var(--mk-soft)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger tbody tr:hover td:nth-child(-n+2){background:#FAFBFE}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-repor{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-repor b{font-family:'Barlow Condensed',sans-serif;font-size:17px;color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) td.mk-sku{white-space:nowrap}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) td small.mk-sub{display:block;white-space:nowrap;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-abc{display:inline-block;width:22px;text-align:center;border-radius:6px;font-weight:800;font-size:11px;padding:2px 0}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-abc.A{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-abc.B{background:#FDF6E0;color:var(--mk-warn)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-abc.C{background:#EEF0F6;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) tr.mk-tot td{font-weight:800;background:var(--mk-soft);color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-share{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-share i{display:block;height:6px;border-radius:3px;background:linear-gradient(90deg,#5188DF,var(--mk-navy));min-width:2px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-dias{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-dias b{font-family:'Barlow Condensed',sans-serif;font-size:17px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-dias small{color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-dias.r b{color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-dias.y b{color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-dias.g b{color:var(--mk-pos)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mk-muted);padding:0 20px 12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-legenda span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-legenda .r:before{background:var(--mk-neg)}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-legenda .y:before{background:var(--mk-warn)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-legenda .g:before{background:var(--mk-pos)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpirow.kpi-mini .kpi .val{font-size:30px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi.alerta{border-top-color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi.alerta .val{color:var(--mk-neg)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi.atencao{border-top-color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi.atencao .val{color:var(--mk-warn)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-alerta td{font-size:14px;padding:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-alerta td .pill{font-size:14px;font-weight:800;padding:4px 12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .card-h .mk-bar{margin:0;font-size:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-dre td:first-child{font-weight:600;color:var(--ink)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-dre tr.mk-pct td{font-size:11.5px;color:var(--mk-muted);background:#FBFCFE;font-weight:600}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-dre tr.mk-tot td{font-size:13.5px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-dre tr.mk-subl td{background:#F1F3F6;color:var(--mk-muted);font-size:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-dre tr.mk-subl td:first-child{padding-left:34px;font-weight:500;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-dre td.mk-col-tot,:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-dre th.mk-col-tot{background:#EEF2FB;font-weight:800}
+@media (max-width:760px){:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .grid2{grid-template-columns:1fr}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero{padding:16px}
+  :is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero h2{font-size:24px}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi .val{font-size:24px}}
 </style>
 <script>
 /* ===================== ABA MARKETPLACE (Mercado Livre) ===================== */
@@ -20576,7 +20576,8 @@ function ttAmostras(p){
      comissao 6,7% · SFP 6,1% · afiliado 5,2% · frete das vendas 0,9%  -> sobre a venda liquida
      frete das amostras = R$ 11,33 por amostra (1.307 envios, R$ 14.812)
    Anuncios (GMV Max) ficam fora: so pelo extrato/API. Quando a API chegar, trocar pelos valores reais. */
-const TT_TAXA = {repasse: 0.135, com: 0.067, sfp: 0.061, afil: 0.052, frete: 0.009, freteAmostra: 11.33};
+/* 11/11 (Igor: "Tiktok Shop: estimativa"): anuncios GMV Max = R$ 3.123 de 01/10 a 11/11 no extrato ÷ R$ 46.662 de faturamento liquido = 6,7% */
+const TT_TAXA = {repasse: 0.135, com: 0.067, sfp: 0.061, afil: 0.052, frete: 0.009, freteAmostra: 11.33, ads: 0.067};
 function ttDreCalc(ini, fim){
   const t = ttTot(ini, fim), V = ttPorSku(ini, fim, 'V'), A = ttPorSku(ini, fim, 'A');
   const imp = V.reduce((a, o) => a + o.imp, 0), cmv = V.reduce((a, o) => a + o.cmv, 0), cmvA = A.reduce((a, o) => a + o.cmv, 0);
@@ -20589,7 +20590,8 @@ function ttDreCalc(ini, fim){
   T.taxas = T.com + T.sfp + T.afil + T.fr;
   T.liq = T.mb - T.taxas;
   T.frA = t.na * TT_TAXA.freteAmostra;
-  T.res = T.liq - cmvA - T.frA;
+  T.ads = T.fatLiq * TT_TAXA.ads;
+  T.res = T.liq - cmvA - T.frA - T.ads;
   return T;
 }
 const TT_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos (vendedor + TikTok)', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
@@ -20599,7 +20601,8 @@ const TT_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos (vend
   ['− Comissão do TikTok (est. 6,7%)', T => -T.com], ['− Taxa SFP (est. 6,1%)', T => -T.sfp], ['− Comissão de afiliados (est. 5,2%)', T => -T.afil], ['− Frete das vendas (est. 0,9%)', T => -T.fr],
   ['= Margem depois das taxas', T => T.liq, 'tot'], ['% margem depois das taxas', T => T.fatLiq ? T.liq / T.fatLiq : null, 'pct'],
   ['− Amostras para criadores (CMV)', T => -T.cmvA], ['− Frete das amostras (est. R$ 11,33 por envio)', T => -T.frA],
-  ['= Resultado (antes dos anúncios)', T => T.res, 'tot'], ['% resultado', T => T.fatLiq ? T.res / T.fatLiq : null, 'pct'], ['Pedidos', T => T.pv, 'n'], ['Amostras enviadas', T => T.na, 'n']];
+  ['− Anúncios GMV Max (est. 6,7%)', T => -T.ads],
+  ['= Resultado', T => T.res, 'tot'], ['% resultado', T => T.fatLiq ? T.res / T.fatLiq : null, 'pct'], ['Pedidos', T => T.pv, 'n'], ['Amostras enviadas', T => T.na, 'n']];
 function ttDre(p){
   const meses = Object.keys(mkMesesFrac(p)).sort(), T = ttDreCalc(p.ini, p.fim);
   const fmt = (v, k) => v == null ? '—' : (k === 'pct' ? mkP(v) : (k === 'n' ? mkN(v) : mkR(v)));
@@ -20615,11 +20618,11 @@ function ttDre(p){
     corpo = TT_DRE.map(l => { const v = l[1](T); return '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td><td>' + fmt(v, l[2]) + '</td><td>' +
       (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.fatLiq ? v / T.fatLiq : 0)) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkR2(T.pv ? v / T.pv : 0)) + '</td></tr>'; }).join('');
   }
-  return '<div class="mk-note warn">⚠ As taxas do TikTok, o repasse do desconto e o frete das amostras são ESTIMADOS com os % medidos no extrato de pagamentos do Seller Center de out/26. Os anúncios (GMV Max: R$ 3,1 mil de 01/10 a 11/11) ainda não entram. Quando a API do TikTok chegar, entram os valores reais de cada pedido.</div>' +
+  return '<div class="mk-note warn">⚠ As taxas do TikTok, o repasse do desconto e o frete das amostras são ESTIMADOS com os % medidos no extrato de pagamentos do Seller Center de out/26. Os anúncios (GMV Max) também são estimados: R$ 3,1 mil de 01/10 a 11/11 = 6,7% do faturamento líquido. Quando a API do TikTok chegar, entram os valores reais de cada pedido.</div>' +
     '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.fatLiq), mkN(T.pv) + ' pedidos · com o repasse do TikTok', 'accent') +
     mkKpi('Margem depois das taxas', mkR(T.liq), mkP(T.fatLiq ? T.liq / T.fatLiq : 0) + ' · taxas do TikTok ' + mkR(T.taxas)) +
     mkKpi('Amostras (CMV + frete)', mkR(T.cmvA + T.frA), mkN(T.na) + ' envios · ' + mkP(T.fatLiq ? (T.cmvA + T.frA) / T.fatLiq : 0) + ' do faturamento', (T.cmvA + T.frA) > 0.3 * T.fatLiq ? 'alerta' : '') +
-    mkKpi('Resultado', mkR(T.res), mkP(T.fatLiq ? T.res / T.fatLiq : 0) + ' · antes dos anúncios', T.res >= 0 ? 'pos' : 'alerta') + '</div>' +
+    mkKpi('Resultado', mkR(T.res), mkP(T.fatLiq ? T.res / T.fatLiq : 0) + ' · depois dos anúncios (est.)', T.res >= 0 ? 'pos' : 'alerta') + '</div>' +
     mkCard('DRE do TikTok Shop · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), meses.length > 1 ? 'meses lado a lado · última coluna = total' : 'por pedido = valor ÷ pedidos',
       '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
       '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(TTK.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real), sobre o valor das notas. ' +
@@ -20800,15 +20803,21 @@ function azDreCalc(ini, fim){
   T.imp = t.lv ? impV * T.fatLiq / t.lv : 0;          /* imposto estimado sobre o liquido das devolucoes */
   T.cmvb = cb; T.cmvDev = devCb; T.cred = (cb - cm) - (devCb - devCm); T.cmv = cm - devCm;
   T.mb = T.fatLiq - T.imp - T.cmv;
+  /* 11/11 (Igor): comissao da Amazon 12% (Saude e Bem-Estar) sobre o faturamento liquido. O frete por conta
+     da Dobro (DBA) e as tarifas do FBA NAO estao nessa estimativa. */
+  T.com = T.fatLiq * AZ_COMISSAO; T.liq = T.mb - T.com;
   T.semCmv = V.filter(o => o.sem).reduce((a, o) => a + o.l, 0);
   return T;
 }
+const AZ_COMISSAO = 0.12;
 const AZ_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
   ['− Devoluções (notas de devolução)', T => -T.dev], ['= Faturamento líquido', T => T.fatLiq, 'tot'],
   ['− Impostos (estimado: % real do ML por UF + PIS/COFINS 9,25%)', T => -T.imp],
   ['CMV bruto', T => -T.cmvb, 'sub'], ['CMV devolvido', T => T.cmvDev, 'sub'], ['Crédito de insumos', T => T.cred, 'sub'],
   ['− CMV líquido', T => -T.cmv],
-  ['= Margem bruta (antes das taxas da Amazon)', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
+  ['= Margem bruta', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
+  ['− Comissão da Amazon (est. 12% · Saúde e Bem-Estar)', T => -T.com],
+  ['= Margem depois da comissão (sem frete e FBA)', T => T.liq, 'tot'], ['% margem depois da comissão', T => T.fatLiq ? T.liq / T.fatLiq : null, 'pct'],
   ['Pedidos', T => T.pv, 'n'], ['Ticket médio', T => T.pv ? T.fatLiq / T.pv : null, 'r2']];
 function azDre(p){
   const meses = Object.keys(mkMesesFrac(p)).sort(), T = azDreCalc(p.ini, p.fim);
@@ -20826,10 +20835,11 @@ function azDre(p){
     corpo = AZ_DRE.map(l => { const v = l[1](T); return '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td><td>' + fmt(v, l[2]) + '</td><td>' +
       (semPct(l[2]) ? '' : mkP(T.fatLiq ? v / T.fatLiq : 0)) + '</td><td>' + (semPct(l[2]) ? '' : mkR2(T.pv ? v / T.pv : 0)) + '</td></tr>'; }).join('');
   }
-  return '<div class="mk-note warn">⚠ Faltam as taxas da Amazon (comissão por venda, tarifas do FBA, armazenagem e publicidade): elas não vêm na nota. A margem real é MENOR do que a mostrada. Para fechar, precisamos do relatório de pagamentos do Seller Central (ou da API da Amazon).</div>' +
+  return '<div class="mk-note warn">⚠ A comissão da Amazon é ESTIMADA em 12% (categoria Saúde e Bem-Estar). Ainda faltam o frete pago pela Dobro (DBA), as tarifas e a armazenagem do FBA e a publicidade: a margem real é MENOR do que a mostrada. Quando a API da Amazon chegar, entram os valores reais.</div>' +
     '<div class="kpirow">' + mkKpi('Faturamento líquido 3P', mkR(T.fatLiq), mkN(T.pv) + ' pedidos · depois das devoluções', 'accent') +
-    mkKpi('Margem bruta', mkR(T.mb), mkP(T.fatLiq ? T.mb / T.fatLiq : 0) + ' · antes das taxas da Amazon', T.mb >= 0 ? 'pos' : 'alerta') +
-    mkKpi('CMV líquido', mkR(T.cmv), mkP(T.fatLiq ? T.cmv / T.fatLiq : 0) + ' do faturamento') + mkKpi('Impostos (estimado)', mkR(T.imp), mkP(T.fatLiq ? T.imp / T.fatLiq : 0)) + '</div>' +
+    mkKpi('Margem bruta', mkR(T.mb), mkP(T.fatLiq ? T.mb / T.fatLiq : 0) + ' · depois de impostos e CMV') +
+    mkKpi('Depois da comissão', mkR(T.liq), mkP(T.fatLiq ? T.liq / T.fatLiq : 0) + ' · comissão est. 12% · sem frete e FBA', T.liq >= 0 ? 'pos' : 'alerta') +
+    mkKpi('CMV líquido', mkR(T.cmv), mkP(T.fatLiq ? T.cmv / T.fatLiq : 0) + ' do faturamento') + '</div>' +
     mkCard('DRE da Amazon 3P · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), meses.length > 1 ? 'meses lado a lado · última coluna = total' : 'por pedido = valor ÷ pedidos',
       '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
       '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(AMZ.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real). As notas do Bling não trazem o imposto. ' +
@@ -20850,6 +20860,162 @@ function azGraficos(p){
 
 try{ azRegistrar(); }catch(e){ console.error('amazon: registrar', e); }
 </script>
+
+<script>
+/* ===================== ABA GERAL DO MARKETPLACE (ML + TikTok + Amazon) ===================== */
+const MKG = {carregando: false, erro: null, patch: false};
+const MKG_CANAIS = [['ml', 'Mercado Livre', 'ML'], ['tt', 'TikTok Shop', 'TikTok'], ['az', 'Amazon 3P', 'Amazon']];
+/* valor null = nao se aplica ao canal ('—'); 'falta' = custo existe mas ainda nao temos o dado */
+const MKG_FALTA = 'falta';
+
+function mgRegistrar(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  if(!VIEWS.find(x => x.id === 'mkgeral')) VIEWS.push({id: 'mkgeral', lab: 'Geral', fn: vMkGeral});
+  if(!document.getElementById('v-mkgeral')){
+    const irmao = document.querySelector('.view');
+    if(irmao && irmao.parentNode){
+      const div = document.createElement('div'); div.className = 'view'; div.id = 'v-mkgeral';
+      irmao.parentNode.appendChild(div);
+      div.addEventListener('click', ev => { const b = ev.target.closest('[data-mg]'); if(!b) return;
+        if(b.dataset.mg === 'atualizar') mgCarregar(true); });
+    }
+  }
+  if(!MKG.patch && typeof abasPermitidas === 'function'){
+    const orig = abasPermitidas;
+    /* sem o menu do banco, so admin; com ele, o menu decide (uxPodeVer) */
+    abasPermitidas = function(){ const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin); const banco = !!(window.AOVIVO_MENU && AOVIVO_MENU.abas && AOVIVO_MENU.abas.mkgeral); return orig().filter(x => x.id !== 'mkgeral' || adm || banco); };
+    MKG.patch = true;
+  }
+  const nav = document.getElementById('nav');
+  if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
+}
+async function mgCarregar(forcar){
+  if(MKG.carregando) return; MKG.carregando = true; MKG.erro = null; mgDesenhar();
+  try{
+    const fs = [];
+    if(forcar || (!MKT.d && !MKT.carregando)) fs.push(mkCarregar(!!forcar));
+    if(forcar || (!TTK.d && !TTK.carregando)) fs.push(ttCarregar(!!forcar));
+    if(forcar || (!AMZ.d && !AMZ.carregando)) fs.push(azCarregar(!!forcar));
+    await Promise.all(fs);
+    /* alguma aba ja estava carregando por conta propria: espera ela terminar (ate 2 min) */
+    for(let i = 0; i < 240 && (MKT.carregando || TTK.carregando || AMZ.carregando); i++) await new Promise(r => setTimeout(r, 500));
+    const er = [['Mercado Livre', MKT.erro], ['TikTok', TTK.erro], ['Amazon', AMZ.erro]].filter(x => x[1]);
+    if(er.length) MKG.erro = er.map(x => x[0] + ': ' + x[1]).join(' · ');
+  }catch(e){ MKG.erro = e.message || String(e); console.error('mkgeral:', e); }
+  MKG.carregando = false;
+  if(typeof CURRENT !== 'undefined' && CURRENT === 'mkgeral') mgDesenhar();
+}
+function vMkGeral(){ if(!(MKT.d && TTK.d && AMZ.d) && !MKG.carregando && !MKG.erro){ mgCarregar(false); return; } mgDesenhar(); }
+
+/* um canal num intervalo -> linhas comuns */
+function mgCanal(c, ini, fim){
+  let o;
+  if(c === 'ml'){
+    const b = MKT.base; MKT.base = 'meli';                 /* a Geral usa sempre a base MELI (a padrao da aba do ML) */
+    let T; try{ T = mkDreCalc(ini, fim).T; } finally { MKT.base = b; }
+    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.tar, fr: T.env, arm: T.armaz, out: T.outras, ads: T.adsTot, amo: null, antec: T.antec, ped: T.ped};
+  } else if(c === 'tt'){
+    const T = ttDreCalc(ini, fim);
+    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.sfp + T.afil, fr: T.fr, arm: null, out: null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv};
+  } else {
+    const T = azDreCalc(ini, fim);
+    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com, fr: MKG_FALTA, arm: MKG_FALTA, out: null, ads: MKG_FALTA, amo: null, antec: null, ped: T.pv};
+  }
+  const v = k => (typeof o[k] === 'number' ? o[k] : 0);
+  o.mb = v('fat') - v('imp') - v('cmv');
+  o.mc = o.mb - v('tax') - v('fr') - v('arm') - v('out');
+  o.inv = v('ads') + v('amo');
+  o.res = o.mc - o.inv;
+  o.resF = o.res - v('antec');
+  return o;
+}
+function mgCalc(ini, fim){
+  const C = {}; MKG_CANAIS.forEach(x => C[x[0]] = mgCanal(x[0], ini, fim));
+  const T = {};
+  ['fat', 'imp', 'cmv', 'tax', 'fr', 'arm', 'out', 'ads', 'amo', 'antec', 'ped', 'mb', 'mc', 'inv', 'res', 'resF'].forEach(k =>
+    T[k] = MKG_CANAIS.reduce((a, x) => a + (typeof C[x[0]][k] === 'number' ? C[x[0]][k] : 0), 0));
+  C.tot = T; return C;
+}
+/* [rotulo, campo, tipo, sinal]: tipo tot = subtotal; pct = % do faturamento liquido do proprio canal */
+const MKG_LINHAS = [
+  ['Faturamento líquido', 'fat', 'tot', 1],
+  ['− Impostos', 'imp', '', -1], ['− CMV líquido', 'cmv', '', -1],
+  ['= Margem bruta', 'mb', 'tot', 1], ['% margem bruta', 'mb', 'pct'],
+  ['− Comissões e tarifas do canal', 'tax', '', -1], ['− Frete das vendas', 'fr', '', -1],
+  ['− Armazenagem (Full / FBA)', 'arm', '', -1], ['− Outras cobranças', 'out', '', -1],
+  ['= Margem de contribuição', 'mc', 'tot', 1], ['% margem de contribuição', 'mc', 'pct'],
+  ['INVESTIMENTOS', null, 'sec'],
+  ['− Anúncios (Ads / GMV Max)', 'ads', '', -1], ['− Amostras para criadores (CMV + frete)', 'amo', '', -1],
+  ['= Resultado', 'res', 'tot', 1], ['% resultado', 'res', 'pct'],
+  ['− Antecipação de recebíveis (custo financeiro)', 'antec', '', -1],
+  ['= Resultado após custo financeiro', 'resF', 'tot', 1], ['% resultado após custo financeiro', 'resF', 'pct'],
+  ['Pedidos', 'ped', 'n']
+];
+function mgCel(o, l){
+  const v = o[l[1]];
+  if(l[2] === 'pct') return mkP(o.fat ? v / o.fat : null);
+  if(v === MKG_FALTA) return '<span class="mg-falta" title="custo existe, mas ainda não temos o dado">falta</span>';
+  if(v == null) return '<span class="mg-na">—</span>';
+  if(l[2] === 'n') return mkN(v);
+  return mkR(v * (l[3] || 1));
+}
+function mgDesenhar(){
+  const alvo = document.getElementById('v-mkgeral'); if(!alvo) return;
+  const pronto = !!(MKT.d && TTK.d && AMZ.d), p = pronto ? mkPeriodo() : null;
+  let h = '<div class="mk-hero"><div><span class="mk-canal">Marketplace</span><h2>Geral · todos os canais</h2><p>' +
+    (pronto ? 'Mercado Livre + TikTok Shop + Amazon 3P · cada canal igual à DRE da sua aba' : (MKG.carregando ? 'Carregando os 3 canais…' : '')) + '</p></div><div class="mk-hero-dir">' +
+    (p ? '<div class="mk-per">Período (filtro do topo)<b>' + mkDD(p.ini) + ' a ' + mkDD(p.fim) + '</b></div>' : '') +
+    '<button data-mg="atualizar">↻ Atualizar</button></div></div>';
+  if(MKG.erro && !pronto){ alvo.innerHTML = h + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(MKG.erro) + '</div>'); return; }
+  if(!pronto){ alvo.innerHTML = h; return; }
+  try{ h += mgCorpo(p); }
+  catch(e){ console.error('mkgeral: tela', e); h += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
+  alvo.innerHTML = h;
+}
+function mgCorpo(p){
+  const C = mgCalc(p.ini, p.fim), T = C.tot, pc = v => mkP(T.fat ? v / T.fat : 0);
+  let h = '<div class="mk-note warn">⚠ Parte dos custos é ESTIMADA: no TikTok, as taxas, o repasse do desconto, o frete das amostras e os anúncios (% do extrato de out/26); na Amazon, a comissão (12%). ' +
+    'Na Amazon ainda <b>faltam</b> o frete pago pela Dobro, as tarifas e a armazenagem do FBA e a publicidade — o resultado dela está melhor do que o real. Quando cada canal tiver API, entram os valores reais.</div>';
+  h += '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.fat), mkN(T.ped) + ' pedidos · ' + MKG_CANAIS.map(x => x[2] + ' ' + pc(C[x[0]].fat)).join(' · '), 'accent') +
+    mkKpi('Margem de contribuição', mkR(T.mc), pc(T.mc) + ' · antes dos investimentos', T.mc >= 0 ? 'pos' : 'alerta') +
+    mkKpi('Investimentos', mkR(T.inv), pc(T.inv) + ' · anúncios ' + mkR(T.ads) + ' · amostras ' + mkR(T.amo)) +
+    mkKpi('Resultado após custo financeiro', mkR(T.resF), pc(T.resF) + ' do faturamento líquido', T.resF >= 0 ? 'pos' : 'alerta') + '</div>';
+  const cab = '<th>DRE · Marketplace</th>' + MKG_CANAIS.map(x => '<th>' + x[1] + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% fat. líquido</th>';
+  const corpo = MKG_LINHAS.map(l => {
+    if(l[2] === 'sec') return '<tr class="mg-sec"><td colspan="' + (MKG_CANAIS.length + 3) + '">' + l[0] + ' <small>— o que a Dobro escolhe gastar para crescer</small></td></tr>';
+    const cls = l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '');
+    return '<tr class="' + cls + '"><td>' + l[0] + '</td>' + MKG_CANAIS.map(x => '<td>' + mgCel(C[x[0]], l) + '</td>').join('') +
+      '<td class="mk-col-tot">' + mgCel(T, l) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : pc(T[l[1]] * (l[3] || 1))) + '</td></tr>';
+  }).join('');
+  h += mkCard('DRE do Marketplace · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), 'canais lado a lado · % de cada canal = sobre o faturamento dele; última coluna = sobre o total',
+    '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
+    '<div class="mk-note">"—" = não se aplica ao canal · "falta" = o custo existe, mas ainda não temos o dado (entra como zero no total). ' +
+    'Comissões e tarifas: ML = tarifa de venda; TikTok = comissão + SFP + afiliados (est.); Amazon = comissão 12% (est.). ' +
+    'Mercado Livre na base MELI, igual à aba dele (Ads, Full e outras cobranças vêm por mês na fatura; num período parcial entram proporcionais aos dias).</div>');
+  /* varios meses: resultado de cada canal por mes */
+  const meses = Object.keys(mkMesesFrac(p)).sort();
+  if(meses.length > 1){
+    const M = meses.map(m => { const a = (m + '-01') < p.ini ? p.ini : m + '-01', u = mkDia(mkDia(m + '-01', 32).slice(0, 8) + '01', -1); return {m, C: mgCalc(a, u > p.fim ? p.fim : u)}; });
+    const lin = (rot, f, k) => '<tr class="' + (k || '') + '"><td>' + rot + '</td>' + M.map(x => '<td>' + f(x.C) + '</td>').join('') + '<td class="mk-col-tot">' + f(C) + '</td></tr>';
+    h += mkCard('Mês a mês', 'faturamento líquido e resultado após custo financeiro de cada canal',
+      '<div class="mk-scroll"><table class="mk-dre"><thead><tr><th></th>' + M.map(x => '<th>' + mkNomeMes(x.m) + '</th>').join('') + '<th class="mk-col-tot">Total</th></tr></thead><tbody>' +
+      '<tr class="mg-sec"><td colspan="' + (M.length + 2) + '">Faturamento líquido</td></tr>' +
+      MKG_CANAIS.map(x => lin(x[1], c => mkR(c[x[0]].fat))).join('') + lin('Total', c => mkR(c.tot.fat), 'mk-tot') +
+      '<tr class="mg-sec"><td colspan="' + (M.length + 2) + '">Resultado após custo financeiro</td></tr>' +
+      MKG_CANAIS.map(x => lin(x[1], c => mkR(c[x[0]].resF))).join('') + lin('Total', c => mkR(c.tot.resF), 'mk-tot') +
+      lin('% do faturamento líquido', c => mkP(c.tot.fat ? c.tot.resF / c.tot.fat : null), 'mk-pct') +
+      '</tbody></table></div>');
+  }
+  return h;
+}
+</script>
+<style>
+#v-mkgeral .mg-falta{color:var(--mk-warn);font-style:italic;font-weight:700}
+#v-mkgeral .mg-na{color:#B4BACB}
+#v-mkgeral tr.mg-sec td{background:var(--mk-soft);color:var(--mk-navy);font-weight:800;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;padding-top:12px}
+#v-mkgeral tr.mg-sec td small{text-transform:none;letter-spacing:0;font-weight:600;color:var(--mk-muted)}
+</style>
+<script>try{ mgRegistrar(); }catch(e){ console.error('mkgeral: registrar', e); }</script>
 
 <style>
 /* ===================== UX / DESIGN UNICO (07/11/2026) ===================== */
@@ -21045,7 +21211,7 @@ const UX_GRUPOS = [
   ['clientes', 'Clientes', ['carteira', 'ranking', 'cnpj', 'penetracao', 'crm', 'geo']],
   ['produtos', 'Produtos', ['mix', 'gestcat', 'calc']],
   ['operacao', 'Operação', ['sla', 'degustacoes', 'links']],
-  ['marketplace', 'Marketplace', ['marketplace', 'tiktok', 'amazon']],
+  ['marketplace', 'Marketplace', ['mkgeral', 'marketplace', 'tiktok', 'amazon']],
   ['admin',    'Admin',    ['premissas', 'pendencias', 'acessos']],
 ];
 function uxGrupoAberto(id){
