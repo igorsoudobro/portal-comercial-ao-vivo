@@ -19421,98 +19421,100 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 /* ===== MARKETPLACE · design (09/11/2026) =====
    Identidade Dobro: navy #2A3E7E, amarelo #D8C733, Barlow Condensed nos titulos.
    Amarelo do ML (#FFE600) so como marca do canal, nunca em numero. */
-:is(#v-marketplace,#v-tiktok){--mk-navy:#2A3E7E;--mk-navy2:#1E2E5F;--mk-ml:#FFE600;--mk-line:#E6EAF3;--mk-soft:#F6F8FC;
+:is(#v-marketplace,#v-tiktok,#v-amazon){--mk-navy:#2A3E7E;--mk-navy2:#1E2E5F;--mk-ml:#FFE600;--mk-line:#E6EAF3;--mk-soft:#F6F8FC;
   --mk-pos:#1F9D6B;--mk-neg:#D9534F;--mk-warn:#C98A00;--mk-muted:#6B7490}
-:is(#v-marketplace,#v-tiktok) .mk-hero{background:linear-gradient(120deg,var(--mk-navy) 0%,var(--mk-navy2) 100%);color:#fff;border-radius:18px;
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero{background:linear-gradient(120deg,var(--mk-navy) 0%,var(--mk-navy2) 100%);color:#fff;border-radius:18px;
   padding:20px 24px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
   box-shadow:0 10px 30px rgba(30,46,95,.18);position:relative;overflow:hidden}
-:is(#v-marketplace,#v-tiktok) .mk-hero:after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero:after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;
   background:radial-gradient(circle,rgba(255,230,0,.22),rgba(255,230,0,0) 70%)}
-:is(#v-marketplace,#v-tiktok) .mk-hero .mk-canal{display:inline-flex;align-items:center;gap:8px;background:var(--mk-ml);color:#2D3277;font-weight:800;
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero .mk-canal{display:inline-flex;align-items:center;gap:8px;background:var(--mk-ml);color:#2D3277;font-weight:800;
   font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:20px}
-:is(#v-marketplace,#v-tiktok) .mk-hero h2{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:.01em}
-:is(#v-marketplace,#v-tiktok) .mk-hero p{margin:0;font-size:12px;opacity:.8}
-:is(#v-marketplace,#v-tiktok) .mk-hero .mk-hero-dir{display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:1}
-:is(#v-marketplace,#v-tiktok) .mk-hero .mk-per{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;font-size:12px}
-:is(#v-marketplace,#v-tiktok) .mk-hero .mk-per b{font-size:14px;display:block;font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em}
-:is(#v-marketplace,#v-tiktok) .mk-hero button{background:#fff;color:var(--mk-navy);border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
-:is(#v-marketplace,#v-tiktok) .mk-hero button:hover{background:var(--mk-ml)}
-:is(#v-marketplace,#v-tiktok) .mk-tabs{display:flex;gap:4px;overflow-x:auto;background:#fff;border-radius:14px;padding:5px;margin:0 0 18px;
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero h2{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:.01em}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero p{margin:0;font-size:12px;opacity:.8}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero .mk-hero-dir{display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:1}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero .mk-per{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 12px;font-size:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero .mk-per b{font-size:14px;display:block;font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero button{background:#fff;color:var(--mk-navy);border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero button:hover{background:var(--mk-ml)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-tabs{display:flex;gap:4px;overflow-x:auto;background:#fff;border-radius:14px;padding:5px;margin:0 0 18px;
   box-shadow:0 1px 3px rgba(30,46,95,.08);scrollbar-width:none}
-:is(#v-marketplace,#v-tiktok) .mk-tabs button{flex:0 0 auto;border:none;background:transparent;color:var(--mk-muted);border-radius:10px;padding:9px 15px;
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-tabs button{flex:0 0 auto;border:none;background:transparent;color:var(--mk-muted);border-radius:10px;padding:9px 15px;
   font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;transition:.15s}
-:is(#v-marketplace,#v-tiktok) .mk-tabs button:hover{color:var(--mk-navy);background:var(--mk-soft)}
-:is(#v-marketplace,#v-tiktok) .mk-tabs button.on{background:var(--mk-navy);color:#fff;box-shadow:0 4px 12px rgba(42,62,126,.25)}
-:is(#v-marketplace,#v-tiktok) .mk-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-size:12.5px;color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok) .mk-bar select,:is(#v-marketplace,#v-tiktok) .mk-bar input{border:1.5px solid var(--mk-line);border-radius:10px;padding:7px 11px;font-size:13px;
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-tabs button:hover{color:var(--mk-navy);background:var(--mk-soft)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-tabs button.on{background:var(--mk-navy);color:#fff;box-shadow:0 4px 12px rgba(42,62,126,.25)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-size:12.5px;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar select,:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar input{border:1.5px solid var(--mk-line);border-radius:10px;padding:7px 11px;font-size:13px;
   font-weight:600;color:var(--mk-navy);background:#fff}
-:is(#v-marketplace,#v-tiktok) .mk-bar input:focus,:is(#v-marketplace,#v-tiktok) .mk-bar select:focus{outline:none;border-color:var(--mk-navy)}
-:is(#v-marketplace,#v-tiktok) .kpirow{gap:12px}
-:is(#v-marketplace,#v-tiktok) .kpi{border-left:none;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(30,46,95,.08);position:relative;
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar input:focus,:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-bar select:focus{outline:none;border-color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpirow{gap:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi{border-left:none;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(30,46,95,.08);position:relative;
   border-top:3px solid #DCE3F2}
-:is(#v-marketplace,#v-tiktok) .kpi.accent{border-top-color:var(--mk-navy)}
-:is(#v-marketplace,#v-tiktok) .kpi.pos{border-top-color:var(--mk-pos)}
-:is(#v-marketplace,#v-tiktok) .kpi .lab{font-size:10.5px;letter-spacing:.08em}
-:is(#v-marketplace,#v-tiktok) .kpi .val{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;letter-spacing:.01em;line-height:1.1}
-:is(#v-marketplace,#v-tiktok) .kpi .sub{font-size:11.5px;line-height:1.45;margin-top:4px}
-:is(#v-marketplace,#v-tiktok) .mk-chip{display:inline-block;border-radius:20px;padding:1px 8px;font-weight:700;font-size:11px}
-:is(#v-marketplace,#v-tiktok) .mk-chip.up{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok) .mk-chip.dn{background:#FBE7E6;color:var(--mk-neg)}
-:is(#v-marketplace,#v-tiktok) .mk-chip.nt{background:#EEF0F6;color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok) .mk-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
-:is(#v-marketplace,#v-tiktok) .mk-cmp .kpi{background:var(--mk-soft);box-shadow:none;border-top:none;border:1px solid var(--mk-line)}
-:is(#v-marketplace,#v-tiktok) .mk-cmp .kpi .val{font-size:24px}
-:is(#v-marketplace,#v-tiktok) .card{border-radius:16px;box-shadow:0 1px 3px rgba(30,46,95,.08);border:1px solid #EEF1F7}
-:is(#v-marketplace,#v-tiktok) .card-h{padding:15px 20px;background:#fff}
-:is(#v-marketplace,#v-tiktok) .card-h h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:.01em;text-transform:none}
-:is(#v-marketplace,#v-tiktok) .card-h .hint{font-size:11.5px;max-width:520px;text-align:right}
-:is(#v-marketplace,#v-tiktok) .mk-scroll{overflow:auto;max-height:640px}
-:is(#v-marketplace,#v-tiktok) table thead th{position:sticky;top:0;z-index:1;background:var(--mk-soft);color:var(--mk-muted);font-size:10.5px;
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.accent{border-top-color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.pos{border-top-color:var(--mk-pos)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi .lab{font-size:10.5px;letter-spacing:.08em}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi .val{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;letter-spacing:.01em;line-height:1.1}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi .sub{font-size:11.5px;line-height:1.45;margin-top:4px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-chip{display:inline-block;border-radius:20px;padding:1px 8px;font-weight:700;font-size:11px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-chip.up{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-chip.dn{background:#FBE7E6;color:var(--mk-neg)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-chip.nt{background:#EEF0F6;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-cmp .kpi{background:var(--mk-soft);box-shadow:none;border-top:none;border:1px solid var(--mk-line)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-cmp .kpi .val{font-size:24px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .card{border-radius:16px;box-shadow:0 1px 3px rgba(30,46,95,.08);border:1px solid #EEF1F7}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .card-h{padding:15px 20px;background:#fff}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .card-h h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;letter-spacing:.01em;text-transform:none}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .card-h .hint{font-size:11.5px;max-width:520px;text-align:right}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-scroll{overflow:auto;max-height:640px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table thead th{position:sticky;top:0;z-index:1;background:var(--mk-soft);color:var(--mk-muted);font-size:10.5px;
   text-transform:uppercase;letter-spacing:.06em;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--mk-line)}
-:is(#v-marketplace,#v-tiktok) table td{padding:10px 12px;font-size:12.5px;border-bottom:1px solid #F0F2F8}
-:is(#v-marketplace,#v-tiktok) table tbody tr:hover td{background:#FAFBFE}
-:is(#v-marketplace,#v-tiktok) td small{font-size:10.5px}
-:is(#v-marketplace,#v-tiktok) .mk-heat td{padding:5px 2px;text-align:center;font-size:10px;min-width:26px;border-radius:4px;border:2px solid #fff}
-:is(#v-marketplace,#v-tiktok) .mk-heat th{padding:4px 2px;font-size:10px;text-align:center;background:#fff;position:static}
-:is(#v-marketplace,#v-tiktok) .mk-note{font-size:12px;color:var(--mk-muted);padding:10px 20px;line-height:1.5}
-:is(#v-marketplace,#v-tiktok) .mk-note.warn{background:#FFF8E1;color:#7A5B00;border-radius:10px;margin:10px 20px}
-:is(#v-marketplace,#v-tiktok) td.mk-t{max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
-:is(#v-marketplace,#v-tiktok) table.mk-ger th:nth-child(2){text-align:left}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table td{padding:10px 12px;font-size:12.5px;border-bottom:1px solid #F0F2F8}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table tbody tr:hover td{background:#FAFBFE}
+:is(#v-marketplace,#v-tiktok,#v-amazon) td small{font-size:10.5px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-heat td{padding:5px 2px;text-align:center;font-size:10px;min-width:26px;border-radius:4px;border:2px solid #fff}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-heat th{padding:4px 2px;font-size:10px;text-align:center;background:#fff;position:static}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-note{font-size:12px;color:var(--mk-muted);padding:10px 20px;line-height:1.5}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-note.warn{background:#FFF8E1;color:#7A5B00;border-radius:10px;margin:10px 20px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) td.mk-t{max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger th:nth-child(2){text-align:left}
 /* SKU e Descricao congelados ao rolar para o lado (Igor, 10/11) */
-:is(#v-marketplace,#v-tiktok) table.mk-ger td:nth-child(1),:is(#v-marketplace,#v-tiktok) table.mk-ger th:nth-child(1){position:sticky;left:0;z-index:2;background:#fff;min-width:175px;max-width:175px}
-:is(#v-marketplace,#v-tiktok) table.mk-ger td:nth-child(2),:is(#v-marketplace,#v-tiktok) table.mk-ger th:nth-child(2){position:sticky;left:175px;z-index:2;background:#fff;min-width:260px;max-width:260px;box-shadow:4px 0 6px -4px rgba(30,46,95,.25)}
-:is(#v-marketplace,#v-tiktok) table.mk-ger thead th:nth-child(1),:is(#v-marketplace,#v-tiktok) table.mk-ger thead th:nth-child(2){z-index:4;background:var(--mk-soft)}
-:is(#v-marketplace,#v-tiktok) table.mk-ger tr.mk-tot td:nth-child(1),:is(#v-marketplace,#v-tiktok) table.mk-ger tr.mk-tot td:nth-child(2){background:var(--mk-soft)}
-:is(#v-marketplace,#v-tiktok) table.mk-ger tbody tr:hover td:nth-child(-n+2){background:#FAFBFE}
-:is(#v-marketplace,#v-tiktok) .mk-repor{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
-:is(#v-marketplace,#v-tiktok) .mk-repor b{font-family:'Barlow Condensed',sans-serif;font-size:17px;color:var(--mk-navy)}
-:is(#v-marketplace,#v-tiktok) td.mk-sku{white-space:nowrap}
-:is(#v-marketplace,#v-tiktok) td small.mk-sub{display:block;white-space:nowrap;color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok) .mk-abc{display:inline-block;width:22px;text-align:center;border-radius:6px;font-weight:800;font-size:11px;padding:2px 0}
-:is(#v-marketplace,#v-tiktok) .mk-abc.A{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok) .mk-abc.B{background:#FDF6E0;color:var(--mk-warn)}
-:is(#v-marketplace,#v-tiktok) .mk-abc.C{background:#EEF0F6;color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok) tr.mk-tot td{font-weight:800;background:var(--mk-soft);color:var(--mk-navy)}
-:is(#v-marketplace,#v-tiktok) .mk-share{display:flex;align-items:center;gap:8px;justify-content:flex-end}
-:is(#v-marketplace,#v-tiktok) .mk-share i{display:block;height:6px;border-radius:3px;background:linear-gradient(90deg,#5188DF,var(--mk-navy));min-width:2px}
-:is(#v-marketplace,#v-tiktok) .mk-dias{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
-:is(#v-marketplace,#v-tiktok) .mk-dias b{font-family:'Barlow Condensed',sans-serif;font-size:17px}
-:is(#v-marketplace,#v-tiktok) .mk-dias small{color:var(--mk-muted)}
-:is(#v-marketplace,#v-tiktok) .mk-dias.r b{color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok) .mk-dias.y b{color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok) .mk-dias.g b{color:var(--mk-pos)}
-:is(#v-marketplace,#v-tiktok) .mk-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mk-muted);padding:0 20px 12px}
-:is(#v-marketplace,#v-tiktok) .mk-legenda span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
-:is(#v-marketplace,#v-tiktok) .mk-legenda .r:before{background:var(--mk-neg)}:is(#v-marketplace,#v-tiktok) .mk-legenda .y:before{background:var(--mk-warn)}
-:is(#v-marketplace,#v-tiktok) .mk-legenda .g:before{background:var(--mk-pos)}
-:is(#v-marketplace,#v-tiktok) .kpirow.kpi-mini .kpi .val{font-size:30px}
-:is(#v-marketplace,#v-tiktok) .kpi.alerta{border-top-color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok) .kpi.alerta .val{color:var(--mk-neg)}
-:is(#v-marketplace,#v-tiktok) .kpi.atencao{border-top-color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok) .kpi.atencao .val{color:var(--mk-warn)}
-:is(#v-marketplace,#v-tiktok) .mk-alerta td{font-size:14px;padding:12px}
-:is(#v-marketplace,#v-tiktok) .mk-alerta td .pill{font-size:14px;font-weight:800;padding:4px 12px}
-:is(#v-marketplace,#v-tiktok) .card-h .mk-bar{margin:0;font-size:12px}
-:is(#v-marketplace,#v-tiktok) table.mk-dre td:first-child{font-weight:600;color:var(--ink)}
-:is(#v-marketplace,#v-tiktok) table.mk-dre tr.mk-pct td{font-size:11.5px;color:var(--mk-muted);background:#FBFCFE;font-weight:600}
-:is(#v-marketplace,#v-tiktok) table.mk-dre tr.mk-tot td{font-size:13.5px}
-:is(#v-marketplace,#v-tiktok) table.mk-dre td.mk-col-tot,:is(#v-marketplace,#v-tiktok) table.mk-dre th.mk-col-tot{background:#EEF2FB;font-weight:800}
-@media (max-width:760px){:is(#v-marketplace,#v-tiktok) .grid2{grid-template-columns:1fr}:is(#v-marketplace,#v-tiktok) .mk-hero{padding:16px}
-  :is(#v-marketplace,#v-tiktok) .mk-hero h2{font-size:24px}:is(#v-marketplace,#v-tiktok) .kpi .val{font-size:24px}}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger td:nth-child(1),:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger th:nth-child(1){position:sticky;left:0;z-index:2;background:#fff;min-width:175px;max-width:175px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger td:nth-child(2),:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger th:nth-child(2){position:sticky;left:175px;z-index:2;background:#fff;min-width:260px;max-width:260px;box-shadow:4px 0 6px -4px rgba(30,46,95,.25)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger thead th:nth-child(1),:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger thead th:nth-child(2){z-index:4;background:var(--mk-soft)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger tr.mk-tot td:nth-child(1),:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger tr.mk-tot td:nth-child(2){background:var(--mk-soft)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-ger tbody tr:hover td:nth-child(-n+2){background:#FAFBFE}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-repor{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-repor b{font-family:'Barlow Condensed',sans-serif;font-size:17px;color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) td.mk-sku{white-space:nowrap}
+:is(#v-marketplace,#v-tiktok,#v-amazon) td small.mk-sub{display:block;white-space:nowrap;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-abc{display:inline-block;width:22px;text-align:center;border-radius:6px;font-weight:800;font-size:11px;padding:2px 0}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-abc.A{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-abc.B{background:#FDF6E0;color:var(--mk-warn)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-abc.C{background:#EEF0F6;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) tr.mk-tot td{font-weight:800;background:var(--mk-soft);color:var(--mk-navy)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-share{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-share i{display:block;height:6px;border-radius:3px;background:linear-gradient(90deg,#5188DF,var(--mk-navy));min-width:2px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias b{font-family:'Barlow Condensed',sans-serif;font-size:17px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias small{color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias.r b{color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias.y b{color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-dias.g b{color:var(--mk-pos)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mk-muted);padding:0 20px 12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda .r:before{background:var(--mk-neg)}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda .y:before{background:var(--mk-warn)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-legenda .g:before{background:var(--mk-pos)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpirow.kpi-mini .kpi .val{font-size:30px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.alerta{border-top-color:var(--mk-neg)}:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.alerta .val{color:var(--mk-neg)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.atencao{border-top-color:var(--mk-warn)}:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi.atencao .val{color:var(--mk-warn)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-alerta td{font-size:14px;padding:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-alerta td .pill{font-size:14px;font-weight:800;padding:4px 12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) .card-h .mk-bar{margin:0;font-size:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre td:first-child{font-weight:600;color:var(--ink)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre tr.mk-pct td{font-size:11.5px;color:var(--mk-muted);background:#FBFCFE;font-weight:600}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre tr.mk-tot td{font-size:13.5px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre tr.mk-subl td{background:#F1F3F6;color:var(--mk-muted);font-size:12px}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre tr.mk-subl td:first-child{padding-left:34px;font-weight:500;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre td.mk-col-tot,:is(#v-marketplace,#v-tiktok,#v-amazon) table.mk-dre th.mk-col-tot{background:#EEF2FB;font-weight:800}
+@media (max-width:760px){:is(#v-marketplace,#v-tiktok,#v-amazon) .grid2{grid-template-columns:1fr}:is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero{padding:16px}
+  :is(#v-marketplace,#v-tiktok,#v-amazon) .mk-hero h2{font-size:24px}:is(#v-marketplace,#v-tiktok,#v-amazon) .kpi .val{font-size:24px}}
 </style>
 <script>
 /* ===================== ABA MARKETPLACE (Mercado Livre) ===================== */
@@ -19608,7 +19610,7 @@ async function mkCarregar(forcar){
 function mkPreparar(d){
   d.S = (d.skus || []).map(x => ({s: x[0], t: x[1] || x[0], p: x[2] || x[0], cat: x[3] || 'Outros', cmv: !!x[4], dob: x[5] || ''}));
   d.R = (d.dia_sku || []).map(x => ({d: x[0], i: x[1], ped: +x[2], q: +x[3], rec: +x[4], tar: +x[5], env: +x[6],
-                                     imp: +x[7], cmv: +x[8], sem: !!x[9], cup: +x[10] || 0}));
+                                     imp: +x[7], cmv: +x[8], sem: !!x[9], cup: +x[10] || 0, cmvb: x[11] != null ? +x[11] : +x[8]}));
   d.T = {}; (d.dia_tot || []).forEach(x => d.T[x[0]] = {ped: +x[1], q: +x[2], rec: +x[3], preco: +x[4] || 0, canc: +x[5] || 0});
   d.dias = Object.keys(d.T).sort();
   /* anuncio -> tipo (Premium / Classico) e Ads dos ultimos 30 dias */
@@ -19673,9 +19675,9 @@ function mkPorSku(ini, fim){
     const sk = d.S[r.i] || {s: '?', t: '?', p: '?', cat: 'Outros'};
     const k = MKT.agrupar ? sk.p : sk.s;
     const o = m[k] || (m[k] = {k, t: MKT.agrupar ? (sk.p) : sk.t, sub: '', dob: sk.dob && sk.dob !== sk.s ? sk.dob : '', cat: sk.cat,
-                                ped: 0, q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, sem: false, skus: new Set(),
+                                ped: 0, q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, cmvb: 0, sem: false, skus: new Set(),
                                 anun: ult[k] && ult[k].q ? ult[k].v / ult[k].q : null});
-    o.ped += r.ped; o.q += r.q; o.rec += r.rec; o.cup += r.cup; o.tar += r.tar; o.env += r.env; o.imp += r.imp; o.cmv += r.cmv;
+    o.ped += r.ped; o.q += r.q; o.rec += r.rec; o.cup += r.cup; o.tar += r.tar; o.env += r.env; o.imp += r.imp; o.cmv += r.cmv; o.cmvb += r.cmvb;
     o.sem = o.sem || r.sem; o.skus.add(sk.s);
   });
   return Object.values(m);
@@ -19757,19 +19759,21 @@ function mkNotas(ini, fim){
    da nota + PIS/COFINS 9,25% - credito do frete; no Bling (sem imposto no banco), o estimado. */
 function mkErp(ini, fim){
   const F = {}; (MKT.d.erp_dia || []).forEach(x => { if(x[0] < ini || x[0] > fim) return;
-    const o = F[x[1]] || (F[x[1]] = {n: 0, vnf: 0, icm: 0, tar: 0, env: 0, cmv: 0, impo: 0, nsp: 0, vsp: 0});
-    o.n += +x[2]; o.vnf += +x[3]; o.icm += +x[4] || 0; o.tar += +x[5]; o.env += +x[6]; o.cmv += +x[7]; o.impo += +x[8]; o.nsp += +x[9]; o.vsp += +x[10] || 0; });
-  const T = {n: 0, vnf: 0, tar: 0, env: 0, cmv: 0, imp: 0, nsp: 0, vsp: 0};
+    const o = F[x[1]] || (F[x[1]] = {n: 0, vnf: 0, icm: 0, tar: 0, env: 0, cmv: 0, cmvb: 0, impo: 0, nsp: 0, vsp: 0});
+    o.n += +x[2]; o.vnf += +x[3]; o.icm += +x[4] || 0; o.tar += +x[5]; o.env += +x[6]; o.cmv += +x[7]; o.impo += +x[8]; o.nsp += +x[9]; o.vsp += +x[10] || 0; o.cmvb += x[11] != null ? +x[11] : +x[7]; });
+  const T = {n: 0, vnf: 0, tar: 0, env: 0, cmv: 0, cmvb: 0, imp: 0, nsp: 0, vsp: 0};
+  /* bruto / liquido do CMV dos pedidos do periodo - para a nota sem pedido ligado */
+  let gb = 0, gl = 0; (MKT.d.R || []).forEach(r => { if(r.d >= ini && r.d <= fim){ gb += r.cmvb; gl += r.cmv; } }); const gr = gl ? gb / gl : 1;
   /* proporcao de custos dos PEDIDOS do mesmo periodo: usada quando menos da metade das notas
      esta ligada a pedido (Bling de jan-jun: a conferencia nota x pedido so existe desde jul) */
   const M = {rec: 0, tar: 0, env: 0, cmv: 0, imp: 0};
   Object.values(mkNotas(ini, fim)).forEach(o => { M.rec += o.rec; M.tar += o.tar; M.env += o.env; M.cmv += o.cmv; M.imp += o.imp; });
   const rz = k => M.rec ? M[k] / M.rec : 0;
   Object.keys(F).forEach(k => { const o = F[k], lig = o.vnf - o.vsp;
-    if(lig >= 0.5 * o.vnf && lig > 0){ const esc = o.vnf / lig; o.tarE = o.tar * esc; o.envE = o.env * esc; o.cmvE = o.cmv * esc; o.impoE = o.impo * esc; o.prop = false; }
-    else { o.tarE = o.vnf * rz('tar'); o.envE = o.vnf * rz('env'); o.cmvE = o.vnf * rz('cmv'); o.impoE = o.vnf * rz('imp'); o.prop = true; }
+    if(lig >= 0.5 * o.vnf && lig > 0){ const esc = o.vnf / lig; o.tarE = o.tar * esc; o.envE = o.env * esc; o.cmvE = o.cmv * esc; o.cmvbE = o.cmvb * esc; o.impoE = o.impo * esc; o.prop = false; }
+    else { o.tarE = o.vnf * rz('tar'); o.envE = o.vnf * rz('env'); o.cmvE = o.vnf * rz('cmv'); o.cmvbE = o.cmvE * gr; o.impoE = o.vnf * rz('imp'); o.prop = true; }
     o.imp = k === 'omie' ? o.icm + 0.0925 * o.vnf - 0.0925 * o.envE : o.impoE;
-    T.n += o.n; T.vnf += o.vnf; T.tar += o.tarE; T.env += o.envE; T.cmv += o.cmvE; T.imp += o.imp; T.nsp += o.nsp; T.vsp += o.vsp; });
+    T.n += o.n; T.vnf += o.vnf; T.tar += o.tarE; T.env += o.envE; T.cmv += o.cmvE; T.cmvb += o.cmvbE; T.imp += o.imp; T.nsp += o.nsp; T.vsp += o.vsp; });
   return {F, T};
 }
 function mkCardOmie(p){
@@ -20171,10 +20175,12 @@ function mkDreCalc(ini, fim){
   if(omie) lista = [];
   const F = mkFaturaPer(p);
   const armaz = (F.full || 0) * (1 - 0.0925);      /* Full da fatura, com credito de PIS/COFINS 9,25% */
-  let outras = 0; const outrasDet = {};
+  let outras = 0, antec = 0; const outrasDet = {};
   (d.fatura || []).forEach(x => { const f = fr[x[0]]; if(!f) return;
     const g = x[1], sub = x[2];
     if(['tarifa_venda', 'envio', 'full'].indexOf(g) >= 0 || (g === 'publicidade' && sub === 'PADS')) return;
+    /* ANTECIPACAO (11/11, Igor): e custo FINANCEIRO (escolha de caixa), nao custo de vender - vai depois da margem liquida */
+    if(g === 'antecipacao'){ antec += (+x[4] || 0) * f; return; }
     const rot = g === 'publicidade' ? 'Ads de seguidores' : ({difal: 'DIFAL cobrado pelo ML', minha_pagina: 'Minha página'}[g] || 'outros');
     outras += (+x[4] || 0) * f; outrasDet[rot] = (outrasDet[rot] || 0) + (+x[4] || 0) * f; });
   const A = mkAdsPorSku(p);
@@ -20196,28 +20202,51 @@ function mkDreCalc(ini, fim){
     o.arm = qTot ? armaz * o.q / qTot : 0;
     o.liq = o.contrib - o.ads - o.arm;
   });
-  const T = lista.reduce((a, o) => { ['q','rec','cup','tar','env','imp','cmv','contrib','ads','arm','liq'].forEach(k => a[k] += o[k]); return a; },
-                         {q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, contrib: 0, ads: 0, arm: 0, liq: 0});
+  const T = lista.reduce((a, o) => { ['q','rec','cup','tar','env','imp','cmv','cmvb','contrib','ads','arm','liq'].forEach(k => a[k] += o[k]); return a; },
+                         {q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, cmv: 0, cmvb: 0, contrib: 0, ads: 0, arm: 0, liq: 0});
   T.ped = mkTot(ini, fim).ped;
   if(omie){
     const E = mkErp(ini, fim).T;
     T.ped = E.n; T.rec = E.vnf; T.cup = 0; T.tar = E.tar; T.env = E.env; T.imp = E.imp; T.cmv = E.cmv; T.notas = true;
     T.contrib = T.rec - T.tar - T.env - T.imp - T.cmv;
-  } T.preco = T.rec + T.cup; T.adsTot = adsTot; T.armaz = armaz; T.outras = outras;
-  T.liqTot = T.contrib - adsTot - armaz - outras;
+    T.cmvb = E.cmvb;
+  }
+  /* DEVOLUCOES (11/11, Igor; mesma regra do Polaris): reembolso ao comprador DEPOIS da entrega, pela data do
+     reembolso. Na base MELI o pedido cancelado depois de entregue nao esta na receita (a view tira cancelados):
+     ele volta para o faturamento pela data do pedido e sai na linha de devolucao - fica igual ao Polaris. */
+  let dev = 0, volta = 0;
+  (d.devol || []).forEach(x => { if(x[0] >= ini && x[0] <= fim) dev += +x[4] || 0; if(!omie && +x[2] === 1 && x[1] >= ini && x[1] <= fim) volta += +x[4] || 0; });
+  T.fat = T.rec + volta; T.dev = dev; T.fatLiq = T.fat - dev; T.preco = T.rec + T.cup + volta;
+  if(T.cmvb == null || isNaN(T.cmvb)) T.cmvb = T.cmv;
+  T.cmvDev = 0; T.cred = T.cmvb - T.cmvDev - T.cmv;
+  T.mb = T.fatLiq - T.imp - T.cmv;
+  T.adsTot = adsTot; T.armaz = armaz; T.outras = outras; T.antec = antec;
+  T.liqTot = T.mb - T.tar - T.env - adsTot - armaz - outras;
+  T.res = T.liqTot - antec;
   T.semCmv = lista.filter(o => o.sem).reduce((a, o) => a + o.rec, 0);
   return {lista, T, F, outrasDet, adsFonte};
 }
+/* ESTRUTURA (11/11, Igor - igual ao Polaris): faturamento - devolucoes = faturamento liquido (100%);
+   - impostos - CMV liquido (com bruto / devolvido / credito em cinza acima) = MARGEM BRUTA;
+   - tarifa, frete, Ads, Full, outras = MARGEM LIQUIDA; - antecipacao (custo financeiro) = RESULTADO.
+   4o campo 'meli' = linha que so existe na base MELI. */
 const MKT_DRE_LINHAS = [
-  ['Preço dos anúncios', T => T.preco], ['− Descontos e cupons pagos pela Dobro', T => -T.cup],
-  ['= Receita líquida', T => T.rec, 'tot'],
-  ['− Tarifa de venda ML', T => -T.tar], ['− Envio pago pela Dobro', T => -T.env],
-  ['− Impostos (ICMS + DIFAL · PIS/COFINS 9,25% · − crédito do frete)', T => -T.imp], ['− CMV (líquido do crédito de insumos)', T => -T.cmv],
-  ['= Margem de contribuição', T => T.contrib, 'tot'], ['% margem de contribuição', T => T.rec ? T.contrib / T.rec : null, 'pct'],
+  ['Preço dos anúncios', T => T.preco, '', 'meli'], ['− Descontos e cupons pagos pela Dobro', T => -T.cup, '', 'meli'],
+  ['= Faturamento', T => T.fat, 'tot'],
+  ['− Devoluções (reembolso depois da entrega)', T => -T.dev],
+  ['= Faturamento líquido', T => T.fatLiq, 'tot'],
+  ['− Impostos (ICMS + DIFAL · PIS/COFINS 9,25% · − crédito do frete)', T => -T.imp],
+  ['CMV bruto', T => -T.cmvb, 'sub'], ['CMV devolvido', T => T.cmvDev, 'sub'], ['Crédito de insumos', T => T.cred, 'sub'],
+  ['− CMV líquido', T => -T.cmv],
+  ['= Margem bruta', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
+  ['− Tarifa de venda ML', T => -T.tar], ['− Frete (envio pago pela Dobro)', T => -T.env],
   ['− Ads (Product Ads)', T => -T.adsTot], ['− Armazenagem e serviços Full', T => -T.armaz], ['− Outras cobranças do ML', T => -T.outras],
-  ['= Margem líquida', T => T.liqTot, 'tot'], ['% margem líquida', T => T.rec ? T.liqTot / T.rec : null, 'pct'],
-  ['Pedidos (no OMIE: notas)', T => T.ped, 'n'], ['Ticket médio', T => T.ped ? T.rec / T.ped : null, 'r2']
+  ['= Margem líquida', T => T.liqTot, 'tot'], ['% margem líquida', T => T.fatLiq ? T.liqTot / T.fatLiq : null, 'pct'],
+  ['− Antecipação de recebíveis (custo financeiro)', T => -T.antec],
+  ['= Resultado após custo financeiro', T => T.res, 'tot'], ['% resultado', T => T.fatLiq ? T.res / T.fatLiq : null, 'pct'],
+  ['Pedidos (no OMIE: notas)', T => T.ped, 'n'], ['Ticket médio', T => T.ped ? T.fatLiq / T.ped : null, 'r2']
 ];
+const mkClsDre = t => t === 'tot' ? 'mk-tot' : (t === 'pct' ? 'mk-pct' : (t === 'sub' ? 'mk-subl' : ''));
 function mkFmtDre(v, tipo){ if(v == null) return '—'; return tipo === 'pct' ? mkP(v) : (tipo === 'n' ? mkN(v) : (tipo === 'r2' ? mkR2(v) : mkR(v))); }
 function mkMargem(){
   const d = MKT.d, p = mkPeriodo(), ini = p.ini, fim = p.fim, rotP = mkDD(ini) + ' a ' + mkDD(fim);
@@ -20225,7 +20254,7 @@ function mkMargem(){
   /* meses do periodo: um mes so = colunas R$ / % / por pedido; varios = meses lado a lado + Total (igual ao DRE do comercial) */
   const meses = [...new Set(Object.keys(mkMesesFrac(p)))].sort();
   /* base OMIE: a nota ja sai pelo valor final - sem 'preco dos anuncios' e 'cupons' */
-  const LD = MKT.base === 'omie' ? MKT_DRE_LINHAS.slice(2).map((l, i) => i === 0 ? ['= Faturamento das notas (OMIE)', l[1], l[2]] : l) : MKT_DRE_LINHAS;
+  const LD = MKT.base === 'omie' ? MKT_DRE_LINHAS.filter(l => l[3] !== 'meli').map(l => l[0] === '= Faturamento' ? ['= Faturamento das notas (OMIE)', l[1], l[2]] : l) : MKT_DRE_LINHAS;
   const bt = (k, lab) => '<button data-mk="base:' + k + '" style="border:none;border-radius:8px;padding:7px 16px;font-weight:800;cursor:pointer;' +
     (MKT.base === k ? 'background:var(--mk-navy);color:#fff' : 'background:transparent;color:var(--mk-muted)') + '">' + lab + '</button>';
   let h = '<div class="mk-bar"><span style="display:inline-flex;background:#fff;border:1.5px solid var(--mk-line);border-radius:10px;padding:3px">' +
@@ -20233,30 +20262,31 @@ function mkMargem(){
       ? '<b>OMIE</b>: as notas do ERP pela data e valor da nota (OMIE; até 21/10, Bling) — igual ao relatório do OMIE. Imposto real da nota. Ads, Full e outras cobranças entram inteiros.'
       : '<b>MELI</b>: tudo o que o Mercado Livre vendeu, tenha ou não nota no ERP.') + '</span></div>';
   h += mkBarPeriodo('<span>Ads, Full e outras cobranças vêm por mês na fatura; num período parcial entram proporcionais aos dias</span>');
-  h += '<div class="kpirow">' + mkKpi('Receita', mkR(T.rec), mkN(T.ped) + ' pedidos', 'accent') +
-    mkKpi('Margem de contribuição', mkR(T.contrib), mkP(T.rec ? T.contrib / T.rec : 0) + ' da receita') +
-    mkKpi('Margem líquida', mkR(T.liqTot), mkP(T.rec ? T.liqTot / T.rec : 0) + ' · depois de Ads, Full e outras cobranças', T.liqTot >= 0 ? 'pos' : 'alerta') +
-    mkKpi('Por pedido', mkR2(T.ped ? T.liqTot / T.ped : 0), 'margem líquida ÷ pedidos') + '</div>';
+  h += '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.fatLiq), mkN(T.ped) + ' pedidos · depois das devoluções', 'accent') +
+    mkKpi('Margem bruta', mkR(T.mb), mkP(T.fatLiq ? T.mb / T.fatLiq : 0) + ' · depois de impostos e CMV') +
+    mkKpi('Margem líquida', mkR(T.liqTot), mkP(T.fatLiq ? T.liqTot / T.fatLiq : 0) + ' · depois de tarifa, frete, Ads, Full e outras', T.liqTot >= 0 ? 'pos' : 'alerta') +
+    mkKpi('Resultado', mkR(T.res), mkP(T.fatLiq ? T.res / T.fatLiq : 0) + ' · depois da antecipação de recebíveis', T.res >= 0 ? 'pos' : 'alerta') + '</div>';
   let tabela;
   if(meses.length > 1){
     const C = meses.map(m => { const a = (m + '-01') < ini ? ini : m + '-01', ult = mkDia(mkDia(m + '-01', 32).slice(0, 8) + '01', -1);
       return {m, T: mkDreCalc(a, ult > fim ? fim : ult).T}; });
     tabela = '<div class="mk-scroll"><table class="mk-dre"><thead><tr><th>DRE · Mercado Livre</th>' + C.map(c => '<th>' + mkNomeMes(c.m) + '</th>').join('') +
-      '<th class="mk-col-tot">Total</th><th>% receita</th></tr></thead><tbody>' +
-      LD.map(l => '<tr class="' + (l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '')) + '"><td>' + l[0] + '</td>' +
+      '<th class="mk-col-tot">Total</th><th>% fat. líquido</th></tr></thead><tbody>' +
+      LD.map(l => '<tr class="' + mkClsDre(l[2]) + '"><td>' + l[0] + '</td>' +
         C.map(c => '<td>' + mkFmtDre(l[1](c.T), l[2]) + '</td>').join('') + '<td class="mk-col-tot">' + mkFmtDre(l[1](T), l[2]) + '</td>' +
-        '<td>' + (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkP(T.rec ? l[1](T) / T.rec : 0)) + '</td></tr>').join('') + '</tbody></table></div>';
+        '<td>' + (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkP(T.fatLiq ? l[1](T) / T.fatLiq : 0)) + '</td></tr>').join('') + '</tbody></table></div>';
   } else {
-    tabela = '<table class="mk-dre"><thead><tr><th>DRE · Mercado Livre</th><th>R$</th><th>% receita</th><th>Por pedido</th></tr></thead><tbody>' +
+    tabela = '<table class="mk-dre"><thead><tr><th>DRE · Mercado Livre</th><th>R$</th><th>% fat. líquido</th><th>Por pedido</th></tr></thead><tbody>' +
       LD.map(l => { const v = l[1](T);
-        return '<tr class="' + (l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '')) + '"><td>' + l[0] + '</td><td>' + mkFmtDre(v, l[2]) + '</td><td>' +
-          (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkP(T.rec ? v / T.rec : 0)) + '</td><td>' + (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkR2(T.ped ? v / T.ped : 0)) + '</td></tr>'; }).join('') +
+        return '<tr class="' + mkClsDre(l[2]) + '"><td>' + l[0] + '</td><td>' + mkFmtDre(v, l[2]) + '</td><td>' +
+          (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkP(T.fatLiq ? v / T.fatLiq : 0)) + '</td><td>' + (['pct', 'n', 'r2'].indexOf(l[2]) >= 0 ? '' : mkR2(T.ped ? v / T.ped : 0)) + '</td></tr>'; }).join('') +
       '</tbody></table>';
   }
   h += mkCard('DRE do Mercado Livre · ' + (MKT.base === 'omie' ? 'base OMIE' : 'base MELI') + ' · ' + rotP, meses.length > 1 ? 'meses lado a lado · última coluna = total do período' : 'por pedido = valor ÷ pedidos do período', tabela +
     (Object.values(G.adsFonte).indexOf('fatura') >= 0 ? '<div class="mk-note">Ads: o detalhe por anúncio só existe desde 30/07/2026; antes disso o DRE usa o Product Ads da fatura do ML (sem quebra por SKU).</div>' : '') +
     '<div class="mk-note">Descontos e cupons pagos pela Dobro vêm da tabela de descontos dos pedidos (meli.pedido_desconto), que começa em mai/26 — de jan a abr eles aparecem zerados.</div>' +
-    (T.outras ? '<div class="mk-note">Outras cobranças: ' + Object.entries(G.outrasDet).map(e => mkEsc(e[0]) + ' ' + mkR(e[1])).join(' · ') + '</div>' : '') +
+    (T.outras ? '<div class="mk-note">Outras cobranças: ' + Object.entries(G.outrasDet).map(e => mkEsc(e[0]) + ' ' + mkR(e[1])).join(' · ') + '. O DIFAL cobrado pelo ML é sobre o serviço de envio (não é o DIFAL da venda, que está em Impostos).</div>' : '') +
+    '<div class="mk-note">Devoluções = valor reembolsado ao comprador depois da entrega (API do ML), pela data do reembolso. CMV devolvido fica zerado: ainda não medimos se o produto devolvido volta a ser vendável no Full. Antecipação de recebíveis = tarifa do ML para liberar o dinheiro antes do prazo; é custo financeiro, por isso fica abaixo da margem líquida.</div>' +
     (d.fiscal ? '<div class="mk-note">Imposto (Lucro Real): base = valor da nota, em média ' + mkP(d.fiscal.k) + ' do preço; ICMS + FCP + DIFAL reais das ' + mkN(d.fiscal.notas) +
       ' notas do ML no OMIE (' + mkP(d.fiscal.taxa_icms_difal) + ' da nota, por UF de destino); PIS/COFINS 9,25% da nota; crédito de 9,25% sobre frete e armazenagem. Antes de 22/10 (sem nota no banco) vale a mesma regra.</div>' : '') +
     (T.semCmv ? '<div class="mk-note warn">⚠ ' + mkR(T.semCmv) + ' de receita em SKUs sem CMV cadastrado (entram com custo zero) — cadastre na aba Premissas › CMV.</div>' : ''));
@@ -20598,6 +20628,206 @@ function ttGraficos(p){
 try{ ttRegistrar(); }catch(e){ console.error('tiktok: registrar', e); }
 </script>
 
+<script>
+/* ===================== ABA AMAZON (notas Bling + OMIE) ===================== */
+const AMZ = {d: null, carregando: false, erro: null, aba: 'geral', fam: '', busca: '', gs: {k: 'l', dir: -1}, charts: {}, patch: false};
+const AMZ_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['dre', 'DRE']];
+const AMZ_CANAL = {FBA: 'FBA · estoque na Amazon', DBA: 'DBA · a Dobro envia', OMIE: 'OMIE (desde nov/26)'};
+
+function azRegistrar(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  if(!VIEWS.find(x => x.id === 'amazon')) VIEWS.push({id: 'amazon', lab: 'Amazon', fn: vAmazon});
+  if(!document.getElementById('v-amazon')){
+    const irmao = document.querySelector('.view');
+    if(irmao && irmao.parentNode){
+      const div = document.createElement('div'); div.className = 'view'; div.id = 'v-amazon';
+      irmao.parentNode.appendChild(div);
+      div.addEventListener('click', ev => { const b = ev.target.closest('[data-az]'); if(!b) return;
+        const [a, v] = b.dataset.az.split(':');
+        if(a === 'aba'){ AMZ.aba = v; azDesenhar(); window.scrollTo(0, 0); }
+        else if(a === 'atualizar') azCarregar(true);
+        else if(a === 'sort'){ AMZ.gs = {k: v, dir: AMZ.gs.k === v ? -AMZ.gs.dir : (v === 'd' || v === 'fam' || v === 'c' ? 1 : -1)}; azDesenhar(true); } });
+      div.addEventListener('change', ev => { const t = ev.target; if(t.id === 'azFam'){ AMZ.fam = t.value; azDesenhar(true); } });
+      div.addEventListener('input', ev => { if(ev.target.id === 'azBusca'){ AMZ.busca = ev.target.value; clearTimeout(AMZ.tm); AMZ.tm = setTimeout(() => azDesenhar(true), 250); } });
+    }
+  }
+  if(!AMZ.patch && typeof abasPermitidas === 'function'){
+    const orig = abasPermitidas;
+    /* sem o menu do banco, so admin; com ele, o menu decide (uxPodeVer) */
+    abasPermitidas = function(){ const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin); const banco = !!(window.AOVIVO_MENU && AOVIVO_MENU.abas && AOVIVO_MENU.abas.amazon); return orig().filter(x => x.id !== 'amazon' || adm || banco); };
+    AMZ.patch = true;
+  }
+  const nav = document.getElementById('nav');
+  if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
+}
+async function azCarregar(forcar){
+  if(AMZ.carregando) return; AMZ.carregando = true; AMZ.erro = null; if(forcar) AMZ.d = null; azDesenhar();
+  try{
+    const d = (typeof aovivoBaixarArquivo === 'function') ? await aovivoBaixarArquivo('amazon.json') : null;
+    if(!d || !Array.isArray(d.dia)) throw new Error('o arquivo amazon.json ainda não foi publicado');
+    d.S = (d.skus || []).map(x => ({c: x[0], d: x[1] || x[0], p: x[2] || '', fam: x[3] || 'Outros', temCmv: !!x[4]}));
+    d.V = (d.venda || []).map(x => ({d: x[0], i: x[1], k: x[2], n: +x[3], q: +x[4], b: +x[5], l: +x[6], imp: +x[7], cmv: +x[8], sem: !!x[9], cmvb: +x[10] || 0}));
+    d.R = (d.devol || []).map(x => ({d: x[0], i: x[1], q: +x[2], l: +x[3], cmv: +x[4]}));
+    d.D = {}; d.dia.forEach(x => d.D[x[0]] = {pv: +x[1], qv: +x[2] || 0, bv: +x[3] || 0, lv: +x[4] || 0, dv: +x[5] || 0, fv: +x[6] || 0, nd: +x[7] || 0, vd: +x[8] || 0, pf: +x[9] || 0, lf: +x[10] || 0});
+    AMZ.d = d;
+  }catch(e){ AMZ.erro = e.message || String(e); console.error('amazon:', e); }
+  AMZ.carregando = false;
+  if(typeof CURRENT !== 'undefined' && CURRENT === 'amazon') azDesenhar();
+}
+function vAmazon(){ if(!AMZ.d && !AMZ.carregando && !AMZ.erro){ azCarregar(false); return; } azDesenhar(); }
+
+function azTot(ini, fim){
+  const t = {pv: 0, qv: 0, bv: 0, lv: 0, dv: 0, fv: 0, nd: 0, vd: 0, pf: 0, lf: 0, dias: 0};
+  Object.keys(AMZ.d.D).forEach(x => { if(x < ini || x > fim) return; const o = AMZ.d.D[x]; Object.keys(o).forEach(k => t[k] += o[k]); t.dias++; });
+  return t;
+}
+function azPorSku(ini, fim){
+  const d = AMZ.d, m = {};
+  d.V.forEach(r => { if(r.d < ini || r.d > fim) return; const s = d.S[r.i] || {c: '?', d: '?', fam: 'Outros'};
+    const o = m[s.c] || (m[s.c] = {c: s.c, d: s.d, p: s.p, fam: s.fam, q: 0, b: 0, l: 0, imp: 0, cmv: 0, cmvb: 0, sem: false, k: new Set()});
+    o.q += r.q; o.b += r.b; o.l += r.l; o.imp += r.imp; o.cmv += r.cmv; o.cmvb += r.cmvb; o.sem = o.sem || r.sem; o.k.add(r.k); });
+  return Object.values(m);
+}
+/* valor mensal (1P, remessas) proporcional aos dias do periodo, como Ads/fatura no ML */
+function azMensal(lista, p, col){ const fr = mkMesesFrac(p); return (lista || []).reduce((a, x) => a + (fr[x[0]] ? (+x[col] || 0) * fr[x[0]] : 0), 0); }
+
+function azDesenhar(manter){
+  const alvo = document.getElementById('v-amazon'); if(!alvo) return;
+  const y = window.scrollY; Object.values(AMZ.charts).forEach(c => { try{ c.destroy(); }catch(e){} }); AMZ.charts = {};
+  const d = AMZ.d, pr = d ? mkPeriodo() : null;
+  let h = '<div class="mk-hero"><div><span class="mk-canal" style="background:#FF9900;color:#232F3E">Marketplace</span><h2>Amazon</h2><p>' +
+    (d ? 'Notas do Bling (até out/26) e do OMIE (desde nov/26) · arquivo de ' + new Date(d.gerado_em).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) +
+         ' · à parte do resto do Portal' : (AMZ.carregando ? 'Carregando a Amazon…' : '')) + '</p></div><div class="mk-hero-dir">' +
+    (pr ? '<div class="mk-per">Período (filtro do topo)<b>' + mkDD(pr.ini) + ' a ' + mkDD(pr.fim) + '</b></div>' : '') +
+    '<button data-az="atualizar">↻ Atualizar</button></div></div>';
+  if(AMZ.erro){ alvo.innerHTML = h + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(AMZ.erro) + '</div>'); return; }
+  if(!d){ alvo.innerHTML = h; return; }
+  h += '<div class="mk-tabs">' + AMZ_ABAS.map(a => '<button data-az="aba:' + a[0] + '" class="' + (AMZ.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
+  try{ h += ({geral: azGeral, skus: azSkus, dre: azDre}[AMZ.aba] || azGeral)(pr); }
+  catch(e){ console.error('amazon: tela', e); h += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
+  h += '<div class="mk-note">Amazon 3P = venda ao consumidor no marketplace (FBA: estoque na Amazon; DBA: a Dobro envia). Fonte: notas do Bling até out/26 e do OMIE (categoria Amazon 3P) desde nov/26. ' +
+       'A Amazon 1P (venda para a própria Amazon) é B2B e fica no DRE comercial, não nesta aba.</div>';
+  alvo.innerHTML = h;
+  if(manter) window.scrollTo(0, y);
+  azGraficos(pr);
+}
+
+/* ---------------- visao geral ---------------- */
+function azGeral(p){
+  const pa = mkPeriodoAnterior(p), t = azTot(p.ini, p.fim), ta = azTot(pa.ini, pa.fim);
+  const nd = Math.round((new Date(p.fim + 'T12:00:00') - new Date(p.ini + 'T12:00:00')) / 86400000) + 1;
+  let h = '<div class="kpirow">' +
+    mkKpi('Faturamento bruto (3P)', mkR(t.bv), mkVar(t.bv, ta.bv) + ' vs período anterior<br>preço de tabela dos itens') +
+    mkKpi('Descontos', mkR(t.dv), mkP(t.bv ? t.dv / t.bv : 0) + ' do bruto') +
+    mkKpi('Faturamento líquido (3P)', mkR(t.lv), mkVar(t.lv, ta.lv) + ' vs período anterior<br>valor das notas', 'accent') +
+    mkKpi('Pedidos', mkN(t.pv), mkVar(t.pv, ta.pv) + ' · ' + mkN1(t.pv / Math.max(1, nd)) + '/dia') +
+    mkKpi('Ticket médio', mkR2(t.pv ? t.lv / t.pv : 0), 'antes ' + mkR2(ta.pv ? ta.lv / ta.pv : 0)) +
+    mkKpi('FBA no 3P', p.fim >= '2026-11-01' && !t.pf ? '—' : mkP(t.lv ? t.lf / t.lv : null), mkN(t.pf) + ' pedidos com estoque na Amazon' + (p.fim >= '2026-11-01' ? '<br>as notas do OMIE (desde nov/26) não dizem se é FBA ou DBA' : '')) + '</div>';
+  h += '<div class="mk-cmp">' +
+    mkKpi('Média por dia (3P)', mkR(t.lv / Math.max(1, nd)), 'líquido ÷ ' + nd + ' dias · antes ' + mkR(ta.lv / Math.max(1, nd))) +
+    mkKpi('Devoluções', mkN(t.nd), mkR(t.vd) + (t.lv ? ' · ' + mkP(t.vd / t.lv) + ' do líquido' : '')) + '</div>';
+  h += mkCard('Faturamento líquido 3P por dia', 'barras = valor das notas de venda · linha = média móvel de 7 dias', '<div style="padding:14px;height:260px"><canvas id="azGDia"></canvas></div>');
+  /* por mes: 3P (FBA x DBA) x 1P x remessas ao deposito FBA */
+  const M = {}; Object.keys(AMZ.d.D).forEach(x => { const m = x.slice(0, 7), o = M[m] || (M[m] = {lv: 0, lf: 0, pv: 0, p1: 0, rem: 0, remq: 0}); o.lv += AMZ.d.D[x].lv; o.lf += AMZ.d.D[x].lf; o.pv += AMZ.d.D[x].pv; });
+  (AMZ.d.remessa || []).forEach(x => { const o = M[x[0]] || (M[x[0]] = {lv: 0, lf: 0, pv: 0, p1: 0, rem: 0, remq: 0}); o.rem = +x[2]; o.remq = +x[3]; });
+  const meses = Object.keys(M).sort().slice(-13).reverse();
+  h += mkCard('Mês a mês', 'remessa = mercadoria enviada ao depósito da Amazon (estoque, não é venda)',
+    '<div class="mk-scroll"><table class="mk-dre"><thead><tr><th>Mês</th><th>3P líquido</th><th>Pedidos 3P</th><th>dos quais FBA</th><th>Remessas ao FBA</th><th>Unidades remetidas</th></tr></thead><tbody>' +
+    meses.map(m => { const o = M[m]; return '<tr><td>' + mkNomeMes(m) + '</td><td>' + mkR(o.lv) + '</td><td>' + mkN(o.pv) + '</td><td>' + mkP(o.lv ? o.lf / o.lv : null) +
+      '</td><td>' + (o.rem ? mkR(o.rem) : '—') + '</td><td>' + (o.remq ? mkN(o.remq) : '—') + '</td></tr>'; }).join('') + '</tbody></table></div>');
+  const mesesP = new Set(Object.keys(mkMesesFrac(p))), U = {}; let tu = 0;
+  (AMZ.d.uf || []).forEach(x => { if(!mesesP.has(x[0])) return; const o = U[x[1]] || (U[x[1]] = {n: 0, l: 0}); o.n += +x[2]; o.l += +x[3]; tu += +x[3]; });
+  const ul = Object.entries(U).sort((a, b) => b[1].l - a[1].l).slice(0, 12);
+  h += mkCard('Venda 3P por estado', 'meses do período', '<table><thead><tr><th>UF</th><th>Pedidos</th><th>Líquido</th><th>%</th></tr></thead><tbody>' +
+    ul.map(([k, v]) => '<tr><td>' + mkEsc(k) + '</td><td>' + mkN(v.n) + '</td><td>' + mkR(v.l) + '</td><td>' + mkP(tu ? v.l / tu : 0) + '</td></tr>').join('') + '</tbody></table>');
+  return h;
+}
+
+/* ---------------- venda por SKU (3P) ---------------- */
+function azSkus(p){
+  let L = azPorSku(p.ini, p.fim);
+  const fams = [...new Set(L.map(o => o.fam))].sort();
+  if(AMZ.fam) L = L.filter(o => o.fam === AMZ.fam);
+  const b = (AMZ.busca || '').toLowerCase(); if(b) L = L.filter(o => (o.c + ' ' + o.d + ' ' + o.p).toLowerCase().indexOf(b) >= 0);
+  L.forEach(o => { o.preco = o.q ? o.l / o.q : 0; o.m = o.l ? o.cmv / o.l : null; o.canal = [...o.k].join(' + '); });
+  const tot = L.reduce((a, o) => a + o.l, 0);
+  L.sort((a, c) => c.l - a.l); let ac = 0; L.forEach(o => { const ant = ac; ac += o.l; o.abc = ant / (tot || 1) < 0.8 ? 'A' : (ant / (tot || 1) < 0.95 ? 'B' : 'C'); });
+  const g = AMZ.gs, val = o => { const v = o[g.k]; return v == null ? -Infinity : v; };
+  L.sort((a, c) => { const va = val(a), vc = val(c); return (typeof va === 'string' ? va.localeCompare(vc) : va - vc) * g.dir; });
+  const th = (k, lab) => '<th data-az="sort:' + k + '" style="cursor:pointer;white-space:nowrap">' + lab + (g.k === k ? (g.dir > 0 ? ' ▲' : ' ▼') : ' <span style="opacity:.35">↕</span>') + '</th>';
+  const filtros = '<div class="mk-bar">Família <select id="azFam"><option value="">todas</option>' + fams.map(f => '<option' + (AMZ.fam === f ? ' selected' : '') + '>' + mkEsc(f) + '</option>').join('') +
+    '</select><input id="azBusca" placeholder="buscar SKU ou produto" value="' + mkEsc(AMZ.busca) + '" style="min-width:200px"></div>';
+  const semV = L.filter(o => o.sem).reduce((a, o) => a + o.l, 0);
+  return '<div class="card"><div class="card-h"><h3>Venda 3P por SKU · curva ABC</h3>' + filtros + '</div><div class="mk-scroll"><table><thead><tr>' +
+    th('c', 'SKU Amazon') + th('d', 'Produto') + th('fam', 'Família') + th('canal', 'Canal') + '<th>ABC</th>' + th('q', 'Unidades') + th('b', 'Bruto') + th('l', 'Líquido') + th('preco', 'Preço médio') + th('m', 'CMV / líquido') + '<th>% do total</th></tr></thead><tbody>' +
+    L.map(o => '<tr><td class="mk-sku"><b>' + mkEsc(o.c) + '</b>' + (o.p ? '<small class="mk-sub">' + mkEsc(o.p) + '</small>' : '') + '</td><td class="mk-t" title="' + mkEsc(o.d) + '">' + mkEsc(o.d) + '</td>' +
+      '<td style="text-align:left">' + mkEsc(o.fam) + '</td><td>' + mkEsc(o.canal) + '</td><td><span class="mk-abc ' + o.abc + '">' + o.abc + '</span></td><td>' + mkN(o.q) + '</td><td>' + mkR(o.b) + '</td><td>' + mkR(o.l) + '</td>' +
+      '<td>' + mkR2(o.preco) + '</td><td>' + (o.sem ? '<span class="pill y">sem CMV</span>' : mkP(o.m)) + '</td><td>' + mkP(tot ? o.l / tot : 0) + '</td></tr>').join('') +
+    '</tbody></table></div>' + (semV ? '<div class="mk-note warn">⚠ ' + mkR(semV) + ' em SKUs da Amazon sem de-para para o SKU Dobro (entram com CMV zero). Completar a planilha "SKU por canal" (canais amazon / amazon_fba).</div>' : '') + '</div>';
+}
+
+/* ---------------- DRE 3P (antes das taxas da Amazon) - mesma estrutura do DRE do ML ---------------- */
+function azDreCalc(ini, fim){
+  const t = azTot(ini, fim), V = azPorSku(ini, fim);
+  const R = AMZ.d.R.filter(r => r.d >= ini && r.d <= fim);
+  const T = {bv: t.bv, dv: t.dv, lv: t.lv, dev: t.vd, pv: t.pv};
+  const impV = V.reduce((a, o) => a + o.imp, 0), cm = V.reduce((a, o) => a + o.cmv, 0), cb = V.reduce((a, o) => a + o.cmvb, 0);
+  const devCm = R.reduce((a, r) => a + r.cmv, 0), devCb = cm ? devCm * cb / cm : devCm;
+  T.fatLiq = t.lv - t.vd;
+  T.imp = t.lv ? impV * T.fatLiq / t.lv : 0;          /* imposto estimado sobre o liquido das devolucoes */
+  T.cmvb = cb; T.cmvDev = devCb; T.cred = (cb - cm) - (devCb - devCm); T.cmv = cm - devCm;
+  T.mb = T.fatLiq - T.imp - T.cmv;
+  T.semCmv = V.filter(o => o.sem).reduce((a, o) => a + o.l, 0);
+  return T;
+}
+const AZ_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
+  ['− Devoluções (notas de devolução)', T => -T.dev], ['= Faturamento líquido', T => T.fatLiq, 'tot'],
+  ['− Impostos (estimado: % real do ML por UF + PIS/COFINS 9,25%)', T => -T.imp],
+  ['CMV bruto', T => -T.cmvb, 'sub'], ['CMV devolvido', T => T.cmvDev, 'sub'], ['Crédito de insumos', T => T.cred, 'sub'],
+  ['− CMV líquido', T => -T.cmv],
+  ['= Margem bruta (antes das taxas da Amazon)', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
+  ['Pedidos', T => T.pv, 'n'], ['Ticket médio', T => T.pv ? T.fatLiq / T.pv : null, 'r2']];
+function azDre(p){
+  const meses = Object.keys(mkMesesFrac(p)).sort(), T = azDreCalc(p.ini, p.fim);
+  const fmt = (v, k) => v == null ? '—' : (k === 'pct' ? mkP(v) : (k === 'n' ? mkN(v) : (k === 'r2' ? mkR2(v) : mkR(v))));
+  const cls = k => k === 'tot' ? 'mk-tot' : (k === 'pct' ? 'mk-pct' : (k === 'sub' ? 'mk-subl' : ''));
+  const semPct = k => ['pct', 'n', 'r2'].indexOf(k) >= 0;
+  let cab, corpo;
+  if(meses.length > 1){
+    const C = meses.map(m => { const a = (m + '-01') < p.ini ? p.ini : m + '-01', u = mkDia(mkDia(m + '-01', 32).slice(0, 8) + '01', -1); return {m, T: azDreCalc(a, u > p.fim ? p.fim : u)}; });
+    cab = '<th>DRE · Amazon 3P</th>' + C.map(c => '<th>' + mkNomeMes(c.m) + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% fat. líquido</th>';
+    corpo = AZ_DRE.map(l => '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td>' + C.map(c => '<td>' + fmt(l[1](c.T), l[2]) + '</td>').join('') +
+      '<td class="mk-col-tot">' + fmt(l[1](T), l[2]) + '</td><td>' + (semPct(l[2]) ? '' : mkP(T.fatLiq ? l[1](T) / T.fatLiq : 0)) + '</td></tr>').join('');
+  } else {
+    cab = '<th>DRE · Amazon 3P</th><th>R$</th><th>% fat. líquido</th><th>Por pedido</th>';
+    corpo = AZ_DRE.map(l => { const v = l[1](T); return '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td><td>' + fmt(v, l[2]) + '</td><td>' +
+      (semPct(l[2]) ? '' : mkP(T.fatLiq ? v / T.fatLiq : 0)) + '</td><td>' + (semPct(l[2]) ? '' : mkR2(T.pv ? v / T.pv : 0)) + '</td></tr>'; }).join('');
+  }
+  return '<div class="mk-note warn">⚠ Faltam as taxas da Amazon (comissão por venda, tarifas do FBA, armazenagem e publicidade): elas não vêm na nota. A margem real é MENOR do que a mostrada. Para fechar, precisamos do relatório de pagamentos do Seller Central (ou da API da Amazon).</div>' +
+    '<div class="kpirow">' + mkKpi('Faturamento líquido 3P', mkR(T.fatLiq), mkN(T.pv) + ' pedidos · depois das devoluções', 'accent') +
+    mkKpi('Margem bruta', mkR(T.mb), mkP(T.fatLiq ? T.mb / T.fatLiq : 0) + ' · antes das taxas da Amazon', T.mb >= 0 ? 'pos' : 'alerta') +
+    mkKpi('CMV líquido', mkR(T.cmv), mkP(T.fatLiq ? T.cmv / T.fatLiq : 0) + ' do faturamento') + mkKpi('Impostos (estimado)', mkR(T.imp), mkP(T.fatLiq ? T.imp / T.fatLiq : 0)) + '</div>' +
+    mkCard('DRE da Amazon 3P · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), meses.length > 1 ? 'meses lado a lado · última coluna = total' : 'por pedido = valor ÷ pedidos',
+      '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
+      '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(AMZ.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real). As notas do Bling não trazem o imposto. ' +
+      'CMV pelo de-para da planilha "SKU por canal" e da conversão de SKU, líquido do crédito de insumos.</div>' +
+      (T.semCmv ? '<div class="mk-note warn">⚠ ' + mkR(T.semCmv) + ' de venda em SKUs sem CMV (entram com custo zero) — ver a aba Venda por SKU.</div>' : ''));
+}
+
+function azGraficos(p){
+  if(typeof Chart === 'undefined' || !AMZ.d || !p) return;
+  const c = document.getElementById('azGDia'); if(!c) return;
+  const xs = [], ys = [], mm = []; for(let x = p.ini; x <= p.fim; x = mkDia(x, 1)){ xs.push(x); ys.push((AMZ.d.D[x] || {}).lv || 0); }
+  ys.forEach((v, i) => { let s = 0, n = 0; for(let j = Math.max(0, i - 6); j <= i; j++){ s += ys[j]; n++; } mm.push(s / n); });
+  AMZ.charts.dia = new Chart(c, {type: 'bar', data: {labels: xs.map(mkDD), datasets: [
+    {type: 'line', label: 'Média 7 dias', data: mm, borderColor: '#FF9900', backgroundColor: '#FF9900', pointRadius: 0, tension: .3, borderWidth: 2},
+    {label: 'Líquido', data: ys, backgroundColor: '#232F3E'}]},
+    options: {maintainAspectRatio: false, plugins: {tooltip: {callbacks: {label: k => k.dataset.label + ': ' + mkR(k.raw)}}}, scales: {y: {ticks: {callback: v => mkR(v)}}}}});
+}
+
+try{ azRegistrar(); }catch(e){ console.error('amazon: registrar', e); }
+</script>
+
 <style>
 /* ===================== UX / DESIGN UNICO (07/11/2026) ===================== */
 /* logo da Dobro no lugar do "d" (07/11/2026) */
@@ -20792,7 +21022,7 @@ const UX_GRUPOS = [
   ['clientes', 'Clientes', ['carteira', 'ranking', 'cnpj', 'penetracao', 'crm', 'geo']],
   ['produtos', 'Produtos', ['mix', 'gestcat', 'calc']],
   ['operacao', 'Operação', ['sla', 'degustacoes', 'links']],
-  ['marketplace', 'Marketplace', ['marketplace', 'tiktok']],
+  ['marketplace', 'Marketplace', ['marketplace', 'tiktok', 'amazon']],
   ['admin',    'Admin',    ['premissas', 'pendencias', 'acessos']],
 ];
 function uxGrupoAberto(id){
