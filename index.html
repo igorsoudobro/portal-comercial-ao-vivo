@@ -20556,6 +20556,7 @@ function ttAmostras(p){
   const meses = Object.keys(M).sort().slice(-12).reverse();
   let h = '<div class="kpirow">' + mkKpi('Amostras enviadas', mkN(t.na), 'notas de bonificação no período', 'accent') + mkKpi('Unidades', mkN(T.q)) +
     mkKpi('Custo das amostras (CMV)', mkR(T.cmv), mkP(t.lv ? T.cmv / t.lv : 0) + ' do faturamento líquido do TikTok', T.cmv > 0.3 * t.lv ? 'alerta' : '') +
+    mkKpi('Frete das amostras (estimado)', mkR(t.na * TT_TAXA.freteAmostra), 'R$ 11,33 por envio (extrato de out/26)', 'alerta') +
     mkKpi('Valor nas notas', mkR(T.v), 'preço de tabela — não é custo') + '</div>';
   h += mkCard('Amostras × venda por mês', 'quanto se gasta em amostra para cada real vendido',
     '<table class="mk-dre"><thead><tr><th>Mês</th><th>Pedidos de venda</th><th>Líquido vendido</th><th>Amostras (notas)</th><th>Custo das amostras</th><th>Custo ÷ venda</th></tr></thead><tbody>' +
@@ -20568,39 +20569,61 @@ function ttAmostras(p){
   return h;
 }
 
-/* ---------------- DRE (antes das taxas do TikTok) ---------------- */
+/* ---------------- DRE com as taxas ESTIMADAS do TikTok ----------------
+   11/11/2026, Igor ("Sim."): ate a API do TikTok chegar, as taxas entram como % medidos no extrato de
+   pagamentos do Seller Center de out/26 (321 vendas, iguais as notas do Bling):
+     desconto do TikTok (repassado a Dobro, nao esta na nota) = 13,5% do valor das notas
+     comissao 6,7% · SFP 6,1% · afiliado 5,2% · frete das vendas 0,9%  -> sobre a venda liquida
+     frete das amostras = R$ 11,33 por amostra (1.307 envios, R$ 14.812)
+   Anuncios (GMV Max) ficam fora: so pelo extrato/API. Quando a API chegar, trocar pelos valores reais. */
+const TT_TAXA = {repasse: 0.135, com: 0.067, sfp: 0.061, afil: 0.052, frete: 0.009, freteAmostra: 11.33};
 function ttDreCalc(ini, fim){
   const t = ttTot(ini, fim), V = ttPorSku(ini, fim, 'V'), A = ttPorSku(ini, fim, 'A');
   const imp = V.reduce((a, o) => a + o.imp, 0), cmv = V.reduce((a, o) => a + o.cmv, 0), cmvA = A.reduce((a, o) => a + o.cmv, 0);
-  const T = {bv: t.bv, dv: t.dv, lv: t.lv, vd: t.vd, imp, cmv, cmvA, pv: t.pv};
-  T.rec = t.lv - t.vd; T.contrib = T.rec - imp - cmv; T.res = T.contrib - cmvA;
+  const T = {bv: t.bv, dv: t.dv, lv: t.lv, vd: t.vd, cmv, cmvA, pv: t.pv, na: t.na};
+  T.rep = t.lv * TT_TAXA.repasse;
+  T.fatLiq = t.lv + T.rep - t.vd;
+  T.imp = t.lv ? imp * (t.lv - t.vd) / t.lv : 0;          /* imposto estimado sobre as notas, liquido das devolucoes */
+  T.mb = T.fatLiq - T.imp - cmv;
+  T.com = T.fatLiq * TT_TAXA.com; T.sfp = T.fatLiq * TT_TAXA.sfp; T.afil = T.fatLiq * TT_TAXA.afil; T.fr = T.fatLiq * TT_TAXA.frete;
+  T.taxas = T.com + T.sfp + T.afil + T.fr;
+  T.liq = T.mb - T.taxas;
+  T.frA = t.na * TT_TAXA.freteAmostra;
+  T.res = T.liq - cmvA - T.frA;
   return T;
 }
-const TT_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
-  ['− Devoluções', T => -T.vd], ['= Receita líquida', T => T.rec, 'tot'], ['− Impostos (estimado: % real do ML por UF + PIS/COFINS 9,25%)', T => -T.imp],
-  ['− CMV (líquido do crédito de insumos)', T => -T.cmv], ['= Margem de contribuição (antes das taxas do TikTok)', T => T.contrib, 'tot'],
-  ['% margem de contribuição', T => T.rec ? T.contrib / T.rec : null, 'pct'], ['− Amostras para criadores (CMV)', T => -T.cmvA],
-  ['= Resultado antes das taxas do TikTok', T => T.res, 'tot'], ['% resultado', T => T.rec ? T.res / T.rec : null, 'pct'], ['Pedidos', T => T.pv, 'n']];
+const TT_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos (vendedor + TikTok)', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
+  ['+ Desconto do TikTok repassado à Dobro (est. 13,5% das notas)', T => T.rep], ['− Devoluções', T => -T.vd], ['= Faturamento líquido', T => T.fatLiq, 'tot'],
+  ['− Impostos (estimado: % real do ML por UF + PIS/COFINS 9,25%)', T => -T.imp], ['− CMV (líquido do crédito de insumos)', T => -T.cmv],
+  ['= Margem bruta', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
+  ['− Comissão do TikTok (est. 6,7%)', T => -T.com], ['− Taxa SFP (est. 6,1%)', T => -T.sfp], ['− Comissão de afiliados (est. 5,2%)', T => -T.afil], ['− Frete das vendas (est. 0,9%)', T => -T.fr],
+  ['= Margem depois das taxas', T => T.liq, 'tot'], ['% margem depois das taxas', T => T.fatLiq ? T.liq / T.fatLiq : null, 'pct'],
+  ['− Amostras para criadores (CMV)', T => -T.cmvA], ['− Frete das amostras (est. R$ 11,33 por envio)', T => -T.frA],
+  ['= Resultado (antes dos anúncios)', T => T.res, 'tot'], ['% resultado', T => T.fatLiq ? T.res / T.fatLiq : null, 'pct'], ['Pedidos', T => T.pv, 'n'], ['Amostras enviadas', T => T.na, 'n']];
 function ttDre(p){
   const meses = Object.keys(mkMesesFrac(p)).sort(), T = ttDreCalc(p.ini, p.fim);
   const fmt = (v, k) => v == null ? '—' : (k === 'pct' ? mkP(v) : (k === 'n' ? mkN(v) : mkR(v)));
+  const cls = k => k === 'tot' ? 'mk-tot' : (k === 'pct' ? 'mk-pct' : '');
   let cab, corpo;
   if(meses.length > 1){
     const C = meses.map(m => { const a = (m + '-01') < p.ini ? p.ini : m + '-01', u = mkDia(mkDia(m + '-01', 32).slice(0, 8) + '01', -1); return {m, T: ttDreCalc(a, u > p.fim ? p.fim : u)}; });
-    cab = '<th>DRE · TikTok Shop</th>' + C.map(c => '<th>' + mkNomeMes(c.m) + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% receita</th>';
-    corpo = TT_DRE.map(l => '<tr class="' + (l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '')) + '"><td>' + l[0] + '</td>' + C.map(c => '<td>' + fmt(l[1](c.T), l[2]) + '</td>').join('') +
-      '<td class="mk-col-tot">' + fmt(l[1](T), l[2]) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.rec ? l[1](T) / T.rec : 0)) + '</td></tr>').join('');
+    cab = '<th>DRE · TikTok Shop</th>' + C.map(c => '<th>' + mkNomeMes(c.m) + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% fat. líquido</th>';
+    corpo = TT_DRE.map(l => '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td>' + C.map(c => '<td>' + fmt(l[1](c.T), l[2]) + '</td>').join('') +
+      '<td class="mk-col-tot">' + fmt(l[1](T), l[2]) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.fatLiq ? l[1](T) / T.fatLiq : 0)) + '</td></tr>').join('');
   } else {
-    cab = '<th>DRE · TikTok Shop</th><th>R$</th><th>% receita</th><th>Por pedido</th>';
-    corpo = TT_DRE.map(l => { const v = l[1](T); return '<tr class="' + (l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '')) + '"><td>' + l[0] + '</td><td>' + fmt(v, l[2]) + '</td><td>' +
-      (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.rec ? v / T.rec : 0)) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkR2(T.pv ? v / T.pv : 0)) + '</td></tr>'; }).join('');
+    cab = '<th>DRE · TikTok Shop</th><th>R$</th><th>% fat. líquido</th><th>Por pedido</th>';
+    corpo = TT_DRE.map(l => { const v = l[1](T); return '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td><td>' + fmt(v, l[2]) + '</td><td>' +
+      (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.fatLiq ? v / T.fatLiq : 0)) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkR2(T.pv ? v / T.pv : 0)) + '</td></tr>'; }).join('');
   }
-  return '<div class="mk-note warn">⚠ Faltam as taxas do TikTok (comissão da plataforma e frete cobrado pelo TikTok): elas não vêm na nota. A margem real é MENOR do que a mostrada. Para fechar, precisamos do relatório de pagamentos do TikTok Seller Center ou da API.</div>' +
-    '<div class="kpirow">' + mkKpi('Receita líquida', mkR(T.rec), mkN(T.pv) + ' pedidos', 'accent') + mkKpi('Margem de contribuição', mkR(T.contrib), mkP(T.rec ? T.contrib / T.rec : 0) + ' · antes das taxas do TikTok') +
-    mkKpi('Amostras (CMV)', mkR(T.cmvA), mkP(T.rec ? T.cmvA / T.rec : 0) + ' da receita') + mkKpi('Resultado antes das taxas', mkR(T.res), mkP(T.rec ? T.res / T.rec : 0), T.res >= 0 ? 'pos' : 'alerta') + '</div>' +
+  return '<div class="mk-note warn">⚠ As taxas do TikTok, o repasse do desconto e o frete das amostras são ESTIMADOS com os % medidos no extrato de pagamentos do Seller Center de out/26. Os anúncios (GMV Max: R$ 3,1 mil de 01/10 a 11/11) ainda não entram. Quando a API do TikTok chegar, entram os valores reais de cada pedido.</div>' +
+    '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.fatLiq), mkN(T.pv) + ' pedidos · com o repasse do TikTok', 'accent') +
+    mkKpi('Margem depois das taxas', mkR(T.liq), mkP(T.fatLiq ? T.liq / T.fatLiq : 0) + ' · taxas do TikTok ' + mkR(T.taxas)) +
+    mkKpi('Amostras (CMV + frete)', mkR(T.cmvA + T.frA), mkN(T.na) + ' envios · ' + mkP(T.fatLiq ? (T.cmvA + T.frA) / T.fatLiq : 0) + ' do faturamento', (T.cmvA + T.frA) > 0.3 * T.fatLiq ? 'alerta' : '') +
+    mkKpi('Resultado', mkR(T.res), mkP(T.fatLiq ? T.res / T.fatLiq : 0) + ' · antes dos anúncios', T.res >= 0 ? 'pos' : 'alerta') + '</div>' +
     mkCard('DRE do TikTok Shop · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), meses.length > 1 ? 'meses lado a lado · última coluna = total' : 'por pedido = valor ÷ pedidos',
       '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
-      '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(TTK.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real). As notas do TikTok no Bling não trazem o imposto.</div>');
+      '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(TTK.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real), sobre o valor das notas. ' +
+      'O desconto do TikTok repassado à Dobro não está na nota — confirmar com o contábil como ele é tributado. A comissão é cobrada desde a primeira venda do mês (a isenção dos R$ 10 mil foi só no início da loja).</div>');
 }
 
 /* ---------------- notas (conferir a importacao no OMIE) ---------------- */
