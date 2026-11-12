@@ -19504,6 +19504,8 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 :is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-repor b{font-family:'Barlow Condensed',sans-serif;font-size:17px;color:var(--mk-navy)}
 :is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) td.mk-sku{white-space:nowrap}
 :is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) td small.mk-sub{display:block;white-space:nowrap;color:var(--mk-muted)}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger thead tr.mk-grp th{border-bottom:none;padding-top:6px;padding-bottom:2px}
+:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) table.mk-ger thead tr.mk-grp th.mk-adsg{background:#EEF2FC;color:var(--mk-accent,#2A3E7E);font-weight:800;letter-spacing:.06em;font-size:11px;text-align:center;border-radius:6px 6px 0 0}
 :is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-abc{display:inline-block;width:22px;text-align:center;border-radius:6px;font-weight:800;font-size:11px;padding:2px 0}
 :is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-abc.A{background:#E4F5EE;color:var(--mk-pos)}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-abc.B{background:#FDF6E0;color:var(--mk-warn)}
 :is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-abc.C{background:#EEF0F6;color:var(--mk-muted)}
@@ -19559,7 +19561,9 @@ function mkR(v){ return (typeof brl === 'function') ? brl(v || 0) : 'R$ ' + Math
 function mkR2(v){ v = v || 0; return (v < 0 ? '-' : '') + 'R$ ' + Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
 function mkN(v){ return Math.round(v || 0).toLocaleString('pt-BR'); }
 function mkN1(v){ return (v || 0).toLocaleString('pt-BR', {maximumFractionDigits: 1}); }
-function mkP(v){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(1).replace('.', ',') + '%'; }
+/* d = casas decimais; CTR de anuncio vive na faixa de 0,2% a 0,5% e some com
+   uma casa so. O padrao continua 1, entao nada do que ja existia muda. */
+function mkP(v, d){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(d == null ? 1 : d).replace('.', ',') + '%'; }
 function mkHoje(){ return new Date().toLocaleDateString('sv'); }
 function mkDia(s, n){ const d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv'); }
 function mkDD(s){ return s ? s.slice(8, 10) + '/' + s.slice(5, 7) : ''; }
@@ -19632,6 +19636,10 @@ function mkPreparar(d){
   d.dias = Object.keys(d.T).sort();
   /* anuncio -> tipo (Premium / Classico) e Ads dos ultimos 30 dias */
   d.I = {}; (d.itens || []).forEach(x => d.I[x[0]] = {tipo: x[1], ads: +x[2] || 0, adsRec: +x[3] || 0, s: x[4]});
+  /* Ads dos ultimos 30 dias por anuncio: cliques, impressoes e unidades. Vem da
+     marketplace_ads_item_30d(), na MESMA janela do custo e da receita que ja
+     estao em 'itens' — por isso a conversao por clique nao mistura periodos. */
+  d.A30 = {}; (d.ads30 || []).forEach(x => d.A30[x[0]] = {cli: +x[1] || 0, imp: +x[2] || 0, un: +x[3] || 0});
   d.ult = d.dias[d.dias.length - 1];
   d.meses = [...new Set(d.dias.map(x => x.slice(0, 7)))].sort();
 }
@@ -19902,12 +19910,27 @@ function mkGerencial(){
     const its = (x[10] || []).map(id => d.I[id]).filter(Boolean);
     const tipos = [...new Set(its.map(i => i.tipo).filter(Boolean))];
     const ads = its.reduce((a, i) => a + i.ads, 0), adsRec = its.reduce((a, i) => a + i.adsRec, 0);
-    return {inv: x[0], s: dob[String(x[1]).toUpperCase()] || x[1], sml: x[1], t: x[2], fam: x[11] || 'Outros', disp, transf, est, g7, g15, g30, media, dias, dias0,
+    const ids = x[10] || [];
+    const A = ids.reduce((a, id) => { const v = d.A30[id];
+      if(v) { a.cli += v.cli; a.imp += v.imp; a.un += v.un; } return a; }, {cli: 0, imp: 0, un: 0});
+    return {inv: x[0], s: dob[String(x[1]).toUpperCase()] || x[1], sml: x[1], t: x[2], fam: x[11] || 'Outros', disp, transf, est, g7, g15, g30, r30, media, dias, dias0,
             preco: ultPreco(x[0]), pago: g30 ? r30 / g30 : null,
             tipo: tipos.map(mkTipo).sort().join(' + ') || '', tipoRaw: tipos, ads, roas: ads > 0 ? adsRec / ads : null, repor, urgente,
+            ids, imp: A.imp, cli: A.cli, adsUn: A.un,
+            ctr: A.imp > 0 ? A.cli / A.imp : null, conv: A.cli > 0 ? A.un / A.cli : null,
             data: dias != null ? mkDia(hoje, Math.floor(dias)) : null, data0: dias0 != null ? mkDia(hoje, Math.floor(dias0)) : null,
             morto: (+x[5] || 0) <= 0 && g60 === 0};
   }).filter(o => !o.morto);
+  /* Curva ABC pela receita dos ultimos 30 dias, calculada sobre a carteira
+     INTEIRA e antes dos filtros: a letra e uma propriedade do SKU, nao da tela.
+     Filtrar por familia e depois recalcular faria todo mundo virar A dentro da
+     propria familia. Mesma regra da aba "Venda por SKU". */
+  const ordAbc = [...L].sort((a, c) => c.r30 - a.r30);
+  const totAbc = ordAbc.reduce((a, o) => a + o.r30, 0) || 1;
+  let acAbc = 0;
+  ordAbc.forEach(o => { const ini = acAbc / totAbc; acAbc += o.r30; o.acum = acAbc / totAbc;
+                        o.abc = o.r30 <= 0 ? 'C' : (ini < 0.8 ? 'A' : (ini < 0.95 ? 'B' : 'C')); });
+  const nAbc = {A: 0, B: 0, C: 0}; L.forEach(o => nAbc[o.abc]++);
   const fams = [...new Set(L.map(o => o.fam))].sort((a, b) => a === 'Outros' ? 1 : (b === 'Outros' ? -1 : a.localeCompare(b)));
   if(MKT.fam) L = L.filter(o => o.fam === MKT.fam);
   const b = (MKT.busca || '').toLowerCase();
@@ -19916,7 +19939,21 @@ function mkGerencial(){
   L.sort((a, c) => { const va = val(a), vc = val(c); return (typeof va === 'string' ? va.localeCompare(vc) : va - vc) * g.dir; });
   const cor = dd => dd == null ? '' : (dd < MKT.lead ? 'r' : (dd < 2 * MKT.lead ? 'y' : 'g'));
   const nR = L.filter(o => cor(o.dias) === 'r').length, nY = L.filter(o => cor(o.dias) === 'y').length;
-  const T = L.reduce((a, o) => (a.est += o.est, a.g7 += o.g7, a.g15 += o.g15, a.g30 += o.g30, a.ads += o.ads, a.adsRec += o.ads * (o.roas || 0), a), {est: 0, g7: 0, g15: 0, g30: 0, ads: 0, adsRec: 0});
+  const T = L.reduce((a, o) => (a.est += o.est, a.g7 += o.g7, a.g15 += o.g15, a.g30 += o.g30, a), {est: 0, g7: 0, g15: 0, g30: 0});
+  /* O MESMO anuncio pode cobrir varios SKUs do Full (kit, variacao): hoje sao 5
+     deles. Na linha ele aparece inteiro, porque ratear o investimento entre os
+     SKUs exigiria uma regra inventada. Mas no TOTAL cada anuncio entra UMA vez,
+     senao o rodape soma 1,3 milhao de impressoes que nao existem e deixa de
+     bater com a aba Ads. Por isso a soma das linhas e maior que o total. */
+  const vistos = new Set();
+  Object.assign(T, {ads: 0, adsRec: 0, imp: 0, cli: 0, adsUn: 0});
+  L.forEach(o => (o.ids || []).forEach(id => {
+    if(vistos.has(id)) return;
+    vistos.add(id);
+    const i = d.I[id], v = d.A30[id];
+    if(i) { T.ads += i.ads; T.adsRec += i.adsRec; }
+    if(v) { T.imp += v.imp; T.cli += v.cli; T.adsUn += v.un; }
+  }));
   const th = (k, lab) => '<th data-mk="gsort:' + k + '" style="cursor:pointer;white-space:nowrap" title="clique para ordenar">' + lab +
     (g.k === k ? (g.dir > 0 ? ' ▲' : ' ▼') : ' <span style="opacity:.35">↕</span>') + '</th>';
   const nR0 = L.filter(o => cor(o.dias0) === 'r').length;
@@ -19929,16 +19966,25 @@ function mkGerencial(){
   let h = '<div class="kpirow kpi-mini">' + mkKpi('SKUs no Full', mkN(L.length), MKT.fam ? 'família ' + mkEsc(MKT.fam) : 'com estoque ou venda nos últimos 60 dias', 'accent') +
        mkKpi('Ruptura em < ' + MKT.lead + ' dias', nR, 'mesmo depois de chegar o que está a caminho · com o estoque de hoje: ' + nR0, nR ? 'alerta' : 'pos') +
        mkKpi('Entre ' + MKT.lead + ' e ' + (2 * MKT.lead) + ' dias', nY, 'programar reposição', nY ? 'atencao' : '') +
-       mkKpi('Unidades em estoque', mkN(T.est), 'disponível + a caminho') + mkKpi('Giro do mês', mkN(T.g30), 'unidades vendidas em 30 dias') + '</div>';
+       mkKpi('Unidades em estoque', mkN(T.est), 'disponível + a caminho') + mkKpi('Giro do mês', mkN(T.g30), 'unidades vendidas em 30 dias') +
+       mkKpi('Curva A', nAbc.A, '80% da receita de 30 dias · B ' + nAbc.B + ' · C ' + nAbc.C) + '</div>';
   h += '<div class="card"><div class="card-h"><h3>Tabela gerencial por SKU</h3>' + filtros + '</div>' +
     '<div class="mk-legenda"><span class="r">ruptura antes de ' + MKT.lead + ' dias</span><span class="y">até ' + (2 * MKT.lead) + ' dias</span><span class="g">confortável</span>' +
     '<span style="margin-left:auto">clique no título da coluna para ordenar · giro = unidades vendidas pelo Full até ontem</span></div>' +
-    '<div class="mk-scroll"><table class="mk-ger"><thead><tr>' + th('s', 'SKU') + th('t', 'Descrição') + th('fam', 'Família') + th('preco', 'Preço do anúncio') + th('pago', 'Preço médio pago') +
+    /* Duas linhas de cabecalho. As duas primeiras celulas da linha de grupo sao
+       <th> de verdade (e nao um colspan) porque o CSS congela a coluna 1 e 2 por
+       nth-child: com colspan na frente, a faixa escorregaria por baixo delas. */
+    '<div class="mk-scroll"><table class="mk-ger"><thead>' +
+    '<tr class="mk-grp"><th></th><th></th><th colspan="14"></th><th colspan="8" class="mk-adsg">ADS · últimos 30 dias</th></tr>' +
+    '<tr>' + th('s', 'SKU') + th('t', 'Descrição') + th('fam', 'Família') + th('abc', 'ABC') + th('r30', 'Receita 30 dias') + th('preco', 'Preço do anúncio') + th('pago', 'Preço médio pago') +
     th('disp', 'Estoque hoje') + th('transf', 'A caminho') + th('g7', 'Giro 7 dias') + th('g15', 'Giro 15 dias') + th('g30', 'Giro mês') + th('media', 'Média/dia') +
     th('dias0', 'Ruptura com o estoque de hoje') + th('dias', 'Ruptura após chegar o que está a caminho') + th('repor', 'Sugestão de reposição (30 dias + lead time)') +
-    th('tipo', 'Tipo de anúncio') + th('ads', 'Investido Ads (30 dias)') + th('roas', 'ROAS') + '</tr></thead><tbody>' +
+    th('tipo', 'Tipo de anúncio') + th('ads', 'Investido') + th('imp', 'Impressões') + th('cli', 'Cliques') +
+    th('ctr', 'CTR') + th('adsUn', 'Un. por Ads') + th('conv', 'Conv. por clique') + th('roas', 'ROAS') + '</tr></thead><tbody>' +
     L.map(o => '<tr><td class="mk-sku"><b>' + mkEsc(o.s) + '</b>' + (o.sml && o.sml !== o.s ? '<small class="mk-sub">ML: ' + mkEsc(o.sml) + '</small>' : '') + '</td>' +
       '<td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '</td><td style="text-align:left;white-space:nowrap">' + mkEsc(o.fam) + '</td>' +
+      '<td><span class="mk-abc ' + o.abc + '">' + o.abc + '</span></td>' +
+      '<td>' + (o.r30 ? mkR(o.r30) : '—') + '</td>' +
       '<td>' + (o.preco != null ? mkR2(o.preco) : '—') + '</td>' +
       '<td>' + (o.pago != null ? mkR2(o.pago) + (o.preco ? '<small class="mk-sub">' + mkP(o.pago / o.preco - 1) + ' do anúncio</small>' : '') : '—') + '</td>' +
       '<td>' + mkN(o.disp) + '</td><td>' + (o.transf ? mkN(o.transf) : '<span style="color:var(--mk-muted)">—</span>') + '</td>' +
@@ -19948,13 +19994,27 @@ function mkGerencial(){
         (o.urgente ? '<small style="color:var(--mk-neg);font-weight:800">⚠ acaba antes de chegar</small>' : '') + '</span>' : (o.media > 0 ? '<span class="mk-chip up">já cobre</span>' : '—')) + '</td>' +
       '<td style="white-space:nowrap">' + (o.tipoRaw.length ? o.tipoRaw.map(mkTipoPill).join(' ') : '—') + '</td>' +
       '<td>' + (o.ads ? mkR(o.ads) : '—') + '</td>' +
+      '<td>' + (o.imp ? mkN(o.imp) : '—') + '</td>' +
+      '<td>' + (o.cli ? mkN(o.cli) : '—') + '</td>' +
+      '<td>' + (o.ctr != null ? mkP(o.ctr, 2) : '—') + '</td>' +
+      '<td>' + (o.adsUn ? mkN(o.adsUn) : '—') + '</td>' +
+      /* conversao do CLIQUE, nao do anuncio: so mede quem veio do Ads pago. Com
+         pouco clique o numero balanca, por isso a coluna de cliques fica ao
+         lado — quem le julga se 3 cliques sustentam o percentual. */
+      '<td>' + (o.conv != null ? '<b>' + mkP(o.conv) + '</b>' : '—') + '</td>' +
       '<td>' + (o.roas != null ? '<b style="color:' + (o.roas >= 5 ? 'var(--mk-pos)' : (o.roas >= 3 ? 'var(--mk-warn)' : 'var(--mk-neg)')) + '">' + mkN1(o.roas) + 'x</b>' : '—') + '</td></tr>').join('') +
-    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td></td><td></td><td>' + mkN(L.reduce((a, o) => a + o.disp, 0)) + '</td><td>' + mkN(L.reduce((a, o) => a + o.transf, 0)) + '</td><td>' + mkN(T.g7) + '</td><td>' + mkN(T.g15) + '</td><td>' + mkN(T.g30) +
-    '</td><td></td><td></td><td></td><td>' + mkN(L.reduce((a, o) => a + o.repor, 0)) + ' un</td><td></td><td>' + mkR(T.ads) + '</td><td>' + (T.ads ? mkN1(T.adsRec / T.ads) + 'x' : '—') + '</td></tr>' +
+    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td></td><td>' + mkR(L.reduce((a, o) => a + o.r30, 0)) + '</td><td></td><td></td><td>' + mkN(L.reduce((a, o) => a + o.disp, 0)) + '</td><td>' + mkN(L.reduce((a, o) => a + o.transf, 0)) + '</td><td>' + mkN(T.g7) + '</td><td>' + mkN(T.g15) + '</td><td>' + mkN(T.g30) +
+    '</td><td></td><td></td><td></td><td>' + mkN(L.reduce((a, o) => a + o.repor, 0)) + ' un</td><td></td><td>' + mkR(T.ads) + '</td><td>' + mkN(T.imp) + '</td><td>' + mkN(T.cli) + '</td><td>' +
+    (T.imp ? mkP(T.cli / T.imp, 2) : '—') + '</td><td>' + mkN(T.adsUn) + '</td><td>' +
+    (T.cli ? '<b>' + mkP(T.adsUn / T.cli) + '</b>' : '—') + '</td><td>' +
+    (T.ads ? mkN1(T.adsRec / T.ads) + 'x' : '—') + '</td></tr>' +
     '</tbody></table></div>' +
     '<div class="mk-note">Ruptura = estoque ÷ média dos giros diários de 7, 15 e 30 dias. Sugestão de reposição = média diária × (30 dias + lead time do envio) − (estoque de hoje + a caminho), arredondado para cima: o estoque precisa durar até a mercadoria chegar ao Full e mais 30 dias depois. "Acaba antes de chegar" = a cobertura atual é menor que o lead time. "Com o estoque de hoje" usa só o disponível; "após chegar" soma o que está a caminho (transferência entre centros do Full). ' +
     'Preço do anúncio = preço cheio da última venda (o preço atual do anúncio entra na Fase 2). Preço médio pago = líquido ÷ unidades em 30 dias. ' +
-    'Investido e ROAS = Product Ads dos anúncios desse SKU nos últimos 30 dias (ROAS = receita atribuída ÷ investido).</div></div>';
+    'Bloco ADS = Product Ads dos anúncios desse SKU nos últimos 30 dias. ROAS = receita atribuída ÷ investido. CTR = cliques ÷ impressões. ' +
+    'Conv. por clique = unidades vendidas por Ads ÷ cliques: mede só o tráfego pago, não a visita orgânica do anúncio — o Mercado Livre não manda visita. ' +
+    'O detalhe por anúncio só existe desde 30/07/2026. Um anúncio que cobre mais de um SKU aparece inteiro em cada linha, mas conta uma vez só no total — por isso a soma das linhas fica acima do rodapé. ' +
+    'Curva ABC pela receita dos últimos 30 dias, calculada sobre a carteira inteira: A = os SKUs que somam os primeiros 80% da receita, B = os 15% seguintes, C = o resto. Filtrar por família não recalcula a letra.</div></div>';
   return h;
 }
 
