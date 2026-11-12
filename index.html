@@ -6681,8 +6681,8 @@ function montarMatchFrete(){
     '<div class="note"><b>O mês em curso sempre parece pior</b> — a nota do ' +
     'transportador (CT-e) chega depois da venda, então o frete do mês ainda não ' +
     'foi todo faturado. Compare com os meses fechados, não com 100%. ' +
-    '<b>Estimado</b> = a macro não achou a nota e usou o percentual do estado ' +
-    '(<i>Parametros!A:B</i>).</div></div>';
+    '<b>Real</b> = CT-e do transportador ligado à nota (API da Omie desde mai/26; antes, histórico de CT-e). ' +
+    '<b>Estimado</b> = a nota ainda não tem CT-e e usa o percentual real do estado.</div></div>';
 }
 
 /* ---------------------------------------------------- 5) engatar no refresh */
@@ -16701,6 +16701,23 @@ async function anoSubstituirBase(){
 
     const antes = ROWS.length;
     ROWS = base;
+    /* MATCH DO FRETE (12/11/2026, Igor: "deixa o match la em baixo tbm atualizado"): o quadro do
+       Resumo lia o FRETE_MATCH da rodada do V8. Com o frete do Ao Vivo vindo dos CT-e do banco,
+       ele passa a ser medido nesta base: so venda, real (fe = 0) x estimado, NF pelo numero. */
+    try{
+      if(typeof _Z === 'object' && _Z){
+        const FM = {};
+        base.forEach(l => { if(l.tipo !== 1) return;
+          const o = FM[l.m] || (FM[l.m] = {r: new Set(), e: new Set(), fatReal: 0, fatEst: 0, freteReal: 0, freteEst: 0});
+          const real = l.fe === 0;
+          const nf = l.nf || l._nf; if(nf) (real ? o.r : o.e).add(nf);
+          if(real){ o.fatReal += l.fat || 0; o.freteReal += l.fr || 0; } else { o.fatEst += l.fat || 0; o.freteEst += l.fr || 0; } });
+        const M = {};
+        Object.keys(FM).forEach(m => { const o = FM[m]; let est = 0; o.e.forEach(n => { if(!o.r.has(n)) est++; });
+          M[m] = {nfReal: o.r.size, nfEst: est, fatReal: o.fatReal, fatEst: o.fatEst, freteReal: o.freteReal, freteEst: o.freteEst}; });
+        _Z.FRETE_MATCH = M;
+      }
+    }catch(e){ console.error('match do frete (base do ano):', e); }
     ANO_INFO = {ligado: true, linhas: base.length, antes: antes, hora: ger,
                 periodo: d.periodo, ano: +ini.slice(0, 4) || null};
     console.log('base do ano: ' + base.length + ' linhas do espelho (o V8 tinha '
