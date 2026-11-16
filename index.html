@@ -19540,7 +19540,8 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', ord: 'rec', fam: '', gs: {k: 'dias', dir: 1}, proj: false, tend: false, ev: {}, base: 'meli', lt: 5,
              agrupar: false, lead: 15, ritmo: 30, mes: null, busca: '', charts: {}, patch: false};
 const MKT_ABAS = [['geral','Visão geral'],['gerencial','Tabela gerencial por SKU'],['skus','Venda por SKU'],
-                  ['estoque','Estoque & ruptura'],['envios','Envios'],['margem','DRE'],['financas','Finanças'],['ads','Ads']];
+                  ['estoque','Estoque & ruptura'],['envios','Envios'],['margem','DRE'],['financas','Finanças'],['ads','Ads'],
+                  ['anuncios','Anúncios & conversão'],['atendimento','Atendimento'],['catalogo','Catálogo · Buy Box']];
 const MKT_LT = {fulfillment:'Full', self_service:'Flex', xd_drop_off:'Drop-off (agência)',
                 cross_docking:'Coleta', drop_off:'Correios', '?':'Sem envio'};
 const MKT_CANC = {buyer:'Comprador desistiu', shipment:'Problema no envio', internal:'Interno do ML',
@@ -19728,6 +19729,7 @@ function mkMudou(ev){
   else if(t.id.indexOf('mkEv_') === 0) MKT.ev[t.id.slice(5)] = Math.max(0, +String(t.value).replace(',', '.') || 0);
   else if(t.id === 'mkLead') MKT.lead = Math.max(1, +t.value || 15);
   else if(t.id === 'mkRitmo') MKT.ritmo = +t.value || 30;
+  else if(t.id === 'mkAnf') MKT.anf = t.value;
   else return;
   mkDesenhar(true);
 }
@@ -19754,7 +19756,8 @@ function mkDesenhar(manterScroll){
   if(!d){ alvo.innerHTML = html; return; }
   html += '<div class="mk-tabs">' + MKT_ABAS.map(a => '<button data-mk="aba:' + a[0] + '" class="' + (MKT.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
   try{
-    html += ({geral: mkGeral, gerencial: mkGerencial, skus: mkSkus, estoque: mkEstoque, envios: mkEnvios, margem: mkMargem, financas: mkFinancas, ads: mkAds}[MKT.aba] || mkGeral)();
+    html += ({geral: mkGeral, gerencial: mkGerencial, skus: mkSkus, estoque: mkEstoque, envios: mkEnvios, margem: mkMargem, financas: mkFinancas, ads: mkAds,
+             anuncios: mkAnuncios, atendimento: mkAtendimento, catalogo: mkCatalogo}[MKT.aba] || mkGeral)();
   }catch(e){ console.error('marketplace: tela', e); html += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
   html += '<div class="mk-note">Atualização dos dados no banco: ' + (d.frescor || []).map(f => mkEsc(f[0]) + ' ' +
           (f[1] ? new Date(f[1]).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '—')).join(' · ') + '</div>';
@@ -20484,6 +20487,184 @@ function mkGraficos(){
       {label: 'Receita atribuída', data: L.map(x => +x[2]), backgroundColor: '#1F9D6B'}]},
       options: {maintainAspectRatio: false, plugins: {tooltip: {callbacks: {label: c => c.dataset.label + ': ' + mkR(c.raw)}}}, scales: {y: {ticks: {callback: v => mkR(v)}}}}});
   }
+  try{ mkGraficosF2(); }catch(e){ console.error('marketplace: grafico fase 2', e); }
+}
+
+/* ===================== FASE 2 (16/11/2026): coletas novas do Luca ===================== */
+/* Anuncios & conversao, Atendimento (perguntas, reclamacoes, reputacao) e Catalogo (Buy Box).
+   Dados: bloco f2 do marketplace.json = premissas_comerciais.marketplace_fase2(). Sao FOTOS
+   (o estado de hoje) e janelas fixas de 30/7 dias ate o ultimo dia completo de visitas -
+   so as reclamacoes seguem o filtro de datas do topo. */
+const MKT_F2_STATUS = {active: ['Ativo', 'g'], paused: ['Pausado', 'y'], closed: ['Encerrado', 'nt'], under_review: ['Em revisão', 'r'], inactive: ['Inativo', 'nt']};
+const MKT_BB = {winning: ['Ganhando', 'g'], sharing_first_place: ['Dividindo o 1º lugar', 'g'], competing: ['Perdendo', 'r'], listed: ['Fora da disputa', 'y']};
+const MKT_RECL_TIPO = {mediations: 'Reclamação', cancel_purchase: 'Cancelamento pelo comprador', cancel_sale: 'Cancelamento pela Dobro', returns: 'Devolução', change: 'Troca'};
+const MKT_RECL_MOT = {PNR: 'Não recebeu o produto', PDD: 'Produto diferente ou com defeito', CS: 'Cancelado pela Dobro'};
+function mkF2(){ return (MKT.d && MKT.d.f2) || null; }
+function mkF2Falta(){ return mkCard('Dados ainda não chegaram', '', '<div class="mk-note">O pacote desta aba (coletas de anúncios, visitas, perguntas, reclamações, reputação e Buy Box) não veio no arquivo. Clique em ↻ Atualizar; se continuar, a função marketplace_fase2() do banco falhou.</div>'); }
+function mkPill(txt, cls){ return '<span class="pill ' + cls + '">' + txt + '</span>'; }
+function mkConv(ped, vis){ return vis ? ped / vis : null; }
+function mkHoras(h){ if(h == null || !isFinite(h)) return '—'; return h < 48 ? Math.round(h) + ' h' : mkN1(h / 24) + ' dias'; }
+function mkRecMot(c){ const k = String(c || '').slice(0, 3), k2 = String(c || '').slice(0, 2); return MKT_RECL_MOT[k] || MKT_RECL_MOT[k2] || (c || '—'); }
+
+/* ---------------- ANUNCIOS & CONVERSAO ---------------- */
+function mkAnuncios(){
+  const f = mkF2(); if(!f) return mkF2Falta();
+  const A = (f.anuncios || []).map(x => ({item: x[0], t: x[1] || x[0], skus: x[2] || '', st: x[3], sub: x[4] || '', tipo: x[5], cat: !!x[6],
+    preco: x[7], de: x[8], promo: !!x[9], est: +x[10] || 0, saude: x[11], logi: x[12], vari: +x[13] || 1,
+    v30: +x[14] || 0, v7: +x[15] || 0, u30: +x[16] || 0, u7: +x[17] || 0, r30: +x[18] || 0, bb: x[19], p30: +x[20] || 0, p7: +x[21] || 0}));
+  const fim = f.vis_fim, ini = mkDia(fim, -29);
+  const ativos = A.filter(o => o.st === 'active'), semEst = A.filter(o => o.st === 'paused' && /out_of_stock/.test(o.sub) && o.p30 > 0);
+  const tv = A.reduce((a, o) => a + o.v30, 0), tp = A.reduce((a, o) => a + o.p30, 0);
+  const sa = A.filter(o => o.st === 'active' && o.saude != null);
+  const saude = sa.length ? sa.reduce((a, o) => a + +o.saude, 0) / sa.length : null;
+  let h = '<div class="mk-bar"><span>Foto dos anúncios de ' + mkDD(fim) + ' · visitas e pedidos de <b>' + mkDD(ini) + ' a ' + mkDD(fim) + '</b> (30 dias até o último dia completo de visitas) — esta tela não segue o filtro de datas do topo</span></div>';
+  h += '<div class="kpirow">' + mkKpi('Anúncios ativos', mkN(ativos.length), mkN(A.length) + ' no total · ' + mkN(A.filter(o => o.cat && o.st === 'active').length) + ' de catálogo', 'accent') +
+    mkKpi('Pausados sem estoque que vendiam', mkN(semEst.length), 'tiveram pedido nos 30 dias', semEst.length ? 'alerta' : '') +
+    mkKpi('Visitas (30 dias)', mkN(tv), mkN(tv / 30) + ' por dia') +
+    mkKpi('Conversão', mkP(mkConv(tp, tv)), mkN(tp) + ' pedidos ÷ visitas') +
+    mkKpi('Saúde média', saude == null ? '—' : mkP(saude, 0), 'anúncios ativos fora do catálogo (o ML não mede no catálogo)') + '</div>';
+  h += mkCard('Visitas e conversão por dia', 'conta inteira · pedidos ÷ visitas', '<div style="padding:14px;height:250px"><canvas id="mkGVis"></canvas></div>');
+  if(semEst.length) h += mkCard('Pausados por falta de estoque (vendiam nos últimos 30 dias)', 'cada dia parado é venda perdida — ver reposição na Tabela gerencial',
+    '<div class="mk-scroll"><table class="mk-alerta"><thead><tr><th>Anúncio</th><th>Pedidos 30d</th><th>Receita 30d</th><th>Visitas 7d</th><th>Último preço</th></tr></thead><tbody>' +
+    semEst.sort((a, b) => b.r30 - a.r30).map(o => '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<small class="mk-sub">' + mkEsc(o.skus || o.item) + '</small></td><td>' + mkN(o.p30) + '</td><td>' + mkR(o.r30) + '</td><td>' + mkN(o.v7) + '</td><td>' + mkR2(o.preco) + '</td></tr>').join('') + '</tbody></table></div>');
+  const filt = MKT.anf || 'vende';
+  let L = A.filter(o => filt === 'todos' ? true : (filt === 'ativos' ? o.st === 'active' : (o.st === 'active' || o.p30 > 0 || o.v30 > 0)));
+  const busca = (MKT.busca || '').toLowerCase();
+  if(busca) L = L.filter(o => (o.t + ' ' + o.skus + ' ' + o.item).toLowerCase().includes(busca));
+  const sel = '<select id="mkAnf">' + [['vende', 'Ativos + com visita/venda'], ['ativos', 'Só ativos'], ['todos', 'Todos (inclui encerrados)']].map(x => '<option value="' + x[0] + '"' + (filt === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select>';
+  h += mkCard('Anúncios · preço, estoque e conversão', sel + ' <input id="mkBusca" placeholder="buscar anúncio ou SKU" value="' + mkEsc(MKT.busca || '') + '" style="margin-left:6px">',
+    '<div class="mk-scroll"><table><thead><tr><th>Anúncio</th><th>Situação</th><th>Tipo</th><th>Preço</th><th>Estoque</th><th>Visitas 30d</th><th>Pedidos 30d</th><th>Conversão</th><th>Visitas/dia 7d × 30d</th><th>Receita 30d</th><th>Saúde</th><th>Buy Box</th></tr></thead><tbody>' +
+    L.map(o => { const s = MKT_F2_STATUS[o.st] || [o.st, 'nt'], cv = mkConv(o.p30, o.v30), r7 = o.v7 / 7, r30 = o.v30 / 30, bb = MKT_BB[o.bb];
+      return '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + (o.cat ? ' <span class="mk-chip nt">catálogo</span>' : '') +
+        '<small class="mk-sub">' + mkEsc(o.item) + (o.skus ? ' · ' + mkEsc(o.skus) : '') + (o.vari > 1 ? ' · ' + o.vari + ' variações' : '') + '</small></td>' +
+        '<td>' + mkPill(s[0], s[1]) + (o.sub ? '<small class="mk-sub">' + mkEsc(o.sub.replace('out_of_stock', 'sem estoque').replace('paused_by_seller', 'pausado por nós')) + '</small>' : '') + '</td>' +
+        '<td>' + mkTipoPill(o.tipo) + '</td>' +
+        '<td>' + (o.promo && o.de ? '<s style="color:var(--muted)">' + mkR2(o.de) + '</s> ' : '') + mkR2(o.preco) + (o.promo ? ' <span class="mk-chip up">promoção</span>' : '') + '</td>' +
+        '<td>' + mkN(o.est) + '</td><td>' + mkN(o.v30) + '</td><td>' + mkN(o.p30) + '</td>' +
+        '<td>' + (cv == null ? '—' : mkP(cv)) + '</td>' +
+        '<td>' + mkN1(r7) + ' × ' + mkN1(r30) + ' ' + (r30 ? mkVar(r7, r30) : '') + '</td>' +
+        '<td>' + mkR(o.r30) + '</td>' +
+        '<td>' + (o.saude == null ? '—' : mkPill(mkP(+o.saude, 0), +o.saude >= 0.8 ? 'g' : (+o.saude >= 0.6 ? 'y' : 'r'))) + '</td>' +
+        '<td>' + (bb ? mkPill(bb[0], bb[1]) : '—') + '</td></tr>'; }).join('') +
+    '</tbody></table></div><div class="mk-note">Conversão = pedidos ÷ visitas do anúncio. Pedido com 2 anúncios conta nos dois. "Preço" é o preço de venda de hoje; com promoção, o riscado é o preço sem desconto. Saúde é a nota do ML para o anúncio (só fora do catálogo).</div>');
+  return h;
+}
+
+/* ---------------- ATENDIMENTO: perguntas, reclamacoes, reputacao ---------------- */
+function mkAtendimento(){
+  const f = mkF2(); if(!f) return mkF2Falta();
+  const d = MKT.d, p = mkPeriodo();
+  const R = (f.reputacao || []), rep = R[R.length - 1];
+  let h = '';
+  if(rep){
+    const nv = String(rep[1] || ''), cor = /green/.test(nv) ? 'g' : (/yellow/.test(nv) ? 'y' : 'r');
+    const ant = R.length > 1 ? R[R.length - 2] : null;
+    const seta = (i) => ant && ant[i] != null ? (+rep[i] > +ant[i] ? ' <span class="mk-chip dn">▲</span>' : (+rep[i] < +ant[i] ? ' <span class="mk-chip up">▼</span>' : '')) : '';
+    const nome = nv.replace(/^\d_/, '').replace('light_green', 'verde-claro').replace('green', 'verde').replace('yellow', 'amarelo').replace('orange', 'laranja').replace('red', 'vermelho');
+    h += '<div class="kpirow">' + mkKpi('Reputação (termômetro)', mkPill(nome || '—', cor),
+        (rep[2] ? 'MercadoLíder ' + mkEsc(rep[2]) + ' · ' : '') + mkN(rep[3]) + ' vendas em 60 dias · ' + mkDD(String(rep[0]))) +
+      mkKpi('Reclamações', mkP(+rep[4], 2) + seta(4), mkN(rep[5]) + ' nas vendas dos 60 dias') +
+      mkKpi('Envios com atraso', mkP(+rep[6], 2) + seta(6), mkN(rep[7]) + ' envios') +
+      mkKpi('Cancelamentos por nós', mkP(+rep[8], 2) + seta(8), mkN(rep[9]) + ' vendas') + '</div>';
+  }
+  /* perguntas */
+  const P = (f.perguntas || []).map(x => ({id: x[0], item: x[1], t: x[2] || x[1], dt: x[3], st: x[4], ok: !!x[5], dr: x[6], q: x[7] || '', a: x[8] || ''}));
+  const agora = Date.now(), abertas = P.filter(o => o.st === 'UNANSWERED').sort((a, b) => a.dt < b.dt ? -1 : 1);
+  const resp = P.filter(o => o.ok && o.dr && o.dt), tempos = resp.map(o => (new Date(o.dr) - new Date(o.dt)) / 36e5).filter(v => v >= 0).sort((a, b) => a - b);
+  const med = tempos.length ? tempos[Math.floor(tempos.length / 2)] : null;
+  const fechadas = P.filter(o => o.st === 'CLOSED_UNANSWERED').length;
+  const prim = P.length ? String(P[P.length - 1].dt) : '';
+  h += '<div class="kpirow kpi-mini">' + mkKpi('Perguntas sem resposta', mkN(abertas.length), abertas.length ? 'a mais antiga espera ' + mkHoras((agora - new Date(abertas[0].dt)) / 36e5) : 'nenhuma esperando', abertas.length ? 'alerta' : '') +
+    mkKpi('Tempo de resposta (mediana)', mkHoras(med), mkN(resp.length) + ' respondidas') +
+    mkKpi('Fecharam sem resposta', mkN(fechadas), 'o comprador desistiu ou o anúncio fechou', fechadas ? 'atencao' : '') +
+    mkKpi('Perguntas no total', mkN(P.length), prim ? 'desde ' + mkDD(prim.slice(0, 10)) + '/' + prim.slice(2, 4) : '') + '</div>';
+  if(abertas.length) h += mkCard('Perguntas esperando resposta', 'responda no ML — pergunta sem resposta derruba a conversão do anúncio',
+    '<div class="mk-scroll"><table><thead><tr><th>Esperando</th><th>Anúncio</th><th>Pergunta</th></tr></thead><tbody>' +
+    abertas.map(o => { const hrs = (agora - new Date(o.dt)) / 36e5;
+      return '<tr><td>' + mkPill(mkHoras(hrs), hrs > 24 ? 'r' : (hrs > 6 ? 'y' : 'g')) + '<small class="mk-sub">' + new Date(o.dt).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) + '</small></td>' +
+        '<td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<small class="mk-sub">' + mkEsc(o.item) + '</small></td><td style="white-space:normal;min-width:280px">' + mkEsc(o.q) + '</td></tr>'; }).join('') + '</tbody></table></div>');
+  /* reclamacoes */
+  const C = (f.reclamacoes || []).map(x => ({id: x[0], dt: String(x[1] || '').slice(0, 10), tipo: x[2], etapa: x[3], st: x[4], mot: x[5] || '', med: !!x[6], res: !!x[7],
+    ben: x[8] || '', reso: x[9], por: x[10], item: x[11], t: x[12] || '', sku: x[13] || ''}));
+  const noPer = C.filter(o => o.dt >= p.ini && o.dt <= p.fim), ped = mkTot(p.ini, p.fim).ped;
+  const contra = noPer.filter(o => o.ben === 'complainant').length;
+  h += mkBarPeriodo() + '<div class="kpirow kpi-mini">' + mkKpi('Reclamações e cancelamentos', mkN(noPer.length), ped ? mkP(noPer.length / ped, 2) + ' dos ' + mkN(ped) + ' pedidos do período' : '') +
+    mkKpi('Abertas agora', mkN(C.filter(o => o.st === 'opened').length), 'em qualquer data', C.some(o => o.st === 'opened') ? 'atencao' : '') +
+    mkKpi('Com mediação do ML', mkN(noPer.filter(o => o.med).length), mkP(noPer.length ? noPer.filter(o => o.med).length / noPer.length : null) + ' do período') +
+    mkKpi('Decididas a favor do comprador', mkN(contra), mkP(noPer.length ? contra / noPer.length : null) + ' do período') + '</div>';
+  /* por mes x tipo (6 meses) */
+  const meses = [...new Set(C.map(o => o.dt.slice(0, 7)))].sort().slice(-6);
+  const tipos = Object.keys(MKT_RECL_TIPO).filter(k => C.some(o => o.tipo === k));
+  const pedMes = m => d.dias.filter(x => x.slice(0, 7) === m).reduce((a, x) => a + (d.T[x].ped || 0), 0);
+  h += mkCard('Reclamações por mês', 'por tipo · sobre os pedidos do mês · o termômetro do ML conta só parte disso (janela de 60 dias, regras próprias)',
+    '<div class="mk-scroll"><table><thead><tr><th>Mês</th>' + tipos.map(k => '<th>' + MKT_RECL_TIPO[k] + '</th>').join('') + '<th>Total</th><th>Pedidos</th><th>Total ÷ pedidos</th><th>Só reclamações ÷ pedidos</th><th>A favor do comprador</th></tr></thead><tbody>' +
+    meses.slice().reverse().map(m => { const L = C.filter(o => o.dt.slice(0, 7) === m), pm = pedMes(m);
+      return '<tr><td>' + mkNomeMes(m) + '</td>' + tipos.map(k => '<td>' + (L.filter(o => o.tipo === k).length || '') + '</td>').join('') +
+        '<td><b>' + mkN(L.length) + '</b></td><td>' + mkN(pm) + '</td><td>' + (pm ? mkP(L.length / pm, 2) : '—') + '</td><td>' + (pm ? mkP(L.filter(o => o.tipo === 'mediations' || o.tipo === 'returns').length / pm, 2) : '—') +
+        '</td><td>' + mkN(L.filter(o => o.ben === 'complainant').length) + '</td></tr>'; }).join('') + '</tbody></table></div>');
+  /* por motivo e por anuncio no periodo */
+  const porMot = {}, porItem = {};
+  noPer.forEach(o => { const k = mkRecMot(o.mot); porMot[k] = (porMot[k] || 0) + 1;
+    if(o.item){ const it = porItem[o.item] || (porItem[o.item] = {t: o.t, sku: o.sku, n: 0, pnr: 0, pdd: 0}); it.n++; if(/^PNR/.test(o.mot)) it.pnr++; if(/^PDD/.test(o.mot)) it.pdd++; } });
+  const semItem = noPer.filter(o => !o.item).length;
+  h += '<div class="grid2">' + mkCard('Por motivo · período', '',
+    '<table><tbody>' + Object.entries(porMot).sort((a, b) => b[1] - a[1]).map(e => '<tr><td>' + mkEsc(e[0]) + '</td><td>' + mkN(e[1]) + '</td><td>' + mkP(e[1] / noPer.length) + '</td></tr>').join('') + '</tbody></table>') +
+    mkCard('Anúncios com mais reclamações · período', semItem ? mkN(semItem) + ' sem anúncio identificado' : '',
+    '<div class="mk-scroll"><table><thead><tr><th>Anúncio</th><th>Total</th><th>Não recebeu</th><th>Diferente/defeito</th></tr></thead><tbody>' +
+    Object.values(porItem).sort((a, b) => b.n - a.n).slice(0, 12).map(o => '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<small class="mk-sub">' + mkEsc(o.sku) + '</small></td><td>' + o.n + '</td><td>' + (o.pnr || '') + '</td><td>' + (o.pdd || '') + '</td></tr>').join('') +
+    '</tbody></table></div>') + '</div>';
+  const ab = C.filter(o => o.st === 'opened');
+  if(ab.length) h += mkCard('Reclamações abertas', 'acompanhar no ML',
+    '<div class="mk-scroll"><table><thead><tr><th>Aberta em</th><th>Tipo</th><th>Motivo</th><th>Etapa</th><th>Anúncio</th></tr></thead><tbody>' +
+    ab.map(o => '<tr><td>' + mkDD(o.dt) + '</td><td>' + mkEsc(MKT_RECL_TIPO[o.tipo] || o.tipo) + '</td><td>' + mkEsc(mkRecMot(o.mot)) + '</td><td>' + mkEsc(o.etapa === 'dispute' ? 'mediação' : (o.etapa === 'claim' ? 'reclamação' : o.etapa)) +
+      '</td><td class="mk-t">' + mkEsc(o.t || '—') + '<small class="mk-sub">' + mkEsc(o.sku) + '</small></td></tr>').join('') + '</tbody></table></div>');
+  h += '<div class="mk-note">Reputação = foto diária do termômetro do ML (taxas sobre as vendas dos últimos 60 dias). Reclamações seguem o filtro de datas do topo, pela data de abertura; "Não recebeu" (PNR) e "Diferente ou com defeito" (PDD) são os códigos de motivo do ML. Antes de 2026 a reclamação fica sem anúncio (a base de pedidos do ML começa em jan/26).</div>';
+  return h;
+}
+
+/* ---------------- CATALOGO: BUY BOX ---------------- */
+function mkCatalogo(){
+  const f = mkF2(); if(!f) return mkF2Falta();
+  const B = (f.buybox || []).map(x => ({dia: x[0], item: x[1], st: x[2], gan: !!x[3], nosso: x[4], pg: x[5], falta: x[6], venc: x[7], vs: x[8], mot: x[9] || '', t: x[10] || x[1], skus: x[11] || ''}));
+  const dias = [...new Set(B.map(o => o.dia))].sort(), ult = dias[dias.length - 1];
+  if(!ult) return mkCard('Sem dados de Buy Box', '', '<div class="mk-note">A coleta ainda não gravou nenhum dia.</div>');
+  const H = B.filter(o => o.dia === ult), cont = k => H.filter(o => o.st === k).length;
+  const hist = {}; B.forEach(o => (hist[o.item] || (hist[o.item] = {}))[o.dia] = o.st);
+  const perd = H.filter(o => o.st === 'competing'), fmed = perd.length ? perd.reduce((a, o) => a + (+o.falta || 0), 0) / perd.length : 0;
+  const rep = H.filter(o => /reputation/.test(o.mot)).length;
+  let h = '<div class="mk-bar"><span>Foto de ' + mkDD(ult) + ' · ' + mkN(H.length) + ' anúncios de catálogo ativos — não segue o filtro de datas do topo</span></div>';
+  h += '<div class="kpirow">' + mkKpi('Ganhando', mkN(cont('winning')), mkP(H.length ? cont('winning') / H.length : null, 0) + ' dos anúncios', 'accent') +
+    mkKpi('Dividindo o 1º lugar', mkN(cont('sharing_first_place')), 'mesmo preço do vencedor') +
+    mkKpi('Perdendo', mkN(perd.length), 'faltam ' + mkR2(fmed) + ' em média para ganhar', perd.length ? 'atencao' : '') +
+    mkKpi('Fora da disputa', mkN(cont('listed')), rep ? mkN(rep) + ' por limite de reputação' : '', cont('listed') ? 'alerta' : '') + '</div>';
+  const ord = {competing: 0, listed: 1, sharing_first_place: 2, winning: 3};
+  H.sort((a, b) => ((ord[a.st] == null ? 9 : ord[a.st]) - (ord[b.st] == null ? 9 : ord[b.st])) || ((+a.falta || 0) / (+a.nosso || 1) - (+b.falta || 0) / (+b.nosso || 1)));
+  h += mkCard('Anúncios de catálogo', 'perdendo primeiro, do mais perto de ganhar ao mais longe · últimos dias à direita',
+    '<div class="mk-scroll"><table><thead><tr><th>Anúncio</th><th>Situação</th><th>Nosso preço</th><th>Preço para ganhar</th><th>Falta</th><th>Preço do vencedor</th><th>Exposição</th><th>Últimos dias</th></tr></thead><tbody>' +
+    H.map(o => { const s = MKT_BB[o.st] || [o.st, 'nt'], pct = o.nosso ? (+o.falta || 0) / +o.nosso : 0;
+      return '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<small class="mk-sub">' + mkEsc(o.item) + (o.skus ? ' · ' + mkEsc(o.skus) : '') + '</small></td>' +
+        '<td>' + mkPill(s[0], s[1]) + (o.mot ? '<small class="mk-sub">' + mkEsc(o.mot.replace('reputation_limit_reached', 'limite de reputação')) + '</small>' : '') + '</td>' +
+        '<td>' + mkR2(o.nosso) + '</td><td>' + (o.pg != null ? mkR2(o.pg) : '—') + '</td>' +
+        '<td>' + (o.st === 'competing' && +o.falta > 0 ? mkPill(mkR2(o.falta) + ' · ' + mkP(pct), pct > 0.1 ? 'r' : 'y') : '—') + '</td>' +
+        '<td>' + (o.venc != null ? mkR2(o.venc) : '—') + '</td>' +
+        '<td>' + mkEsc({maximum: 'máxima', medium: 'média', minimum: 'mínima', none: 'nenhuma'}[o.vs] || o.vs || '—') + '</td>' +
+        '<td style="white-space:nowrap">' + dias.slice(-7).map(x => { const st = (hist[o.item] || {})[x]; const c = st ? (MKT_BB[st] || ['', 'nt'])[1] : 'nt';
+          return '<span title="' + mkDD(x) + ': ' + (st ? (MKT_BB[st] || [st])[0] : 'sem dado') + '" style="display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:3px;background:' +
+            (c === 'g' ? 'var(--mk-pos)' : (c === 'r' ? 'var(--mk-neg)' : (c === 'y' ? 'var(--mk-warn)' : '#D5DAE5'))) + '"></span>'; }).join('') + '</td></tr>'; }).join('') +
+    '</tbody></table></div><div class="mk-note">"Preço para ganhar" é o que o ML diz que faria o anúncio ganhar hoje; "Falta" = nosso preço − preço para ganhar. Exposição = parte das visitas da página do produto que vai para o nosso anúncio. Baixar o preço mexe na margem — ver a margem por SKU na aba DRE antes.</div>');
+  return h;
+}
+
+function mkGraficosF2(){
+  const f = mkF2(), c = document.getElementById('mkGVis');
+  if(!f || !c || typeof Chart === 'undefined') return;
+  const L = (f.vis_dia || []);
+  MKT.charts.vis = new Chart(c, {type: 'bar', data: {labels: L.map(x => mkDD(x[0])), datasets: [
+    {type: 'line', label: 'Conversão', data: L.map(x => +x[1] ? +x[2] / +x[1] * 100 : null), borderColor: '#D8C733', backgroundColor: '#D8C733', pointRadius: 0, tension: .3, borderWidth: 2, yAxisID: 'y2'},
+    {label: 'Visitas', data: L.map(x => +x[1]), backgroundColor: 'rgba(42,62,126,.75)', yAxisID: 'y'}]},
+    options: {maintainAspectRatio: false, plugins: {tooltip: {callbacks: {label: c => c.dataset.label + ': ' + (c.dataset.yAxisID === 'y2' ? (c.raw == null ? '—' : c.raw.toFixed(1).replace('.', ',') + '%') : mkN(c.raw)),
+      afterBody: it => { const x = L[it[0].dataIndex]; return x ? mkN(x[2]) + ' pedidos' : ''; }}}},
+      scales: {y: {position: 'left'}, y2: {position: 'right', grid: {display: false}, ticks: {callback: v => v + '%'}}}}});
 }
 
 try{ mkRegistrar(); }catch(e){ console.error('marketplace: registrar', e); }
