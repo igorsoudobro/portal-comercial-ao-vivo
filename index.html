@@ -21328,6 +21328,284 @@ function mgCorpo(p){
 <script>try{ mgRegistrar(); }catch(e){ console.error('mkgeral: registrar', e); }</script>
 
 <style>
+#v-relatorios .rl-hero{background:linear-gradient(135deg,#2A3E7E,#1d2c5c);color:#fff;border-radius:14px;padding:20px 24px;margin-bottom:16px}
+#v-relatorios .rl-hero h2{margin:6px 0 4px;font-family:'Barlow Condensed',sans-serif;font-size:30px;letter-spacing:.3px}
+#v-relatorios .rl-hero p{margin:0;opacity:.85;font-size:13px}
+#v-relatorios .rl-chip{display:inline-block;background:#D8C733;color:#2A3E7E;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
+#v-relatorios .rl-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 14px}
+#v-relatorios .rl-bar label{font-size:12px;font-weight:700;color:#5b6475;text-transform:uppercase;letter-spacing:.4px}
+#v-relatorios select,#v-relatorios input[type=text],#v-relatorios input[type=password],#v-relatorios textarea{border:1px solid #d5dae5;border-radius:10px;padding:9px 11px;font:inherit;background:#fff}
+#v-relatorios .rl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+#v-relatorios .rl-btn{border:none;border-radius:14px;padding:18px 16px;text-align:left;cursor:pointer;background:#fff;box-shadow:0 2px 10px rgba(42,62,126,.10);border-top:4px solid #2A3E7E;font:inherit;transition:transform .12s,box-shadow .12s}
+#v-relatorios .rl-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(42,62,126,.18)}
+#v-relatorios .rl-btn b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:21px;color:#2A3E7E;margin-bottom:4px}
+#v-relatorios .rl-btn span{font-size:12px;color:#5b6475}
+#v-relatorios .rl-btn.email{border-top-color:#D8C733}
+#v-relatorios .rl-btn[disabled]{opacity:.55;cursor:wait}
+#v-relatorios .rl-card{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(42,62,126,.08);margin-bottom:16px;overflow:hidden}
+#v-relatorios .rl-card h3{margin:0;padding:14px 18px;border-bottom:1px solid #eef0f6;font-family:'Barlow Condensed',sans-serif;font-size:20px;color:#2A3E7E}
+#v-relatorios .rl-card .rl-in{padding:14px 18px}
+#v-relatorios table{width:100%;border-collapse:collapse;font-size:13px}
+#v-relatorios th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#5b6475;padding:8px 10px;border-bottom:1px solid #eef0f6}
+#v-relatorios td{padding:9px 10px;border-bottom:1px solid #f2f4f8;vertical-align:top;text-align:left}
+#v-relatorios th{text-align:left}
+#v-relatorios .rl-st{display:inline-block;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:800}
+#v-relatorios .rl-st.pendente{background:#EEF0F6;color:#5b6475}#v-relatorios .rl-st.gerando{background:#FFF6D6;color:#8a6d00}
+#v-relatorios .rl-st.pronto{background:#E4F5EE;color:#1F9D6B}#v-relatorios .rl-st.erro{background:#FBE7E6;color:#D9534F}
+#v-relatorios .rl-baixar{background:#2A3E7E;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer;font-size:12px}
+#v-relatorios .rl-blocos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px;margin:8px 0 14px}
+#v-relatorios .rl-blocos label{display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer}
+#v-relatorios .rl-blocos small{display:block;color:#5b6475;font-size:11.5px}
+#v-relatorios .rl-ordem{list-style:none;margin:8px 0 10px;padding:0;max-width:760px}
+#v-relatorios .rl-ordem li{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #eef0f6;border-radius:10px;margin-bottom:6px;background:#fff}
+#v-relatorios .rl-ordem li label{flex:1;display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer}
+#v-relatorios .rl-ordem li small{display:block;color:#5b6475;font-size:11.5px}
+#v-relatorios .rl-pos{width:22px;height:22px;border-radius:50%;background:#EEF0F6;color:#2A3E7E;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex:none}
+#v-relatorios .rl-setas button{border:1px solid #d5dae5;background:#fff;border-radius:8px;width:30px;height:28px;cursor:pointer;font-weight:800;color:#2A3E7E}
+#v-relatorios .rl-setas button[disabled]{opacity:.3;cursor:default}
+#v-relatorios .rl-novo{background:#D8C733;color:#2A3E7E;border-radius:6px;padding:0 6px;font-size:10px;font-weight:800;margin-left:4px}
+#v-relatorios .rl-aviso{background:#FFF6D6;border-radius:10px;padding:10px 14px;font-size:13px;color:#6b5500;margin:0 0 12px}
+#v-relatorios .rl-erro{background:#FBE7E6;border-radius:10px;padding:10px 14px;font-size:13px;color:#a12f2b;margin:0 0 12px}
+#v-relatorios .rl-ok{background:#E4F5EE;border-radius:10px;padding:10px 14px;font-size:13px;color:#16714d;margin:0 0 12px}
+#v-relatorios .rl-note{font-size:12px;color:#5b6475;line-height:1.5}
+#v-relatorios .rl-pri{background:#2A3E7E;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
+#v-relatorios .rl-sec{background:#fff;color:#2A3E7E;border:1px solid #2A3E7E;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer}
+#v-relatorios .rl-login{max-width:380px;margin:30px auto;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(42,62,126,.12);padding:22px}
+#v-relatorios .rl-login label{display:block;font-size:12px;font-weight:700;color:#5b6475;margin:12px 0 4px}
+#v-relatorios .rl-login input{width:100%;box-sizing:border-box}
+@media (max-width:900px){#v-relatorios .rl-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#v-relatorios .rl-blocos{grid-template-columns:1fr}}
+@media (max-width:520px){#v-relatorios .rl-grid{grid-template-columns:1fr}}
+</style>
+<script>
+/* ===================== ADMIN > GERAR RELATORIOS (16/11/2026) ===================== */
+const REL_URL = 'https://ovvtdzpbmdtipeoewnle.supabase.co/functions/v1/relatorios-portal';
+const REL = {d: null, erro: '', msg: '', mes: null, timer: null, enviando: {}, patch: false, salvando: false, ordem: null, liga: null, metas: true};
+/* ordem de sempre das secoes (= email_fechamento.ORDEM_PADRAO); 'metas' nao e secao, e um liga/desliga */
+const REL_ORDEM_PADRAO = ['resumo','equipes','margem_equipe','frete_equipe','devol_bonif','skus','marketplace','atendimento_ml','estoque_full','crm','degustacoes','acessos'];
+const REL_TIPOS = [
+  ['word', 'Fechamento em Word', 'O relatório completo do mês (.docx)'],
+  ['ppt', 'Fechamento em PPT', 'A apresentação de vendas para o time (.pptx)'],
+  ['onepage', 'One Page', 'A página única para os sócios (PDF)'],
+  ['email', 'Forçar disparo do e-mail', 'Manda agora, com os blocos e destinatários abaixo'],
+];
+const REL_ROT = {word: 'Word', ppt: 'PPT', onepage: 'One Page', email: 'E-mail'};
+const REL_BLOCOS = [
+  ['resumo', 'Resumo do mês', 'faturamento bruto, devoluções, líquido, bonificado, margem bruta, ticket, novos clientes'],
+  ['metas', 'Metas e atingimento', 'meta do mês e por equipe'],
+  ['equipes', 'Faturamento por equipe', 'quebra por modelo/supervisão'],
+  ['skus', 'SKUs críticos', 'M acima de 50%'],
+  ['crm', 'CRM', 'leads do mês, ganhos, perdidos, conversão'],
+  ['degustacoes', 'Degustações', 'realizadas, conversão, CPE, CAC'],
+  ['acessos', 'Acessos ao Portal', 'quem entrou e quando'],
+  ['margem_equipe', 'Margem por equipe', 'CMV, imposto, frete, comissão, contratos e lucro final', 1],
+  ['frete_equipe', 'Frete por equipe', 'R$ e % do faturamento, real (CT-e) × estimado', 1],
+  ['devol_bonif', 'Devoluções e bonificações', 'maiores devoluções e bonificação por equipe', 1],
+  ['marketplace', 'Marketplace', 'ML, TikTok e Amazon: líquido, pedidos e ROAS do ML', 1],
+  ['atendimento_ml', 'Atendimento ML', 'perguntas, reclamações, termômetro e Buy Box', 1],
+  ['estoque_full', 'Estoque Full do ML', 'SKUs que acabam antes da reposição chegar', 1],
+];
+const REL_MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function relEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function relNomeMes(m){ return REL_MESES[+m.slice(5, 7) - 1] + '/' + m.slice(2, 4); }
+function relQuando(t){ return t ? new Date(t).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) : '—'; }
+function relToken(){
+  if(typeof PREM === 'object' && PREM && PREM.token) return PREM.token;
+  try{ return sessionStorage.getItem('premToken'); }catch(e){ return null; }
+}
+async function relChamar(corpo){
+  const r = await fetch(REL_URL, {method: 'POST', headers: {'content-type': 'application/json', 'x-premissas-token': relToken() || ''}, body: JSON.stringify(corpo)});
+  const j = await r.json().catch(() => ({erro: 'resposta inválida (' + r.status + ')'}));
+  if(r.status === 401){ try{ sessionStorage.removeItem('premToken'); }catch(e){} if(typeof PREM === 'object' && PREM) PREM.token = null; }
+  if(!r.ok || j.erro) throw new Error(j.erro || ('erro ' + r.status));
+  return j;
+}
+function relRegistrar(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  if(!VIEWS.find(x => x.id === 'relatorios')) VIEWS.push({id: 'relatorios', lab: 'Gerar relatórios', fn: vRelatorios});
+  if(!document.getElementById('v-relatorios')){
+    const irmao = document.querySelector('.view');
+    if(irmao && irmao.parentNode){
+      const div = document.createElement('div'); div.className = 'view'; div.id = 'v-relatorios';
+      irmao.parentNode.appendChild(div);
+      div.addEventListener('click', relClique);
+      div.addEventListener('change', ev => { if(ev.target && ev.target.id === 'relMes'){ REL.mes = ev.target.value; relDesenhar(); } });
+    }
+  }
+  if(!REL.patch && typeof abasPermitidas === 'function'){
+    const orig = abasPermitidas;
+    /* so admin, sempre: gerar relatorio e mudar o e-mail dos socios nao e para moderador */
+    abasPermitidas = function(){ const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin); return orig().filter(x => x.id !== 'relatorios' || adm); };
+    REL.patch = true;
+  }
+  const nav = document.getElementById('nav');
+  if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
+}
+function relMeses(){
+  const h = new Date(), out = [];
+  for(let m = h.getMonth(); m >= 0; m--) out.push(h.getFullYear() + '-' + String(m + 1).padStart(2, '0'));
+  return out;
+}
+async function vRelatorios(){
+  if(!relToken()){ relDesenhar(); return; }
+  if(!REL.d) await relCarregar();
+  relDesenhar();
+}
+async function relCarregar(){
+  try{ REL.d = await relChamar({acao: 'ler'}); REL.erro = ''; if(!REL.ordem) relIniciarOrdem(); }
+  catch(e){ REL.erro = e.message; }
+  relAgendar();
+}
+function relIniciarOrdem(){
+  const bl = ((REL.d && REL.d.email) || {}).blocos || [];
+  const secs = bl.filter(k => REL_ORDEM_PADRAO.includes(k));
+  REL.ordem = secs.concat(REL_ORDEM_PADRAO.filter(k => !secs.includes(k)));
+  REL.liga = {}; secs.forEach(k => REL.liga[k] = true);
+  REL.metas = bl.includes('metas');
+}
+function relMover(k, d){
+  /* guarda o que esta marcado na tela antes de redesenhar */
+  REL_ORDEM_PADRAO.forEach(x => { const c = document.getElementById('relB_' + x); if(c) REL.liga[x] = c.checked; });
+  const m = document.getElementById('relB_metas'); if(m) REL.metas = m.checked;
+  const i = REL.ordem.indexOf(k), j = i + d;
+  if(i < 0 || j < 0 || j >= REL.ordem.length) return;
+  [REL.ordem[i], REL.ordem[j]] = [REL.ordem[j], REL.ordem[i]];
+  relDesenhar();
+}
+function relAgendar(){
+  clearTimeout(REL.timer);
+  const ativo = REL.d && (REL.d.pedidos || []).some(p => p.status === 'pendente' || p.status === 'gerando');
+  if(ativo && typeof CURRENT !== 'undefined' && CURRENT === 'relatorios')
+    REL.timer = setTimeout(async () => { await relCarregar(); if(CURRENT === 'relatorios') relDesenhar(); }, 8000);
+}
+function relTelaLogin(){
+  const u = (typeof SESSION === 'object' && SESSION && SESSION.user) || '';
+  return '<div class="rl-login"><h3 style="margin:0 0 4px;font-family:Barlow Condensed,sans-serif;font-size:24px;color:#2A3E7E">Gerar relatórios</h3>' +
+    '<p class="rl-note" style="margin:0">Mesmo acesso da aba Premissas (só admin). Se já entrou lá nesta sessão, nem pede de novo.</p>' +
+    '<label>Usuário</label><input type="text" id="relU" value="' + relEsc(u) + '">' +
+    '<label>Senha do Portal</label><input type="password" id="relS">' +
+    '<label>Senha da aba Premissas</label><input type="password" id="relA" onkeydown="if(event.key===\'Enter\')relEntrar()">' +
+    '<div style="margin-top:14px"><button class="rl-pri" data-rl="entrar">Entrar</button></div>' +
+    (REL.erro ? '<div class="rl-erro" style="margin-top:12px">' + relEsc(REL.erro) + '</div>' : '') + '</div>';
+}
+async function relEntrar(){
+  REL.erro = '';
+  try{
+    const r = await fetch(typeof PREM_URL !== 'undefined' ? PREM_URL : REL_URL.replace('relatorios-portal', 'premissas-portal'),
+      {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({acao: 'entrar',
+        usuario: document.getElementById('relU').value, senha_login: document.getElementById('relS').value, senha_aba: document.getElementById('relA').value})});
+    const j = await r.json().catch(() => ({erro: 'resposta inválida'}));
+    if(!r.ok || j.erro) throw new Error(j.erro || ('erro ' + r.status));
+    try{ sessionStorage.setItem('premToken', j.token); sessionStorage.setItem('premUser', j.usuario); }catch(e){}
+    if(typeof PREM === 'object' && PREM){ PREM.token = j.token; PREM.usuario = j.usuario; }
+    REL.d = null; await vRelatorios();
+  }catch(e){ REL.erro = e.message; relDesenhar(); }
+}
+async function relPedir(tipo){
+  if(REL.enviando[tipo]) return;
+  const mes = REL.mes || relMeses()[0];
+  if(tipo === 'email'){
+    const c = (REL.d && REL.d.email) || {};
+    const quem = c.liberado ? (c.para || []).concat(c.cc || []).join(', ') : 'só você (ensaio — o e-mail ainda não foi liberado)';
+    if(!confirm('Disparar agora o e-mail de ' + relNomeMes(mes) + ' para: ' + quem + '?')) return;
+  }
+  REL.enviando[tipo] = true; REL.msg = ''; relDesenhar();
+  try{
+    const j = await relChamar({acao: 'pedir', tipo, mes});
+    REL.msg = (j.ja_na_fila ? 'Esse pedido já estava na fila' : 'Pedido feito') + ': ' + REL_ROT[tipo] + ' de ' + relNomeMes(mes) +
+      '. Fica pronto em 1 a 3 minutos (o computador do Igor precisa estar ligado).';
+    await relCarregar();
+  }catch(e){ REL.msg = ''; REL.erro = e.message; }
+  REL.enviando[tipo] = false; relDesenhar();
+}
+async function relBaixar(arquivo){
+  try{
+    const token = await msToken();
+    if(!token) throw new Error('sem login da Microsoft');
+    const caminho = (PASTA_DADOS + '/' + arquivo).split('/').map(encodeURIComponent).join('/');
+    const res = await fetch(GRAPH_BASE + '/sites/' + MS_SITE_ID + '/drive/root:/' + caminho, {headers: {Authorization: 'Bearer ' + token}});
+    if(res.status === 404) throw new Error('o arquivo ainda está subindo para o SharePoint — tente de novo em 1 minuto');
+    if(!res.ok) throw new Error('não consegui achar o arquivo (' + res.status + ')');
+    const meta = await res.json();
+    window.open(meta['@microsoft.graph.downloadUrl'], '_blank');
+  }catch(e){ alert(e.message); }
+}
+async function relSalvarEmail(){
+  if(REL.salvando) return;
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const blocos = REL.ordem.filter(k => (document.getElementById('relB_' + k) || {}).checked);
+  if((document.getElementById('relB_metas') || {}).checked) blocos.push('metas');
+  const lib = document.getElementById('relLib');
+  REL.salvando = true; REL.erro = ''; REL.msg = '';
+  try{
+    const j = await relChamar({acao: 'email_salvar', para: v('relPara'), cc: v('relCc'), blocos, liberado: lib ? lib.checked : undefined});
+    REL.d.email = Object.assign(REL.d.email || {}, j.email); relIniciarOrdem();
+    REL.msg = 'E-mail salvo: ' + j.email.blocos.length + ' blocos, ' + (j.email.para.length + j.email.cc.length) + ' destinatário(s)' +
+      (j.email.liberado ? ' — o disparo diário já usa esta configuração.' : ' — ainda em ensaio (o diário segue como antes).');
+  }catch(e){ REL.erro = e.message; }
+  REL.salvando = false; relDesenhar();
+}
+function relClique(ev){
+  const b = ev.target.closest('[data-rl]'); if(!b) return;
+  const [acao, val] = b.dataset.rl.split(':');
+  if(acao === 'entrar') relEntrar();
+  else if(acao === 'pedir') relPedir(val);
+  else if(acao === 'baixar') relBaixar(b.dataset.arq);
+  else if(acao === 'atualizar'){ relCarregar().then(relDesenhar); }
+  else if(acao === 'salvar') relSalvarEmail();
+  else if(acao === 'sobe') relMover(val, -1);
+  else if(acao === 'desce') relMover(val, 1);
+}
+function relDesenhar(){
+  const alvo = document.getElementById('v-relatorios'); if(!alvo) return;
+  let h = '<div class="rl-hero"><span class="rl-chip">Admin</span><h2>Gerar relatórios</h2>' +
+    '<p>Fechamento pelo Portal Ao Vivo (os mesmos números do Portal). Só gera quando você clicar. O fechamento oficial do dia 05 continua saindo como sempre.</p></div>';
+  if(!relToken()){ alvo.innerHTML = h + relTelaLogin(); return; }
+  const meses = relMeses(); if(!REL.mes) REL.mes = meses[0];
+  if(REL.erro) h += '<div class="rl-erro">' + relEsc(REL.erro) + '</div>';
+  if(REL.msg) h += '<div class="rl-ok">' + relEsc(REL.msg) + '</div>';
+  h += '<div class="rl-bar"><label for="relMes">Mês</label><select id="relMes">' +
+    meses.map(m => '<option value="' + m + '"' + (m === REL.mes ? ' selected' : '') + '>' + relNomeMes(m) + (m === meses[0] ? ' (em andamento)' : '') + '</option>').join('') +
+    '</select><button class="rl-sec" data-rl="atualizar">↻ Atualizar</button></div>';
+  h += '<div class="rl-grid">' + REL_TIPOS.map(t => '<button class="rl-btn' + (t[0] === 'email' ? ' email' : '') + '" data-rl="pedir:' + t[0] + '"' + (REL.enviando[t[0]] ? ' disabled' : '') + '>' +
+    '<b>' + t[1] + '</b><span>' + t[2] + ' · ' + relNomeMes(REL.mes) + '</span></button>').join('') + '</div>';
+  const P = (REL.d && REL.d.pedidos) || [];
+  h += '<div class="rl-card"><h3>Pedidos</h3><div class="rl-in" style="padding:0;overflow-x:auto"><table><thead><tr><th>Pedido</th><th>Relatório</th><th>Mês</th><th>Situação</th><th>Por</th><th>Detalhe</th><th></th></tr></thead><tbody>' +
+    (P.length ? P.map(p => '<tr><td>' + relQuando(p.pedido_em) + '</td><td><b>' + (REL_ROT[p.tipo] || p.tipo) + '</b></td><td>' + relNomeMes(p.mes) + '</td>' +
+      '<td><span class="rl-st ' + p.status + '">' + ({pendente: 'na fila', gerando: 'gerando…', pronto: 'pronto', erro: 'erro'}[p.status] || p.status) + '</span></td>' +
+      '<td>' + relEsc(p.pedido_por) + '</td><td class="rl-note" style="max-width:420px">' + relEsc(p.detalhe || '') + '</td>' +
+      '<td>' + (p.status === 'pronto' && p.arquivo ? '<button class="rl-baixar" data-rl="baixar" data-arq="' + relEsc(p.arquivo) + '">' + (p.tipo === 'email' ? 'Ver e-mail' : 'Baixar') + '</button>' : '') + '</td></tr>').join('')
+      : '<tr><td colspan="7" class="rl-note">Nenhum pedido ainda.</td></tr>') + '</tbody></table></div></div>';
+  /* e-mail diario */
+  const c = (REL.d && REL.d.email) || {para: [], cc: [], blocos: [], liberado: false};
+  if(!REL.ordem) relIniciarOrdem();
+  const info = {}; REL_BLOCOS.forEach(b => info[b[0]] = b);
+  h += '<div class="rl-card"><h3>E-mail de fechamento diário</h3><div class="rl-in">' +
+    (c.liberado ? '' : '<div class="rl-aviso"><b>Em ensaio.</b> O disparo diário continua como antes (mesmos destinatários e blocos de sempre) e o "Forçar disparo" vai só para você. ' +
+      'Depois de conferir o ensaio, marque "Liberar" abaixo: aí o diário passa a usar esta configuração e os números do Ao Vivo.</div>') +
+    '<div class="rl-bar" style="align-items:flex-start"><div style="flex:1;min-width:260px"><label for="relPara">Para</label><br><textarea id="relPara" rows="3" style="width:100%;box-sizing:border-box">' + relEsc((c.para || []).join(', ')) + '</textarea></div>' +
+    '<div style="flex:1;min-width:260px"><label for="relCc">Cópia</label><br><textarea id="relCc" rows="3" style="width:100%;box-sizing:border-box">' + relEsc((c.cc || []).join(', ')) + '</textarea></div></div>' +
+    '<label style="font-size:12px;font-weight:700;color:#5b6475;text-transform:uppercase;letter-spacing:.4px">Blocos do e-mail — marque e use ↑ ↓ para a ordem em que saem</label>' +
+    '<ol class="rl-ordem">' + REL.ordem.map((k, i) => { const b = info[k]; if(!b) return '';
+      return '<li><span class="rl-pos">' + (i + 1) + '</span><label><input type="checkbox" id="relB_' + k + '"' + (REL.liga[k] ? ' checked' : '') + '><span><b>' + b[1] + '</b>' +
+        (b[3] ? '<span class="rl-novo">NOVO</span>' : '') + '<small>' + b[2] + '</small></span></label>' +
+        '<span class="rl-setas"><button data-rl="sobe:' + k + '" title="subir"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button data-rl="desce:' + k + '" title="descer"' + (i === REL.ordem.length - 1 ? ' disabled' : '') + '>↓</button></span></li>'; }).join('') + '</ol>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0 8px"><input type="checkbox" id="relB_metas"' + (REL.metas ? ' checked' : '') + '> ' +
+    '<span><b>Metas e atingimento</b> <small style="color:#5b6475">— mostra a meta no Resumo e em cada equipe</small></span></label>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:6px 0 14px"><input type="checkbox" id="relLib"' + (c.liberado ? ' checked' : '') + '> ' +
+    '<span><b>Liberar</b> — o disparo diário passa a usar esta configuração (destinatários, blocos e números do Ao Vivo)</span></label>' +
+    '<button class="rl-pri" data-rl="salvar"' + (REL.salvando ? ' disabled' : '') + '>Salvar e-mail</button>' +
+    (c.alterado_em ? '<span class="rl-note" style="margin-left:12px">última alteração: ' + relEsc(c.alterado_por || '') + ' em ' + relQuando(c.alterado_em) + '</span>' : '') +
+    '</div></div>';
+  h += '<p class="rl-note">Como funciona: o botão grava o pedido no banco; uma rotina no computador do Igor confere a fila a cada minuto, gera pelo Ao Vivo e salva na pasta do Portal no SharePoint (subpasta relatorios). ' +
+    'A One Page gera junto um Word novo do mesmo mês, porque ela confere os números contra ele.</p>';
+  alvo.innerHTML = h;
+  relAgendar();
+}
+try{ relRegistrar(); }catch(e){ console.error('relatorios: registrar', e); }
+</script>
+
+<style>
 /* ===================== UX / DESIGN UNICO (07/11/2026) ===================== */
 /* logo da Dobro no lugar do "d" (07/11/2026) */
 .ux-logo{display:block;width:auto}
@@ -21522,7 +21800,7 @@ const UX_GRUPOS = [
   ['produtos', 'Produtos', ['mix', 'gestcat', 'calc']],
   ['operacao', 'Operação', ['sla', 'degustacoes', 'links']],
   ['marketplace', 'Marketplace', ['mkgeral', 'marketplace', 'tiktok', 'amazon']],
-  ['admin',    'Admin',    ['premissas', 'pendencias', 'acessos']],
+  ['admin',    'Admin',    ['premissas', 'relatorios', 'pendencias', 'acessos']],
 ];
 function uxGrupoAberto(id){
   try{ const o = JSON.parse(localStorage.getItem('ux_menu') || '{}'); return id in o ? !!o[id] : null; }catch(e){ return null; }
