@@ -20504,6 +20504,7 @@ const MKT_F2_STATUS = {active: ['Ativo', 'g'], paused: ['Pausado', 'y'], closed:
 const MKT_BB = {winning: ['Ganhando', 'g'], sharing_first_place: ['Dividindo o 1º lugar', 'g'], competing: ['Perdendo', 'r'], listed: ['Fora da disputa', 'y']};
 const MKT_RECL_TIPO = {mediations: 'Reclamação', cancel_purchase: 'Cancelamento pelo comprador', cancel_sale: 'Cancelamento pela Dobro', returns: 'Devolução', change: 'Troca'};
 const MKT_URL_PERG = 'https://vendedores.mercadolivre.com.br/preguntas/vendedor';
+const MKT_URL_POSVENDA = 'https://vendedores.mercadolivre.com.br/post-purchase/post-sales';
 const MKT_RECL_MOT = {PNR: 'Não recebeu o produto', PDD: 'Produto diferente ou com defeito', CS: 'Cancelado pela Dobro'};
 function mkF2(){ return (MKT.d && MKT.d.f2) || null; }
 function mkF2Falta(){ return mkCard('Dados ainda não chegaram', '', '<div class="mk-note">O pacote desta aba (coletas de anúncios, visitas, perguntas, reclamações, reputação e Buy Box) não veio no arquivo. Clique em ↻ Atualizar; se continuar, a função marketplace_fase2() do banco falhou.</div>'); }
@@ -20597,7 +20598,7 @@ function mkAtendimento(){
     velhas.map(o => mkDD(String(o.dt).slice(0, 10)) + '/' + String(o.dt).slice(2, 4) + ' · ' + mkEsc(o.t) + ' — "' + mkEsc(o.q) + '"').join('<br>') + '</details>';
   /* reclamacoes */
   const C = (f.reclamacoes || []).map(x => ({id: x[0], dt: String(x[1] || '').slice(0, 10), tipo: x[2], etapa: x[3], st: x[4], mot: x[5] || '', med: !!x[6], res: !!x[7],
-    ben: x[8] || '', reso: x[9], por: x[10], item: x[11], t: x[12] || '', sku: x[13] || ''}));
+    ben: x[8] || '', reso: x[9], por: x[10], item: x[11], t: x[12] || '', sku: x[13] || '', ped: x[15] || ''}));
   const noPer = C.filter(o => o.dt >= p.ini && o.dt <= p.fim), ped = mkTot(p.ini, p.fim).ped;
   const contra = noPer.filter(o => o.ben === 'complainant').length;
   h += mkBarPeriodo() + '<div class="kpirow kpi-mini">' + mkKpi('Reclamações e cancelamentos', mkN(noPer.length), ped ? mkP(noPer.length / ped, 2) + ' dos ' + mkN(ped) + ' pedidos do período' : '') +
@@ -20626,10 +20627,12 @@ function mkAtendimento(){
     Object.values(porItem).sort((a, b) => b.n - a.n).slice(0, 12).map(o => '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<small class="mk-sub">' + mkEsc(o.sku) + '</small></td><td>' + o.n + '</td><td>' + (o.pnr || '') + '</td><td>' + (o.pdd || '') + '</td></tr>').join('') +
     '</tbody></table></div>') + '</div>';
   const ab = C.filter(o => o.st === 'opened');
-  if(ab.length) h += mkCard('Reclamações abertas', 'acompanhar no ML',
-    '<div class="mk-scroll"><table><thead><tr><th>Aberta em</th><th>Tipo</th><th>Motivo</th><th>Etapa</th><th>Anúncio</th></tr></thead><tbody>' +
+  if(ab.length) h += mkCard('Reclamações abertas', '<a href="' + MKT_URL_POSVENDA + '" target="_blank" rel="noopener">Abrir o Pós-venda no ML ↗</a>',
+    '<div class="mk-scroll"><table><thead><tr><th>Aberta em</th><th>Tipo</th><th>Motivo</th><th>Etapa</th><th>Anúncio</th><th></th></tr></thead><tbody>' +
     ab.map(o => '<tr><td>' + mkDD(o.dt) + '</td><td>' + mkEsc(MKT_RECL_TIPO[o.tipo] || o.tipo) + '</td><td>' + mkEsc(mkRecMot(o.mot)) + '</td><td>' + mkEsc(o.etapa === 'dispute' ? 'mediação' : (o.etapa === 'claim' ? 'reclamação' : o.etapa)) +
-      '</td><td class="mk-t">' + mkEsc(o.t || '—') + '<small class="mk-sub">' + mkEsc(o.sku) + '</small></td></tr>').join('') + '</tbody></table></div>');
+      '</td><td class="mk-t">' + mkEsc(o.t || '—') + '<small class="mk-sub">' + mkEsc(o.sku) + '</small></td>' +
+      '<td><a class="mk-resp" href="' + (/^\d+$/.test(o.ped) ? 'https://www.mercadolivre.com.br/vendas/' + o.ped + '/detalhe' : MKT_URL_POSVENDA) +
+      '" target="_blank" rel="noopener" title="Abre a venda no ML, onde fica a reclamação">Abrir no ML ↗</a></td></tr>').join('') + '</tbody></table></div>');
   h += '<div class="mk-note">Reputação = foto diária do termômetro do ML (taxas sobre as vendas dos últimos 60 dias). Reclamações seguem o filtro de datas do topo, pela data de abertura; "Não recebeu" (PNR) e "Diferente ou com defeito" (PDD) são os códigos de motivo do ML. Antes de 2026 a reclamação fica sem anúncio (a base de pedidos do ML começa em jan/26).</div>';
   return h;
 }
