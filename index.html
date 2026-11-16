@@ -21537,10 +21537,10 @@ async function relSalvarEmail(){
   const lib = document.getElementById('relLib');
   REL.salvando = true; REL.erro = ''; REL.msg = '';
   try{
-    const j = await relChamar({acao: 'email_salvar', para: v('relPara'), cc: v('relCc'), blocos, liberado: lib ? lib.checked : undefined});
+    const j = await relChamar({acao: 'email_salvar', para: v('relPara'), cc: v('relCc'), blocos, liberado: lib ? lib.checked : undefined, horario: v('relHora')});
     REL.d.email = Object.assign(REL.d.email || {}, j.email); relIniciarOrdem();
     REL.msg = 'E-mail salvo: ' + j.email.blocos.length + ' blocos, ' + (j.email.para.length + j.email.cc.length) + ' destinatário(s)' +
-      (j.email.liberado ? ' — o disparo diário já usa esta configuração.' : ' — ainda em ensaio (o diário segue como antes).');
+      (j.email.liberado ? ' — o disparo diário sai todo dia às ' + (j.email.horario || '07:00') + ' com esta configuração.' : ' — ainda em ensaio (o diário segue como antes).');
   }catch(e){ REL.erro = e.message; }
   REL.salvando = false; relDesenhar();
 }
@@ -21583,7 +21583,9 @@ function relDesenhar(){
     (c.liberado ? '' : '<div class="rl-aviso"><b>Em ensaio.</b> O disparo diário continua como antes (mesmos destinatários e blocos de sempre) e o "Forçar disparo" vai só para você. ' +
       'Depois de conferir o ensaio, marque "Liberar" abaixo: aí o diário passa a usar esta configuração e os números do Ao Vivo.</div>') +
     '<div class="rl-bar" style="align-items:flex-start"><div style="flex:1;min-width:260px"><label for="relPara">Para</label><br><textarea id="relPara" rows="3" style="width:100%;box-sizing:border-box">' + relEsc((c.para || []).join(', ')) + '</textarea></div>' +
-    '<div style="flex:1;min-width:260px"><label for="relCc">Cópia</label><br><textarea id="relCc" rows="3" style="width:100%;box-sizing:border-box">' + relEsc((c.cc || []).join(', ')) + '</textarea></div></div>' +
+    '<div style="flex:1;min-width:260px"><label for="relCc">Cópia</label><br><textarea id="relCc" rows="3" style="width:100%;box-sizing:border-box">' + relEsc((c.cc || []).join(', ')) + '</textarea></div>' +
+    '<div style="min-width:150px"><label for="relHora">Horário do envio diário</label><br><input type="time" id="relHora" value="' + relEsc(c.horario || '07:00') + '" style="font-size:16px;padding:8px 10px">' +
+    '<div class="rl-note" style="margin-top:4px">todo dia, horário de Brasília</div></div></div>' +
     '<label style="font-size:12px;font-weight:700;color:#5b6475;text-transform:uppercase;letter-spacing:.4px">Blocos do e-mail — marque e use ↑ ↓ para a ordem em que saem</label>' +
     '<ol class="rl-ordem">' + REL.ordem.map((k, i) => { const b = info[k]; if(!b) return '';
       return '<li><span class="rl-pos">' + (i + 1) + '</span><label><input type="checkbox" id="relB_' + k + '"' + (REL.liga[k] ? ' checked' : '') + '><span><b>' + b[1] + '</b>' +
@@ -21593,12 +21595,13 @@ function relDesenhar(){
     '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0 8px"><input type="checkbox" id="relB_metas"' + (REL.metas ? ' checked' : '') + '> ' +
     '<span><b>Metas e atingimento</b> <small style="color:#5b6475">— mostra a meta no Resumo e em cada equipe</small></span></label>' +
     '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:6px 0 14px"><input type="checkbox" id="relLib"' + (c.liberado ? ' checked' : '') + '> ' +
-    '<span><b>Liberar</b> — o disparo diário passa a usar esta configuração (destinatários, blocos e números do Ao Vivo)</span></label>' +
+    '<span><b>Liberar</b> — o disparo diário passa a usar esta configuração (destinatários, blocos, horário e números do Ao Vivo)</span></label>' +
     '<button class="rl-pri" data-rl="salvar"' + (REL.salvando ? ' disabled' : '') + '>Salvar e-mail</button>' +
     (c.alterado_em ? '<span class="rl-note" style="margin-left:12px">última alteração: ' + relEsc(c.alterado_por || '') + ' em ' + relQuando(c.alterado_em) + '</span>' : '') +
     '</div></div>';
   h += '<p class="rl-note">Como funciona: o botão grava o pedido no banco; uma rotina no computador do Igor confere a fila a cada minuto, gera pelo Ao Vivo e salva na pasta do Portal no SharePoint (subpasta relatorios). ' +
-    'A One Page gera junto um Word novo do mesmo mês, porque ela confere os números contra ele.</p>';
+    'A One Page gera junto um Word novo do mesmo mês, porque ela confere os números contra ele. ' +
+    'O e-mail diário sai uma vez por dia no horário escolhido; se o computador estiver desligado nesse horário, sai assim que ele ligar.</p>';
   alvo.innerHTML = h;
   relAgendar();
 }
