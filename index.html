@@ -20605,6 +20605,13 @@ function mkAtendimento(){
     mkKpi('Abertas agora', mkN(C.filter(o => o.st === 'opened').length), 'em qualquer data', C.some(o => o.st === 'opened') ? 'atencao' : '') +
     mkKpi('Com mediação do ML', mkN(noPer.filter(o => o.med).length), mkP(noPer.length ? noPer.filter(o => o.med).length / noPer.length : null) + ' do período') +
     mkKpi('Decididas a favor do comprador', mkN(contra), mkP(noPer.length ? contra / noPer.length : null) + ' do período') + '</div>';
+  const ab = C.filter(o => o.st === 'opened');
+  if(ab.length) h += mkCard('Reclamações abertas', '<a href="' + MKT_URL_POSVENDA + '" target="_blank" rel="noopener">Abrir o Pós-venda no ML ↗</a>',
+    '<div class="mk-scroll"><table><thead><tr><th>Aberta em</th><th>Tipo</th><th>Motivo</th><th>Etapa</th><th>Anúncio</th><th></th></tr></thead><tbody>' +
+    ab.map(o => '<tr><td>' + mkDD(o.dt) + '</td><td>' + mkEsc(MKT_RECL_TIPO[o.tipo] || o.tipo) + '</td><td>' + mkEsc(mkRecMot(o.mot)) + '</td><td>' + mkEsc(o.etapa === 'dispute' ? 'mediação' : (o.etapa === 'claim' ? 'reclamação' : o.etapa)) +
+      '</td><td class="mk-t">' + mkEsc(o.t || '—') + '<small class="mk-sub">' + mkEsc(o.sku) + '</small></td>' +
+      '<td><a class="mk-resp" href="' + (/^\d+$/.test(o.ped) ? 'https://www.mercadolivre.com.br/vendas/' + o.ped + '/detalhe' : MKT_URL_POSVENDA) +
+      '" target="_blank" rel="noopener" title="Abre a venda no ML, onde fica a reclamação">Abrir no ML ↗</a></td></tr>').join('') + '</tbody></table></div>');
   /* por mes x tipo (6 meses) */
   const meses = [...new Set(C.map(o => o.dt.slice(0, 7)))].sort().slice(-6);
   const tipos = Object.keys(MKT_RECL_TIPO).filter(k => C.some(o => o.tipo === k));
@@ -20626,13 +20633,6 @@ function mkAtendimento(){
     '<div class="mk-scroll"><table><thead><tr><th>Anúncio</th><th>Total</th><th>Não recebeu</th><th>Diferente/defeito</th></tr></thead><tbody>' +
     Object.values(porItem).sort((a, b) => b.n - a.n).slice(0, 12).map(o => '<tr><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '<small class="mk-sub">' + mkEsc(o.sku) + '</small></td><td>' + o.n + '</td><td>' + (o.pnr || '') + '</td><td>' + (o.pdd || '') + '</td></tr>').join('') +
     '</tbody></table></div>') + '</div>';
-  const ab = C.filter(o => o.st === 'opened');
-  if(ab.length) h += mkCard('Reclamações abertas', '<a href="' + MKT_URL_POSVENDA + '" target="_blank" rel="noopener">Abrir o Pós-venda no ML ↗</a>',
-    '<div class="mk-scroll"><table><thead><tr><th>Aberta em</th><th>Tipo</th><th>Motivo</th><th>Etapa</th><th>Anúncio</th><th></th></tr></thead><tbody>' +
-    ab.map(o => '<tr><td>' + mkDD(o.dt) + '</td><td>' + mkEsc(MKT_RECL_TIPO[o.tipo] || o.tipo) + '</td><td>' + mkEsc(mkRecMot(o.mot)) + '</td><td>' + mkEsc(o.etapa === 'dispute' ? 'mediação' : (o.etapa === 'claim' ? 'reclamação' : o.etapa)) +
-      '</td><td class="mk-t">' + mkEsc(o.t || '—') + '<small class="mk-sub">' + mkEsc(o.sku) + '</small></td>' +
-      '<td><a class="mk-resp" href="' + (/^\d+$/.test(o.ped) ? 'https://www.mercadolivre.com.br/vendas/' + o.ped + '/detalhe' : MKT_URL_POSVENDA) +
-      '" target="_blank" rel="noopener" title="Abre a venda no ML, onde fica a reclamação">Abrir no ML ↗</a></td></tr>').join('') + '</tbody></table></div>');
   h += '<div class="mk-note">Reputação = foto diária do termômetro do ML (taxas sobre as vendas dos últimos 60 dias). Reclamações seguem o filtro de datas do topo, pela data de abertura; "Não recebeu" (PNR) e "Diferente ou com defeito" (PDD) são os códigos de motivo do ML. Antes de 2026 a reclamação fica sem anúncio (a base de pedidos do ML começa em jan/26).</div>';
   return h;
 }
