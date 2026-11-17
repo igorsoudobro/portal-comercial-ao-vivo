@@ -21388,7 +21388,7 @@ const REL_TIPOS = [
   ['onepage', 'One Page', 'A página única para os sócios (PDF)'],
   ['email', 'Forçar disparo do e-mail', 'Manda agora, com os blocos e destinatários abaixo'],
 ];
-const REL_ROT = {word: 'Word', ppt: 'PPT', onepage: 'One Page', email: 'E-mail'};
+const REL_ROT = {word: 'Word', ppt: 'PPT', onepage: 'One Page', email: 'E-mail', sellout: 'Cobrança de Sell Out'};
 const REL_BLOCOS = [
   ['resumo', 'Resumo do mês', 'faturamento bruto, devoluções, líquido, bonificado, margem bruta, ticket, novos clientes'],
   ['metas', 'Metas e atingimento', 'meta do mês e por equipe'],
@@ -21529,6 +21529,29 @@ async function relBaixar(arquivo){
     window.open(meta['@microsoft.graph.downloadUrl'], '_blank');
   }catch(e){ alert(e.message); }
 }
+/* COBRANCA DE SELL OUT (17/11/2026): e-mail ao time no 1o dia util e no dia 5 */
+async function relSalvarSellout(){
+  if(REL.salvando) return;
+  const v = id => (document.getElementById(id) || {}).value || '';
+  REL.salvando = true; REL.erro = ''; REL.msg = '';
+  try{
+    const j = await relChamar({acao: 'sellout_salvar', para: v('soPara'), cc: v('soCc'), redes: v('soRedes'), obs: v('soObs'),
+      dias: v('soDias'), liberado: (document.getElementById('soLib') || {}).checked});
+    REL.d.sellout = Object.assign(REL.d.sellout || {}, j.sellout);
+    REL.msg = 'Cobrança de Sell Out salva: ' + j.sellout.redes.split('\n').length + ' redes, dias ' + j.sellout.dias.join(' e ') +
+      (j.sellout.liberado ? ' — sai automática.' : ' — desligada.');
+  }catch(e){ REL.erro = e.message; }
+  REL.salvando = false; relDesenhar();
+}
+async function relTesteSellout(){
+  try{
+    const mes = relMeses()[0];
+    await relChamar({acao: 'pedir', tipo: 'sellout', mes});
+    REL.msg = 'Teste da cobrança pedido: chega só para você em 1 a 2 minutos.';
+    await relCarregar();
+  }catch(e){ REL.erro = e.message; }
+  relDesenhar();
+}
 async function relSalvarEmail(){
   if(REL.salvando) return;
   const v = id => (document.getElementById(id) || {}).value || '';
@@ -21552,6 +21575,8 @@ function relClique(ev){
   else if(acao === 'baixar') relBaixar(b.dataset.arq);
   else if(acao === 'atualizar'){ relCarregar().then(relDesenhar); }
   else if(acao === 'salvar') relSalvarEmail();
+  else if(acao === 'so_salvar') relSalvarSellout();
+  else if(acao === 'so_teste') relTesteSellout();
   else if(acao === 'sobe') relMover(val, -1);
   else if(acao === 'desce') relMover(val, 1);
 }
@@ -21598,6 +21623,24 @@ function relDesenhar(){
     '<span><b>Liberar</b> — o disparo diário passa a usar esta configuração (destinatários, blocos, horário e números do Ao Vivo)</span></label>' +
     '<button class="rl-pri" data-rl="salvar"' + (REL.salvando ? ' disabled' : '') + '>Salvar e-mail</button>' +
     (c.alterado_em ? '<span class="rl-note" style="margin-left:12px">última alteração: ' + relEsc(c.alterado_por || '') + ' em ' + relQuando(c.alterado_em) + '</span>' : '') +
+    '</div></div>';
+  /* cobranca de Sell Out */
+  const so = (REL.d && REL.d.sellout) || {para: [], cc: [], redes: '', obs: '', dias: [1, 5], liberado: true};
+  const hrEmail = (c && c.horario) || '07:00';
+  h += '<div class="rl-card"><h3>Cobrança de Sell Out</h3><div class="rl-in">' +
+    '<p class="rl-note" style="margin:0 0 12px">E-mail para o time cobrar o Sell Out do mês que fechou: no <b>1º dia útil</b> e lembrete no <b>dia 5</b> ' +
+    '(fim de semana e feriado nacional passam para o próximo dia útil), às <b>' + relEsc(hrEmail) + '</b> — o mesmo horário do e-mail diário.</p>' +
+    '<div class="rl-bar" style="align-items:flex-start"><div style="flex:1;min-width:240px"><label for="soPara">Para</label><br><textarea id="soPara" rows="3" style="width:100%;box-sizing:border-box">' + relEsc((so.para || []).join(', ')) + '</textarea></div>' +
+    '<div style="flex:1;min-width:240px"><label for="soCc">Cópia</label><br><textarea id="soCc" rows="3" style="width:100%;box-sizing:border-box">' + relEsc((so.cc || []).join(', ')) + '</textarea></div></div>' +
+    '<div class="rl-bar" style="align-items:flex-start"><div style="flex:1;min-width:240px"><label for="soRedes">Redes (uma por linha — pode pôr o responsável: "Mundo Verde - Julia")</label><br>' +
+    '<textarea id="soRedes" rows="9" style="width:100%;box-sizing:border-box">' + relEsc(so.redes || '') + '</textarea></div>' +
+    '<div style="flex:1;min-width:240px"><label for="soObs">Observação no e-mail (opcional)</label><br><textarea id="soObs" rows="5" style="width:100%;box-sizing:border-box">' + relEsc(so.obs || '') + '</textarea>' +
+    '<div style="margin-top:10px"><label for="soDias">Dias do mês</label><br><input type="text" id="soDias" value="' + relEsc((so.dias || [1, 5]).join(', ')) + '" style="width:120px"></div></div></div>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:6px 0 14px"><input type="checkbox" id="soLib"' + (so.liberado ? ' checked' : '') + '> ' +
+    '<span><b>Ligada</b> — sai sozinha nos dias acima</span></label>' +
+    '<button class="rl-pri" data-rl="so_salvar"' + (REL.salvando ? ' disabled' : '') + '>Salvar cobrança</button> ' +
+    '<button class="rl-sec" data-rl="so_teste">Enviar teste só para mim</button>' +
+    (so.alterado_em ? '<span class="rl-note" style="margin-left:12px">última alteração: ' + relEsc(so.alterado_por || '') + ' em ' + relQuando(so.alterado_em) + '</span>' : '') +
     '</div></div>';
   h += '<p class="rl-note">Como funciona: o botão grava o pedido no banco; uma rotina no computador do Igor confere a fila a cada minuto, gera pelo Ao Vivo e salva na pasta do Portal no SharePoint (subpasta relatorios). ' +
     'A One Page gera junto um Word novo do mesmo mês, porque ela confere os números contra ele. ' +
