@@ -19620,7 +19620,13 @@ function mkRegistrar(){
       div.addEventListener('click', mkClique);
       div.addEventListener('change', mkMudou);
       div.addEventListener('keydown', ev => { if(ev.key === 'Enter' && ev.target && ev.target.classList && ev.target.classList.contains('mk-atalho')) mkClique(ev); });
-      div.addEventListener('input', ev => { if(ev.target && ev.target.id === 'mkBusca'){ MKT.busca = ev.target.value; mkDesenharDepois(); } });
+      div.addEventListener('input', ev => {
+        if(!ev.target || !ev.target.id) return;
+        if(ev.target.id === 'mkBusca'){ MKT.busca = ev.target.value; mkDesenharDepois(); }
+        /* a caixa da calculadora NAO redesenha: so reescreve as opcoes do
+           <select>, senao o foco salta fora a cada tecla */
+        else if(ev.target.id === 'mkPcBusca'){ MKT.pc.busca = ev.target.value; mkPcFiltrar(); }
+      });
     }
   }
   if(!MKT.patch && typeof abasPermitidas === 'function'){
@@ -19740,6 +19746,7 @@ function mkClique(ev){
   const [acao, val] = b.dataset.mk.split(':');
   if(acao === 'aba'){ MKT.aba = val; mkDesenhar(); window.scrollTo(0, 0); }
   else if(acao === 'atualizar') mkCarregar(true);
+  else if(acao === 'pccmv'){ MKT.pc.cmv = !MKT.pc.cmv; mkDesenhar(true); }
   else if(acao === 'pcreset'){ MKT.pc.A = {}; MKT.pc.B = {}; mkDesenhar(true); }
   else if(acao === 'pctipo'){ const [, k, tp] = b.dataset.mk.split(':'); MKT.pc[k].tipo = tp; mkDesenhar(true); }
   else if(acao === 'ord'){ MKT.ord = val; mkDesenhar(true); }
@@ -20787,8 +20794,12 @@ function mkPcHoje(sku){
   const it = Object.values(MKT.d.I || {}).find(i => String(i.s || '').toUpperCase() === String(sku).toUpperCase());
   const tipo = (it && it.tipo) || 'gold_pro';
   const ph = mkPrecoHoje([sku]);
+  /* CMV aberto, por unidade: bruto - devolvido - credito = liquido (igual a DRE).
+     cmvDev fica em 0 como na DRE do ML; o credito de insumos e a diferenca. */
+  const cmvb = (o.cmvb == null || isNaN(o.cmvb)) ? o.cmv : o.cmvb;
   return {ini, fim, q, t: o.t, tipo, preco: cheio / q, anun: o.anun, hoje: ph ? ph.v : null, cup: cheio ? o.cup / cheio : 0,
           fee: cheio ? o.tar / cheio : 0, envUn: o.env / q, imp: o.rec ? o.imp / o.rec : 0, cmvUn: o.cmv / q,
+          cmvbUn: cmvb / q, cmvDevUn: 0, credUn: (cmvb - o.cmv) / q,
           armUn: o.arm / q, ads: o.rec ? o.ads / o.rec : 0, liqUn: o.liq / q, recUn: o.rec / q, sem: o.sem};
 }
 function mkPcConta(H, c){
@@ -20812,6 +20823,30 @@ function mkPcMinimo(H, c, alvo){
   for(let i = 0; i < 60; i++){ const m = (lo + hi) / 2; ((mkPcConta(H, Object.assign({}, c, {preco: m})).mg || -1) >= alvo) ? hi = m : lo = m; }
   return hi;
 }
+/* reescreve as opcoes do seletor de produto da calculadora conforme o texto.
+   O SKU escolhido entra sempre, mesmo sem casar, para o <select> nao perder o valor. */
+function mkPcOpcoes(L){
+  return L.map(o => '<option value="' + mkEsc(o.k) + '"' + (o.k === MKT.pc.sku ? ' selected' : '') +
+                    '>' + mkEsc(o.t) + ' · ' + mkEsc(o.k) + '</option>').join('');
+}
+function mkPcAcha(L, q){
+  const t = String(q || '').trim().toUpperCase();
+  if(!t) return L;
+  const termos = t.split(/\s+/);
+  return L.filter(o => { const alvo = (o.t + ' ' + o.k).toUpperCase();
+                         return termos.every(x => alvo.indexOf(x) >= 0); });
+}
+function mkPcConta_(n, tot){ return n === tot ? mkN(tot) + ' produtos' : mkN(n) + ' de ' + mkN(tot); }
+function mkPcFiltrar(){
+  const sel = document.getElementById('mkPcSku'); if(!sel) return;
+  const L = (MKT.pc && MKT.pc.lista) || [];
+  const ok = mkPcAcha(L, MKT.pc.busca);
+  const lis = ok.find(o => o.k === MKT.pc.sku) ? ok : L.filter(o => o.k === MKT.pc.sku).concat(ok);
+  sel.innerHTML = mkPcOpcoes(lis);
+  sel.value = MKT.pc.sku;
+  const c = document.getElementById('mkPcCont');
+  if(c) c.textContent = ok.length ? mkPcConta_(ok.length, L.length) : 'nada com esse texto';
+}
 function mkPrecos(){
   const d = MKT.d;
   MKT.pc = MKT.pc || {sku: '', alvo: 0.15, A: {}, B: {}};
@@ -20833,8 +20868,15 @@ function mkPrecos(){
   const cor = v => v == null ? '' : (v >= pc.alvo ? 'color:var(--mk-pos);font-weight:800' : (v >= 0 ? 'color:var(--mk-warn);font-weight:800' : 'color:var(--mk-neg);font-weight:800'));
   const linha = (rot, h, a, b, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + rot + '</td><td>' + h + '</td><td>' + a + '</td><td>' + b + '</td></tr>';
   const minA = mkPcMinimo(H, pc.A, pc.alvo), minB = mkPcMinimo(H, pc.B, pc.alvo);
+  MKT.pc.lista = lista.map(o => ({k: o.k, t: o.t}));
+  const achou = mkPcAcha(MKT.pc.lista, pc.busca);
+  const listaSel = achou.find(o => o.k === pc.sku) ? achou : MKT.pc.lista.filter(o => o.k === pc.sku).concat(achou);
   let h = '<div class="mk-pc-top"><label class="mk-pc-f mk-pc-sku"><span>Produto</span><select id="mkPcSku">' +
-    lista.map(o => '<option value="' + mkEsc(o.k) + '"' + (o.k === pc.sku ? ' selected' : '') + '>' + mkEsc(o.t) + ' · ' + mkEsc(o.k) + '</option>').join('') + '</select></label>' +
+    mkPcOpcoes(listaSel) + '</select></label>' +
+    '<label class="mk-pc-f"><span>Achar produto</span><span class="mk-pc-in">' +
+    '<input id="mkPcBusca" placeholder="digite parte do nome ou do SKU" value="' + mkEsc(pc.busca || '') + '" style="min-width:210px">' +
+    '</span><small class="mk-sub" id="mkPcCont">' +
+    (achou.length ? mkPcConta_(achou.length, MKT.pc.lista.length) : 'nada com esse texto') + '</small></label>' +
     '<label class="mk-pc-f"><span>Margem alvo</span>' + pct('mkPcAlvo', pc.alvo) + '</label>' +
     '<button class="mk-pc-reset" data-mk="pcreset">↺ Voltar ao preço do anúncio hoje</button></div>';
   h += '<div class="kpirow">' + mkKpi('Margem hoje (por unidade)', mkR2(H.liqUn), mkP(H.recUn ? H.liqUn / H.recUn : null) + ' da receita · ' + mkN(H.q) + ' un em 30 dias', (H.liqUn / H.recUn) >= pc.alvo ? 'accent' : 'alerta') +
@@ -20851,7 +20893,13 @@ function mkPrecos(){
     linha('− Tarifa do ML', mkR2(H.preco * H.fee) + '<small class="mk-sub">' + mkP(H.fee) + ' do preço</small>', mkR2(A.tar) + '<small class="mk-sub">' + mkP(A.fee) + ' · ' + A.fonte + '</small>', mkR2(B.tar) + '<small class="mk-sub">' + mkP(B.fee) + ' · ' + B.fonte + '</small>') +
     linha('− Frete pago pela Dobro', mkR2(H.envUn), mkR2(A.envUn) + '<small class="mk-sub">' + (A.P >= 79 ? 'acima' : 'abaixo') + ' de R$ 79 · ' + A.fonte + '</small>', mkR2(B.envUn) + '<small class="mk-sub">' + (B.P >= 79 ? 'acima' : 'abaixo') + ' de R$ 79 · ' + B.fonte + '</small>') +
     linha('− Imposto', mkR2(H.recUn * H.imp) + '<small class="mk-sub">' + mkP(H.imp) + ' da receita</small>', mkR2(A.imp), mkR2(B.imp)) +
-    linha('− CMV líquido', mkR2(H.cmvUn) + (H.sem ? ' <span class="pill y">sem CMV</span>' : ''), mkR2(A.cmv), mkR2(B.cmv)) +
+    linha('<span data-mk="pccmv" style="cursor:pointer;user-select:none" title="abrir o CMV">− CMV líquido ' +
+          '<i style="font-style:normal;color:var(--mk-muted)">' + (pc.cmv ? '▾' : '▸') + '</i></span>',
+          mkR2(H.cmvUn) + (H.sem ? ' <span class="pill y">sem CMV</span>' : ''), mkR2(A.cmv), mkR2(B.cmv)) +
+    (pc.cmv ?
+      linha('CMV bruto', mkR2(H.cmvbUn), mkR2(H.cmvbUn), mkR2(H.cmvbUn), 'mk-subl') +
+      linha('− CMV devolvido', mkR2(H.cmvDevUn), mkR2(H.cmvDevUn), mkR2(H.cmvDevUn), 'mk-subl') +
+      linha('− Crédito de insumos', mkR2(H.credUn), mkR2(H.credUn), mkR2(H.credUn), 'mk-subl') : '') +
     linha('− Armazenagem Full', mkR2(H.armUn), mkR2(A.arm), mkR2(B.arm)) +
     linha('− Ads', mkR2(H.recUn * H.ads) + '<small class="mk-sub">' + mkP(H.ads) + ' da receita (TACOS do SKU)</small>', pct('mkPcA_ads', pc.A.ads != null ? pc.A.ads : H.ads), pct('mkPcB_ads', pc.B.ads != null ? pc.B.ads : H.ads)) +
     linha('= Margem por unidade', '<span style="' + cor(H.recUn ? H.liqUn / H.recUn : null) + '">' + mkR2(H.liqUn) + '</span>', '<span style="' + cor(A.mg) + '">' + mkR2(A.liq) + '</span>', '<span style="' + cor(B.mg) + '">' + mkR2(B.liq) + '</span>', 'mk-tot') +
