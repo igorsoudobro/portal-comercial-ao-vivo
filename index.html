@@ -16618,6 +16618,7 @@ async function anoSubstituirBase(){
       CALC.cmv = Object.assign({}, CALC.cmv||{}, k.cmv||{});
       CALC.imp_estado = Object.assign({}, CALC.imp_estado||{}, k.imp_estado||{});
       CALC.frete_estado = Object.assign({}, CALC.frete_estado||{}, k.frete_estado||{});
+      CALC.com_modelo = k.com_modelo || {};   /* tela Precificacao (18/11/2026) */
     }
     /* contatos (30/10/2026): os do arquivo do ano POR CIMA dos da rodada - a
        tabela e a mesma, so que agora alimentada tambem pelo banco */
@@ -21652,6 +21653,333 @@ try{ relRegistrar(); }catch(e){ console.error('relatorios: registrar', e); }
 </script>
 
 <style>
+#v-precificacao .pc-hero{background:linear-gradient(135deg,#2A3E7E,#1d2c5c);color:#fff;border-radius:14px;padding:18px 22px;margin-bottom:14px}
+#v-precificacao .pc-hero h2{margin:6px 0 4px;font-family:'Barlow Condensed',sans-serif;font-size:30px}
+#v-precificacao .pc-hero p{margin:0;opacity:.85;font-size:13px}
+#v-precificacao .pc-chip{display:inline-block;background:#D8C733;color:#2A3E7E;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:800;text-transform:uppercase}
+#v-precificacao .pc-top{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 2px 10px rgba(42,62,126,.08);margin-bottom:14px}
+#v-precificacao .pc-top label{display:block;font-size:11px;font-weight:800;color:#5b6475;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+#v-precificacao input,#v-precificacao select{border:1px solid #d5dae5;border-radius:8px;padding:7px 9px;font:inherit;background:#fff}
+#v-precificacao .pc-wrap{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(42,62,126,.08);overflow:auto;margin-bottom:14px}
+#v-precificacao table.pc{border-collapse:separate;border-spacing:0;font-size:12.5px;min-width:1100px;width:100%}
+#v-precificacao table.pc th,#v-precificacao table.pc td{padding:5px 8px;border-bottom:1px solid #f0f2f7;text-align:right;white-space:nowrap}
+#v-precificacao table.pc td:first-child,#v-precificacao table.pc th:first-child{text-align:left;position:sticky;left:0;background:#fff;z-index:1;min-width:190px;font-weight:600;color:#2A3E7E}
+#v-precificacao table.pc thead th{background:#2A3E7E;color:#fff;font-weight:800;text-align:center;position:sticky;top:0;z-index:2}
+#v-precificacao table.pc thead th:first-child{background:#2A3E7E;color:#fff;z-index:3}
+#v-precificacao table.pc thead small{display:block;font-weight:600;opacity:.8;font-size:11px}
+#v-precificacao table.pc th.pc-med,#v-precificacao table.pc td.pc-med{background:#F4F6FB}
+#v-precificacao table.pc thead th.pc-med{background:#D8C733;color:#2A3E7E}
+#v-precificacao tr.pc-sec td{background:#EEF2FB;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:#5b6475;font-weight:800;text-align:left}
+#v-precificacao tr.pc-tot td{font-weight:800;border-top:2px solid #dfe3ee}
+#v-precificacao td input{width:74px;text-align:right;padding:4px 6px;font-size:12.5px}
+#v-precificacao td input.pc-mx{border-color:#D8C733;background:#FFFBE6}
+#v-precificacao .pc-rs{display:block;color:#8a93a6;font-size:11px}
+#v-precificacao .pc-reset{border:none;background:none;color:#2A3E7E;cursor:pointer;font-size:12px;padding:0 0 0 3px}
+#v-precificacao .pc-pos{color:#1F9D6B;font-weight:800}#v-precificacao .pc-neg{color:#D9534F;font-weight:800}
+#v-precificacao .pc-note{font-size:12px;color:#5b6475;line-height:1.5;margin:0 4px 12px}
+#v-precificacao .pc-btn{background:#2A3E7E;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer}
+#v-precificacao .pc-btn2{background:#fff;color:#2A3E7E;border:1px solid #2A3E7E;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer}
+#v-precificacao .pc-cen{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(42,62,126,.08);padding:12px 16px;margin-bottom:14px}
+#v-precificacao .pc-cen h3{margin:0 0 8px;font-family:'Barlow Condensed',sans-serif;font-size:20px;color:#2A3E7E}
+#v-precificacao .pc-cen table{width:100%;border-collapse:collapse;font-size:12.5px}
+#v-precificacao .pc-cen td{padding:6px 8px;border-bottom:1px solid #f2f4f8}
+</style>
+<script>
+/* ===================== ADMIN > PRECIFICACAO (18/11/2026) ===================== */
+const PC_URL = 'https://ovvtdzpbmdtipeoewnle.supabase.co/functions/v1/relatorios-portal';
+const PC_ESP = ['Canal Verde', 'Body Shop', 'Esportivo'];
+const PC_RCA = ['RCA', 'Regionais 2 + Distr/Aliment'];
+/* colunas = as da planilha (aba Sugestao), com o share dela */
+const PC_COLS = [
+  {id: 'rca_esp', a: 'RCA', b: 'Especializado', mo: PC_RCA, ca: PC_ESP, tab: 'Especializado', modCom: 'RCA', mk: 1.85, desc: 0.05, share: 0.297},
+  {id: 'rca_var', a: 'RCA', b: 'Varejo alimentar', mo: PC_RCA, ca: ['Varejo Alimentar'], tab: 'Supermercados', modCom: 'RCA', mk: 1.70, desc: 0.05, share: 0.029},
+  {id: 'clt_esp', a: 'CLT', b: 'Especializado', mo: ['Time interno'], ca: PC_ESP, tab: 'Especializado', modCom: 'Time interno', mk: 1.85, desc: 0.05, share: 0.207},
+  {id: 'clt_var', a: 'CLT', b: 'Varejo alimentar', mo: ['Time interno'], ca: ['Varejo Alimentar'], tab: 'Supermercados', modCom: 'Time interno', mk: 1.70, desc: 0.05, share: 0.020},
+  {id: 'clt_ka', a: 'CLT', b: 'Key Account', mo: ['Key Account'], ca: ['Key Account', 'Varejo Alimentar', 'Farma'], tab: 'Supermercados', modCom: 'Key Account', mk: 1.70, desc: 0, share: 0.298},
+  {id: 'rca_dis', a: 'RCA', b: 'Distribuidor', mo: PC_RCA, ca: ['Distribuidor'], tab: 'Distribuidores', modCom: 'RCA', mk: 1.30, mk2: 1.85, desc: 0.05, share: 0.077, dist: true},
+  {id: 'clt_dis', a: 'CLT', b: 'Distribuidor', mo: ['Time interno'], ca: ['Distribuidor'], tab: 'Distribuidores', modCom: 'Time interno', mk: 1.30, mk2: 1.85, desc: 0.05, share: 0.072, dist: true},
+];
+const PC = {sku: '', novo: false, nome: '', uf: 'SP', alvo: 0.28, ov: {}, hist: null, cens: null, patch: false, msg: '', erro: ''};
+function pcEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function pcR(v){ return (v < 0 ? '-' : '') + 'R$ ' + Math.abs(v || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+function pcP(v, d){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(d == null ? 1 : d).replace('.', ',') + '%'; }
+function pcNum(s){ const t = String(s == null ? '' : s).trim().replace('%', ''); if(t === '') return null; const n = Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t); return isFinite(n) ? n : null; }
+function pcCalc(){ return (typeof CALC === 'object' && CALC) ? CALC : {}; }
+
+/* ---------- historico por coluna: a mesma dre() do Portal, ultimos 180 dias ---------- */
+function pcHistorico(){
+  if(PC.hist) return PC.hist;
+  const lim = new Date(Date.now() - 182 * 864e5).toLocaleDateString('sv');
+  const rows = (typeof ROWS !== 'undefined' && Array.isArray(ROWS)) ? ROWS.filter(r => (r.d || '') >= lim) : [];
+  const H = {};
+  PC_COLS.forEach(c => {
+    const rs = rows.filter(r => c.mo.includes(r.mo) && c.ca.includes(r.ca));
+    const d = rs.length && typeof dre === 'function' ? dre(rs) : null;
+    H[c.id] = d ? {fat: d.fatLiq, con: d.fatLiq ? d.contrato / d.fatLiq : 0, boni: d.fatLiq ? d.boni / d.fatLiq : 0,
+                   fr: d.fatLiq ? d.fr / d.fatLiq : 0, com: d.fatLiq ? d.com / d.fatLiq : 0, imp: d.fatLiq ? d.imp / d.fatLiq : 0, promo: 0}
+                 : {fat: 0, con: 0, boni: 0, fr: 0, com: 0, imp: 0, promo: 0};
+  });
+  /* promotoria: custo mensal das redes nos ultimos 6 meses, pela dona da rede na carteira */
+  try{
+    const ms = []; const h = new Date(); for(let i = 1; i <= 6; i++){ const x = new Date(h.getFullYear(), h.getMonth() - i, 1); ms.push(x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0')); }
+    const P = (typeof PROMO === 'object' && PROMO) ? PROMO : {};
+    ms.forEach(m => (P.meses && P.meses[m] || []).forEach(it => {
+      const dn = (P.dono || {})[it.rede_venda]; if(!dn) return;
+      const c = PC_COLS.find(c => c.mo.includes(dn.modelo) && c.ca.includes(dn.canal)); if(c) H[c.id].promo += +it.valor || 0;
+    }));
+    PC_COLS.forEach(c => { const o = H[c.id]; o.promo = o.fat ? o.promo / o.fat : 0; });
+  }catch(e){ console.error('precificacao: promotoria', e); }
+  /* credito de insumos por SKU (cr / CMV bruto) e o geral */
+  const cr = {}; let crT = 0, cbT = 0;
+  rows.forEach(r => { if(!r.venda) return; const cb = (r.cmv || 0) + (r.cr || 0); if(cb <= 0) return;
+    const o = cr[r.sk] || (cr[r.sk] = {cr: 0, cb: 0}); o.cr += r.cr || 0; o.cb += cb; crT += r.cr || 0; cbT += cb; });
+  H._cred = {}; Object.keys(cr).forEach(k => H._cred[k] = cr[k].cb ? cr[k].cr / cr[k].cb : 0);
+  H._credGeral = cbT ? crT / cbT : 0;
+  PC.hist = H;
+  return H;
+}
+
+/* ---------- sugestao de cada linha ---------- */
+function pcSugestao(c, campo){
+  const K = pcCalc(), H = pcHistorico(), h = H[c.id] || {};
+  const sku = PC.novo ? '' : PC.sku;
+  switch(campo){
+    case 'ref': return PC.novo ? null : (K.precos || {})[sku] ?? null;
+    case 'custo': return PC.novo ? null : ((K.tabelas || {})[c.tab] || {})[sku] ?? null;
+    case 'mk': return c.mk;
+    case 'mk2': return c.mk2 || null;
+    case 'desc': return c.desc;
+    case 'cmv': return PC.novo ? null : (K.cmv || {})[sku] ?? null;
+    case 'cred': return (sku && H._cred[sku] != null) ? H._cred[sku] : H._credGeral;
+    case 'imp': return (K.imp_estado || {})[PC.uf] ?? h.imp;
+    case 'fr': return (K.frete_estado || {})[PC.uf] ?? h.fr;
+    case 'com': return (K.com_modelo || {})[c.modCom] ?? h.com;
+    case 'con': return h.con;
+    case 'promo': return h.promo;
+    case 'acao': return 0;
+    case 'boni': return h.boni;
+    case 'share': return c.share;
+  }
+  return null;
+}
+/* valor usado = o que foi digitado, senao a sugestao. "ref" e "cmv" sao do produto (iguais em todas as colunas) */
+const PC_GLOBAIS = ['ref', 'cmv', 'cred'];
+function pcVal(c, campo){
+  const chave = PC_GLOBAIS.includes(campo) ? '_g' : c.id;
+  const o = (PC.ov[chave] || {})[campo];
+  if(o != null) return o;
+  const s = pcSugestao(c, campo);
+  return s == null ? 0 : s;
+}
+function pcMexido(c, campo){ const chave = PC_GLOBAIS.includes(campo) ? '_g' : c.id; return (PC.ov[chave] || {})[campo] != null; }
+
+function pcConta(c){
+  const v = k => +pcVal(c, k) || 0;
+  const o = {ref: v('ref'), custo: v('custo'), mk: v('mk'), mk2: c.dist ? v('mk2') : null, desc: v('desc'), cmvB: v('cmv'), cred: v('cred'),
+             imp: v('imp'), fr: v('fr'), com: v('com'), con: v('con'), promo: v('promo'), acao: v('acao'), boni: v('boni'), share: v('share')};
+  o.sug = o.custo * o.mk * (c.dist ? (o.mk2 || 1) : 1);          /* distribuidor: + markup do lojista = preco na ponta */
+  o.index = o.ref ? o.sug / o.ref - 1 : null;
+  o.mlj = o.sug ? (o.sug - o.custo * (c.dist ? o.mk : 1)) / o.sug : null;
+  o.nota = o.custo * (1 - o.desc);
+  o.cmv = o.cmvB * (1 - o.cred);
+  o.vImp = o.nota * o.imp; o.vFr = o.nota * o.fr; o.vCom = o.nota * o.com; o.vCon = o.nota * o.con;
+  o.vPromo = o.nota * o.promo; o.vAcao = o.sug * o.acao; o.vBoni = o.nota * o.boni;
+  o.mb = o.nota ? (o.nota - o.vImp - o.cmv) / o.nota : null;
+  o.servir = o.vImp + o.vFr + o.vCom + o.vCon + o.vPromo + o.vAcao + o.vBoni;
+  o.receita = o.nota - o.servir;
+  o.contrib = o.receita - o.cmv;
+  o.mc = o.nota ? o.contrib / o.nota : null;
+  o.vAlvo = o.nota * PC.alvo;
+  o.gap = o.contrib - o.vAlvo;
+  o.mCanal = o.nota ? o.cmv / o.nota : null;
+  return o;
+}
+
+/* ---------- linhas da tabela: [rotulo, campo editavel | null, como mostrar] ---------- */
+const PC_LINHAS = [
+  ['sec', 'Preço ao consumidor'],
+  ['Preço referência site', 'ref', 'r'],
+  ['Preço sugerido (ponta)', null, 'r', o => o.sug],
+  ['Index vs site', null, 'p', o => o.index],
+  ['Markup do cliente', 'mk', 'x'],
+  ['Markup do lojista (distribuidor)', 'mk2', 'x'],
+  ['Margem do lojista', null, 'p', o => o.mlj],
+  ['sec', 'Nota da Dobro'],
+  ['Custo base pro lojista', 'custo', 'r'],
+  ['Desconto adicional', 'desc', 'p'],
+  ['Valor da nota', null, 'r', o => o.nota, 'tot'],
+  ['sec', 'Produto'],
+  ['CMV bruto', 'cmv', 'r'],
+  ['Crédito de insumos', 'cred', 'p'],
+  ['CMV líquido', null, 'r', o => o.cmv],
+  ['Imposto (estado)', 'imp', 'p', o => o.vImp],
+  ['Margem bruta Dobro', null, 'p', o => o.mb, 'tot'],
+  ['sec', 'Custo de servir'],
+  ['Frete (estado)', 'fr', 'p', o => o.vFr],
+  ['Comissão (modelo)', 'com', 'p', o => o.vCom],
+  ['Contratos', 'con', 'p', o => o.vCon],
+  ['Promotoria', 'promo', 'p', o => o.vPromo],
+  ['Ação de Sell Out (sobre o preço na ponta)', 'acao', 'p', o => o.vAcao],
+  ['Bonificação', 'boni', 'p', o => o.vBoni],
+  ['Custo de servir total (com imposto)', null, 'r', o => o.servir, 'tot'],
+  ['sec', 'Resultado'],
+  ['Receita final', null, 'r', o => o.receita],
+  ['Contribuição', null, 'r', o => o.contrib, 'tot'],
+  ['Margem de contribuição', null, 'p', o => o.mc, 'tot'],
+  ['Valor da margem alvo', null, 'r', o => o.vAlvo],
+  ['GAP até o alvo', null, 'r', o => o.gap, 'tot'],
+  ['M do canal (CMV ÷ nota)', null, 'p', o => o.mCanal],
+  ['Share (peso na média)', 'share', 'p'],
+];
+
+function pcCelula(c, o, l){
+  const [rot, campo, fmt, fn] = l;
+  if(campo){
+    if(campo === 'mk2' && !c.dist) return '<td></td>';
+    const val = pcVal(c, campo), mex = pcMexido(c, campo);
+    const shown = fmt === 'p' ? (val * 100).toFixed(2).replace('.', ',') : (fmt === 'x' ? String(val).replace('.', ',') : (+val).toFixed(2).replace('.', ','));
+    const sug = pcSugestao(c, campo);
+    const tip = sug == null ? 'sem sugestão — digite' : 'sugestão: ' + (fmt === 'p' ? pcP(sug, 2) : (fmt === 'x' ? String(sug).replace('.', ',') : pcR(sug)));
+    const extra = fn ? '<span class="pc-rs">' + pcR(fn(o)) + '</span>' : '';
+    return '<td><input data-pc="' + c.id + '|' + campo + '" value="' + pcEsc(shown) + '" class="' + (mex ? 'pc-mx' : '') + '" title="' + pcEsc(tip) + '">' +
+      (fmt === 'p' ? '%' : '') + (mex ? '<button class="pc-reset" data-pcr="' + c.id + '|' + campo + '" title="voltar à sugestão (' + pcEsc(tip) + ')">↺</button>' : '') + extra + '</td>';
+  }
+  const v = fn(o);
+  let cls = '';
+  if(rot.startsWith('GAP') || rot === 'Contribuição') cls = v >= 0 ? 'pc-pos' : 'pc-neg';
+  if(rot === 'Margem de contribuição') cls = (v != null && v >= PC.alvo) ? 'pc-pos' : 'pc-neg';
+  return '<td class="' + cls + '">' + (fmt === 'p' ? pcP(v) : pcR(v)) + '</td>';
+}
+function pcMedia(O, l){
+  const [rot, campo, fmt, fn] = l;
+  const tot = O.reduce((a, x) => a + x.o.share, 0) || 1;
+  const pond = g => O.reduce((a, x) => a + (+g(x.o) || 0) * x.o.share, 0) / tot;
+  if(campo === 'share') return '<td class="pc-med">' + pcP(tot) + '</td>';
+  if(campo === 'mk' || campo === 'mk2' || campo === 'ref') return '<td class="pc-med"></td>';
+  const MAP = {desc: 'desc', cred: 'cred', imp: 'imp', fr: 'fr', com: 'com', con: 'con', promo: 'promo', acao: 'acao', boni: 'boni', custo: 'custo', cmv: 'cmvB'};
+  const v = campo ? pond(o => o[MAP[campo]]) : pond(fn);
+  return '<td class="pc-med">' + (fmt === 'p' ? pcP(v) : pcR(v)) + '</td>';
+}
+
+function pcDesenhar(){
+  const alvo = document.getElementById('v-precificacao'); if(!alvo) return;
+  const K = pcCalc();
+  const skus = Object.keys(K.skus || {}).filter(s => (K.skus[s] || {}).calc && !(K.skus[s] || {}).brinde)
+    .sort((a, b) => ((K.skus[a] || {}).prod || a).localeCompare((K.skus[b] || {}).prod || b));
+  if(!PC.sku && skus.length) PC.sku = skus[0];
+  const ufs = Object.keys(K.frete_estado || {}).concat(Object.keys(K.imp_estado || {})).filter((x, i, a) => a.indexOf(x) === i).sort();
+  let h = '<div class="pc-hero"><span class="pc-chip">Admin</span><h2>Precificação</h2>' +
+    '<p>Os canais lado a lado, como a planilha. As sugestões vêm do banco e do histórico real (últimos 6 meses); tudo é editável — o que você mexer fica amarelo e ganha um ↺ para voltar à sugestão.</p></div>';
+  if(PC.erro) h += '<div class="pc-note" style="color:#a12f2b">' + pcEsc(PC.erro) + '</div>';
+  if(PC.msg) h += '<div class="pc-note" style="color:#16714d">' + pcEsc(PC.msg) + '</div>';
+  h += '<div class="pc-top">' +
+    '<div><label>Produto</label><select id="pcModo"><option value="atual"' + (!PC.novo ? ' selected' : '') + '>Produto do portfólio</option><option value="novo"' + (PC.novo ? ' selected' : '') + '>Produto novo</option></select></div>' +
+    (PC.novo ? '<div><label>Nome do produto novo</label><input id="pcNome" value="' + pcEsc(PC.nome) + '" placeholder="ex.: Jelly Protein" style="width:220px"></div>'
+             : '<div><label>SKU</label><select id="pcSku" style="max-width:380px">' + skus.map(s => '<option value="' + pcEsc(s) + '"' + (s === PC.sku ? ' selected' : '') + '>' + pcEsc((K.skus[s] || {}).prod || s) + ' · ' + pcEsc(s) + '</option>').join('') + '</select></div>') +
+    '<div><label>Estado</label><select id="pcUf">' + ufs.map(u => '<option' + (u === PC.uf ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></div>' +
+    '<div><label>Margem alvo</label><input id="pcAlvo" value="' + (PC.alvo * 100).toFixed(1).replace('.', ',') + '" style="width:70px">%</div>' +
+    '<div style="margin-left:auto;display:flex;gap:8px"><button class="pc-btn2" data-pca="limpar">Voltar tudo às sugestões</button></div></div>';
+  if(PC.novo) h += '<p class="pc-note">Produto novo: digite o <b>preço de referência do site</b>, o <b>CMV</b> e o <b>custo base pro lojista</b> de cada canal (linhas em branco). O resto já vem sugerido.</p>';
+  const O = PC_COLS.map(c => ({c, o: pcConta(c)}));
+  h += '<div class="pc-wrap"><table class="pc"><thead><tr><th>' + pcEsc(PC.novo ? (PC.nome || 'Produto novo') : ((K.skus[PC.sku] || {}).prod || PC.sku)) + '<small>estado ' + pcEsc(PC.uf) + '</small></th>' +
+    PC_COLS.map(c => '<th>' + c.a + '<small>' + c.b + '</small></th>').join('') + '<th class="pc-med">Média ponderada<small>pelo share</small></th></tr></thead><tbody>' +
+    PC_LINHAS.map(l => l[0] === 'sec' ? '<tr class="pc-sec"><td colspan="' + (PC_COLS.length + 2) + '">' + l[1] + '</td></tr>'
+      : '<tr class="' + (l[4] === 'tot' ? 'pc-tot' : '') + '"><td>' + l[0] + '</td>' + O.map(x => pcCelula(x.c, x.o, l)).join('') + pcMedia(O, l) + '</tr>').join('') +
+    '</tbody></table></div>';
+  h += '<p class="pc-note">De onde vem cada sugestão: <b>custo base</b> = tabela de preço do canal (Especializado, Supermercados, Distribuidores); <b>imposto</b> e <b>frete</b> = % real do estado nas notas e nos CT-es dos últimos 12 meses; ' +
+    '<b>comissão</b> = % do modelo (RCA 7%, Time interno 0,5%, Key Account 0%); <b>contratos</b>, <b>promotoria</b> e <b>bonificação</b> = média real da coluna (modelo × canal) nos últimos 6 meses; ' +
+    '<b>crédito de insumos</b> = % real do SKU (produto novo: a média geral). Imposto, frete, comissão, contratos, promotoria e bonificação são sobre o valor da nota; a ação de Sell Out, sobre o preço na ponta. ' +
+    '"Especializado" = Canal Verde + Body Shop + Esportivo; "CLT" = Time interno.</p>';
+  /* cenarios */
+  const tk = (typeof relToken === 'function') ? relToken() : null;
+  h += '<div class="pc-cen"><h3>Cenários salvos</h3>' +
+    (tk ? '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input id="pcCenNome" placeholder="nome do cenário (ex.: Jelly Protein — preço 200)" style="flex:1;max-width:420px"><button class="pc-btn" data-pca="salvar">Salvar este cenário</button></div>' +
+          (PC.cens ? (PC.cens.length ? '<table>' + PC.cens.map(x => '<tr><td><b>' + pcEsc(x.nome) + '</b></td><td>' + pcEsc(x.por || '') + '</td><td>' + new Date(x.em).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'}) + '</td>' +
+            '<td style="text-align:right"><button class="pc-btn2" data-pca="abrir:' + x.id + '">Abrir</button> <button class="pc-btn2" data-pca="apagar:' + x.id + '">Apagar</button></td></tr>').join('') + '</table>' : '<p class="pc-note">Nenhum cenário salvo ainda.</p>')
+                   : '<p class="pc-note">Carregando…</p>')
+        : '<p class="pc-note">Para salvar e abrir cenários, entre pela aba <b>Gerar relatórios</b> (mesmo acesso da Premissas). A calculadora funciona sem isso.</p>') + '</div>';
+  alvo.innerHTML = h;
+  if(tk && PC.cens === null) pcCenarios();
+}
+
+async function pcChamar(corpo){
+  const r = await fetch(PC_URL, {method: 'POST', headers: {'content-type': 'application/json', 'x-premissas-token': (typeof relToken === 'function' ? relToken() : '') || ''}, body: JSON.stringify(corpo)});
+  const j = await r.json().catch(() => ({erro: 'resposta inválida'}));
+  if(!r.ok || j.erro) throw new Error(j.erro || ('erro ' + r.status));
+  return j;
+}
+async function pcCenarios(){
+  try{ PC.cens = (await pcChamar({acao: 'cen_listar'})).cenarios || []; }catch(e){ PC.cens = []; PC.erro = 'cenários: ' + e.message; }
+  if(typeof CURRENT !== 'undefined' && CURRENT === 'precificacao') pcDesenhar();
+}
+function pcEstado(){ return {sku: PC.sku, novo: PC.novo, nome: PC.nome, uf: PC.uf, alvo: PC.alvo, ov: PC.ov}; }
+
+function pcClique(ev){
+  const r = ev.target.closest('[data-pcr]');
+  if(r){ const [id, campo] = r.dataset.pcr.split('|'); const ch = PC_GLOBAIS.includes(campo) ? '_g' : id; if(PC.ov[ch]) delete PC.ov[ch][campo]; pcDesenhar(); return; }
+  const b = ev.target.closest('[data-pca]'); if(!b) return;
+  const [acao, val] = b.dataset.pca.split(':');
+  if(acao === 'limpar'){ PC.ov = {}; PC.msg = ''; pcDesenhar(); }
+  else if(acao === 'salvar'){
+    const nome = (document.getElementById('pcCenNome') || {}).value || '';
+    if(!nome.trim()){ alert('Dê um nome ao cenário.'); return; }
+    pcChamar({acao: 'cen_salvar', nome: nome.trim(), dados: pcEstado()}).then(() => { PC.msg = 'Cenário salvo: ' + nome.trim(); PC.cens = null; pcDesenhar(); })
+      .catch(e => { PC.erro = e.message; pcDesenhar(); });
+  }
+  else if(acao === 'abrir'){
+    const x = (PC.cens || []).find(c => String(c.id) === val); if(!x) return;
+    Object.assign(PC, {sku: x.dados.sku || PC.sku, novo: !!x.dados.novo, nome: x.dados.nome || '', uf: x.dados.uf || PC.uf, alvo: x.dados.alvo || PC.alvo, ov: x.dados.ov || {}});
+    PC.msg = 'Cenário aberto: ' + x.nome; pcDesenhar(); window.scrollTo(0, 0);
+  }
+  else if(acao === 'apagar'){
+    if(!confirm('Apagar este cenário?')) return;
+    pcChamar({acao: 'cen_apagar', id: +val}).then(() => { PC.cens = null; pcDesenhar(); }).catch(e => { PC.erro = e.message; pcDesenhar(); });
+  }
+}
+function pcMudou(ev){
+  const t = ev.target; if(!t) return;
+  if(t.dataset && t.dataset.pc){
+    const [id, campo] = t.dataset.pc.split('|'); const ch = PC_GLOBAIS.includes(campo) ? '_g' : id;
+    const fmt = (PC_LINHAS.find(l => l[1] === campo) || [])[2];
+    let n = pcNum(t.value);
+    if(n != null && fmt === 'p') n = n / 100;
+    (PC.ov[ch] || (PC.ov[ch] = {}))[campo] = n;
+    if(n == null) delete PC.ov[ch][campo];
+    pcDesenhar(); return;
+  }
+  if(t.id === 'pcModo'){ PC.novo = t.value === 'novo'; PC.ov = {}; }
+  else if(t.id === 'pcSku'){ PC.sku = t.value; PC.ov = {}; }
+  else if(t.id === 'pcNome'){ PC.nome = t.value; }
+  else if(t.id === 'pcUf'){ PC.uf = t.value; }
+  else if(t.id === 'pcAlvo'){ const n = pcNum(t.value); if(n != null) PC.alvo = n / 100; }
+  else return;
+  pcDesenhar();
+}
+function vPrecificacao(){ pcDesenhar(); }
+function pcRegistrar(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  if(!VIEWS.find(x => x.id === 'precificacao')) VIEWS.push({id: 'precificacao', lab: 'Precificação', fn: vPrecificacao});
+  if(!document.getElementById('v-precificacao')){
+    const irmao = document.querySelector('.view');
+    if(irmao && irmao.parentNode){
+      const div = document.createElement('div'); div.className = 'view'; div.id = 'v-precificacao';
+      irmao.parentNode.appendChild(div);
+      div.addEventListener('click', pcClique);
+      div.addEventListener('change', pcMudou);
+    }
+  }
+  if(!PC.patch && typeof abasPermitidas === 'function'){
+    const orig = abasPermitidas;
+    abasPermitidas = function(){ const adm = !!(typeof SESSION === 'object' && SESSION && SESSION.isAdmin); return orig().filter(x => x.id !== 'precificacao' || adm); };
+    PC.patch = true;
+  }
+  const nav = document.getElementById('nav');
+  if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
+}
+try{ pcRegistrar(); }catch(e){ console.error('precificacao: registrar', e); }
+</script>
+
+<style>
 /* ===================== UX / DESIGN UNICO (07/11/2026) ===================== */
 /* logo da Dobro no lugar do "d" (07/11/2026) */
 .ux-logo{display:block;width:auto}
@@ -21846,7 +22174,7 @@ const UX_GRUPOS = [
   ['produtos', 'Produtos', ['mix', 'gestcat', 'calc']],
   ['operacao', 'Operação', ['sla', 'degustacoes', 'links']],
   ['marketplace', 'Marketplace', ['mkgeral', 'marketplace', 'tiktok', 'amazon']],
-  ['admin',    'Admin',    ['premissas', 'relatorios', 'pendencias', 'acessos']],
+  ['admin',    'Admin',    ['premissas', 'relatorios', 'precificacao', 'pendencias', 'acessos']],
 ];
 function uxGrupoAberto(id){
   try{ const o = JSON.parse(localStorage.getItem('ux_menu') || '{}'); return id in o ? !!o[id] : null; }catch(e){ return null; }
