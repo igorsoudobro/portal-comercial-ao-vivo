@@ -19536,6 +19536,25 @@ try{ premRegistrar(); }catch(e){ console.error('premissas: registrar', e); }
 :is(#v-marketplace) .mk-atalho{cursor:pointer;transition:transform .12s,box-shadow .12s}
 :is(#v-marketplace) .mk-atalho:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(42,62,126,.18)}
 :is(#v-marketplace) a.mk-resp{display:inline-block;background:var(--mk-navy);color:#fff;border-radius:8px;padding:5px 10px;font-weight:700;font-size:12px;text-decoration:none;white-space:nowrap}
+:is(#v-marketplace) .mk-pc-top{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 14px;box-shadow:0 1px 2px rgba(30,46,95,.06)}
+:is(#v-marketplace) .mk-pc-f{display:flex;flex-direction:column;gap:5px}
+:is(#v-marketplace) .mk-pc-f>span{font-size:11px;font-weight:800;color:var(--mk-muted);text-transform:uppercase;letter-spacing:.5px}
+:is(#v-marketplace) .mk-pc-sku{flex:1;min-width:280px;max-width:640px}
+:is(#v-marketplace) .mk-pc-sku select{appearance:none;-webkit-appearance:none;width:100%;border:1.5px solid #D5DAE5;border-radius:10px;padding:10px 38px 10px 12px;font:inherit;font-size:14px;font-weight:600;color:var(--mk-navy);cursor:pointer;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%232A3E7E' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center}
+:is(#v-marketplace) .mk-pc-sku select:hover,:is(#v-marketplace) .mk-pc-sku select:focus{border-color:var(--mk-navy);outline:none;box-shadow:0 0 0 3px rgba(42,62,126,.12)}
+:is(#v-marketplace) .mk-pc-in{display:inline-flex;align-items:center;border:1.5px solid #D5DAE5;border-radius:10px;background:#fff;overflow:hidden;transition:border-color .12s,box-shadow .12s;height:36px}
+:is(#v-marketplace) .mk-pc-in:focus-within{border-color:var(--mk-navy);box-shadow:0 0 0 3px rgba(42,62,126,.12)}
+:is(#v-marketplace) .mk-pc-in i{font-style:normal;font-size:12px;font-weight:700;color:var(--mk-muted);padding:0 8px;background:#F4F6FB;align-self:stretch;display:flex;align-items:center}
+:is(#v-marketplace) .mk-pc-in input{border:none;outline:none;width:84px;padding:0 10px;text-align:right;font:inherit;font-size:14px;font-weight:700;color:var(--mk-navy);background:transparent;height:100%}
+:is(#v-marketplace) .mk-pc-seg{display:inline-flex;background:#EEF0F6;border-radius:10px;padding:3px;gap:2px}
+:is(#v-marketplace) .mk-pc-seg button{border:none;background:transparent;border-radius:8px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:700;color:var(--mk-muted);cursor:pointer}
+:is(#v-marketplace) .mk-pc-seg button.on{background:#fff;color:var(--mk-navy);box-shadow:0 1px 3px rgba(30,46,95,.15)}
+:is(#v-marketplace) .mk-pc-reset{border:1.5px solid var(--mk-navy);background:#fff;color:var(--mk-navy);border-radius:999px;padding:8px 16px;font-weight:700;cursor:pointer;margin-left:auto;height:36px}
+:is(#v-marketplace) .mk-pc-reset:hover{background:#EEF2FB}
+:is(#v-marketplace) table.mk-pc td{vertical-align:middle;padding-top:9px;padding-bottom:9px}
+:is(#v-marketplace) table.mk-pc th.mk-pc-cen{background:#EEF2FB;color:var(--mk-navy)}
+:is(#v-marketplace) table.mk-pc td:nth-child(3),:is(#v-marketplace) table.mk-pc td:nth-child(4){background:#FAFBFE}
 @media (max-width:760px){:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .grid2{grid-template-columns:1fr}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero{padding:16px}
   :is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .mk-hero h2{font-size:24px}:is(#v-marketplace,#v-tiktok,#v-amazon,#v-mkgeral) .kpi .val{font-size:24px}}
 </style>
@@ -19545,7 +19564,8 @@ const MKT = {d: null, carregando: false, erro: null, aba: 'geral', per: '30', or
              agrupar: false, lead: 15, ritmo: 30, mes: null, busca: '', charts: {}, patch: false};
 const MKT_ABAS = [['geral','Visão geral'],['gerencial','Tabela gerencial por SKU'],['skus','Venda por SKU'],
                   ['estoque','Estoque & ruptura'],['envios','Envios'],['margem','DRE'],['financas','Finanças'],['ads','Ads'],
-                  ['anuncios','Anúncios & conversão'],['atendimento','Atendimento'],['catalogo','Catálogo · Buy Box']];
+                  ['anuncios','Anúncios & conversão'],['atendimento','Atendimento'],['catalogo','Catálogo · Buy Box'],
+                  ['precos','Calculadora de preço']];
 const MKT_LT = {fulfillment:'Full', self_service:'Flex', xd_drop_off:'Drop-off (agência)',
                 cross_docking:'Coleta', drop_off:'Correios', '?':'Sem envio'};
 const MKT_CANC = {buyer:'Comprador desistiu', shipment:'Problema no envio', internal:'Interno do ML',
@@ -19720,6 +19740,8 @@ function mkClique(ev){
   const [acao, val] = b.dataset.mk.split(':');
   if(acao === 'aba'){ MKT.aba = val; mkDesenhar(); window.scrollTo(0, 0); }
   else if(acao === 'atualizar') mkCarregar(true);
+  else if(acao === 'pcreset'){ MKT.pc.A = {}; MKT.pc.B = {}; mkDesenhar(true); }
+  else if(acao === 'pctipo'){ const [, k, tp] = b.dataset.mk.split(':'); MKT.pc[k].tipo = tp; mkDesenhar(true); }
   else if(acao === 'ord'){ MKT.ord = val; mkDesenhar(true); }
   else if(acao === 'gsort'){ MKT.gs = {k: val, dir: MKT.gs.k === val ? -MKT.gs.dir : (val === 's' || val === 't' || val === 'fam' || val === 'dias' ? 1 : -1)}; mkDesenhar(true); }
   else if(acao === 'base'){ MKT.base = val; mkDesenhar(true); }
@@ -19735,6 +19757,13 @@ function mkMudou(ev){
   else if(t.id === 'mkLead') MKT.lead = Math.max(1, +t.value || 15);
   else if(t.id === 'mkRitmo') MKT.ritmo = +t.value || 30;
   else if(t.id === 'mkAnf') MKT.anf = t.value;
+  else if(t.id === 'mkPcSku'){ MKT.pc.sku = t.value; MKT.pc.A = {}; MKT.pc.B = {}; }
+  else if(t.id === 'mkPcAlvo'){ const n = +String(t.value).replace(',', '.'); if(isFinite(n)) MKT.pc.alvo = n / 100; }
+  else if(/^mkPc[AB]_/.test(t.id)){
+    const c = MKT.pc[t.id[4]], campo = t.id.slice(6);
+    if(campo === 'tipo') c.tipo = t.value;
+    else { const tx = String(t.value).trim(), n = +(tx.includes(',') ? tx.replace(/\./g, '').replace(',', '.') : tx); if(tx === '') delete c[campo]; else if(isFinite(n)) c[campo] = (campo === 'preco') ? n : n / 100; }
+  }
   else return;
   mkDesenhar(true);
 }
@@ -19762,7 +19791,7 @@ function mkDesenhar(manterScroll){
   html += '<div class="mk-tabs">' + MKT_ABAS.map(a => '<button data-mk="aba:' + a[0] + '" class="' + (MKT.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
   try{
     html += ({geral: mkGeral, gerencial: mkGerencial, skus: mkSkus, estoque: mkEstoque, envios: mkEnvios, margem: mkMargem, financas: mkFinancas, ads: mkAds,
-             anuncios: mkAnuncios, atendimento: mkAtendimento, catalogo: mkCatalogo}[MKT.aba] || mkGeral)();
+             anuncios: mkAnuncios, atendimento: mkAtendimento, catalogo: mkCatalogo, precos: mkPrecos}[MKT.aba] || mkGeral)();
   }catch(e){ console.error('marketplace: tela', e); html += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
   html += '<div class="mk-note">Atualização dos dados no banco: ' + (d.frescor || []).map(f => mkEsc(f[0]) + ' ' +
           (f[1] ? new Date(f[1]).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '—')).join(' · ') + '</div>';
@@ -20718,6 +20747,99 @@ function mkGraficosF2(){
     options: {maintainAspectRatio: false, plugins: {tooltip: {callbacks: {label: c => c.dataset.label + ': ' + (c.dataset.yAxisID === 'y2' ? (c.raw == null ? '—' : c.raw.toFixed(1).replace('.', ',') + '%') : mkN(c.raw)),
       afterBody: it => { const x = L[it[0].dataIndex]; return x ? mkN(x[2]) + ' pedidos' : ''; }}}},
       scales: {y: {position: 'left'}, y2: {position: 'right', grid: {display: false}, ticks: {callback: v => v + '%'}}}}});
+}
+
+/* ===================== CALCULADORA DE PRECO DO ML (18/11/2026, Igor) =====================
+   "Simule o preco base e os cupons e veja quanto sobra de margem", por SKU.
+   HOJE = a mesma conta da aba DRE (mkDreCalc) nos ultimos 30 dias, por unidade.
+   CENARIOS A e B: preco base e cupom (so a parte paga pela Dobro); tipo de anuncio e Ads opcionais.
+   Frete e tarifa trocam sozinhos quando o preco cruza R$ 79 (decisao do Igor): na faixa de hoje vale o
+   historico do proprio SKU; em outra faixa, a mediana medida nos pedidos do ML (90 dias ate 18/11/2026). */
+const MKT_PC_FAIXA = {   /* [tarifa mediana, frete pago pela Dobro por unidade] - meli.vw_venda_item, 90 d */
+  gold_pro:     {a: [0.1529, 7.21], b: [0.1529, 7.21], c: [0.1529, 8.31], d: [0.1496, 16.88]},
+  gold_special: {a: [0.1200, 7.21], b: [0.1200, 7.21], c: [0.1200, 8.41], d: [0.1056, 21.17]},
+};
+function mkPcFaixa(p){ return p < 29 ? 'a' : (p < 50 ? 'b' : (p < 79 ? 'c' : 'd')); }
+function mkPcHoje(sku){
+  const fim = mkDia(mkHoje(), -1), ini = mkDia(fim, -29);
+  const C = mkDreCalc(ini, fim);
+  const o = (C.lista || []).find(x => x.k === sku);
+  if(!o || !(o.q > 0)) return null;
+  const cheio = o.rec + o.cup, q = o.q;
+  const it = Object.values(MKT.d.I || {}).find(i => String(i.s || '').toUpperCase() === String(sku).toUpperCase());
+  const tipo = (it && it.tipo) || 'gold_pro';
+  return {ini, fim, q, t: o.t, tipo, preco: cheio / q, anun: o.anun, cup: cheio ? o.cup / cheio : 0,
+          fee: cheio ? o.tar / cheio : 0, envUn: o.env / q, imp: o.rec ? o.imp / o.rec : 0, cmvUn: o.cmv / q,
+          armUn: o.arm / q, ads: o.rec ? o.ads / o.rec : 0, liqUn: o.liq / q, recUn: o.rec / q, sem: o.sem};
+}
+function mkPcConta(H, c){
+  const P = +c.preco || 0, tipo = c.tipo || H.tipo, fx = mkPcFaixa(P), fxH = mkPcFaixa(H.preco);
+  const ref = (MKT_PC_FAIXA[tipo] || MKT_PC_FAIXA.gold_pro)[fx];
+  /* mesma faixa e mesmo tipo de hoje: o historico do SKU; senao, a mediana da faixa */
+  const igual = fx === fxH && tipo === H.tipo;
+  const fee = c.fee != null ? c.fee : (igual ? H.fee : ref[0]);
+  const envUn = c.env != null ? c.env : (igual ? H.envUn : ref[1]);
+  const rec = P * (1 - (+c.cup || 0));
+  const o = {P, rec, fee, envUn, tipo, fonte: igual ? 'histórico do SKU' : 'mediana da faixa',
+             tar: P * fee, imp: rec * H.imp, cmv: H.cmvUn, arm: H.armUn, ads: rec * (c.ads != null ? c.ads : H.ads)};
+  o.liq = rec - o.tar - envUn - o.imp - o.cmv - o.arm - o.ads;
+  o.mg = rec ? o.liq / rec : null;
+  return o;
+}
+/* menor preco base que chega na margem alvo, com o cupom e o tipo do cenario */
+function mkPcMinimo(H, c, alvo){
+  let lo = 1, hi = Math.max(50, (H.preco || 50) * 6);
+  if((mkPcConta(H, Object.assign({}, c, {preco: hi})).mg || -1) < alvo) return null;
+  for(let i = 0; i < 60; i++){ const m = (lo + hi) / 2; ((mkPcConta(H, Object.assign({}, c, {preco: m})).mg || -1) >= alvo) ? hi = m : lo = m; }
+  return hi;
+}
+function mkPrecos(){
+  const d = MKT.d;
+  MKT.pc = MKT.pc || {sku: '', alvo: 0.15, A: {}, B: {}};
+  const fim = mkDia(mkHoje(), -1), ini = mkDia(fim, -29);
+  const lista = (mkDreCalc(ini, fim).lista || []).filter(o => o.q > 0).sort((a, b) => b.rec - a.rec);
+  if(!lista.length) return mkCard('Sem vendas nos últimos 30 dias', '', '<div class="mk-note">Não há SKU vendido no período para simular.</div>');
+  if(!MKT.pc.sku || !lista.find(o => o.k === MKT.pc.sku)) MKT.pc.sku = lista[0].k;
+  const H = mkPcHoje(MKT.pc.sku);
+  const pc = MKT.pc;
+  ['A', 'B'].forEach(k => { const c = pc[k]; if(c.preco == null) c.preco = Math.round(H.preco * 100) / 100; if(c.cup == null) c.cup = Math.round(H.cup * 1000) / 1000; if(!c.tipo) c.tipo = H.tipo; });
+  const A = mkPcConta(H, pc.A), B = mkPcConta(H, pc.B);
+  const caixa = (id, v, d, pre, suf) => '<span class="mk-pc-in">' + (pre ? '<i>' + pre + '</i>' : '') +
+    '<input id="' + id + '" inputmode="decimal" value="' + (v == null ? '' : String((+v).toFixed(d == null ? 2 : d)).replace('.', ',')) + '">' + (suf ? '<i>' + suf + '</i>' : '') + '</span>';
+  const num = (id, v, d) => caixa(id, v, d, 'R$', '');
+  const pct = (id, v) => caixa(id, v == null ? null : v * 100, 1, '', '%');
+  const tipoSel = (id, v) => { const k = id.slice(4, 5);
+    return '<span class="mk-pc-seg"><button data-mk="pctipo:' + k + ':gold_pro" class="' + (v === 'gold_pro' ? 'on' : '') + '">Premium</button>' +
+           '<button data-mk="pctipo:' + k + ':gold_special" class="' + (v === 'gold_special' ? 'on' : '') + '">Clássico</button></span>'; };
+  const cor = v => v == null ? '' : (v >= pc.alvo ? 'color:var(--mk-pos);font-weight:800' : (v >= 0 ? 'color:var(--mk-warn);font-weight:800' : 'color:var(--mk-neg);font-weight:800'));
+  const linha = (rot, h, a, b, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + rot + '</td><td>' + h + '</td><td>' + a + '</td><td>' + b + '</td></tr>';
+  const minA = mkPcMinimo(H, pc.A, pc.alvo), minB = mkPcMinimo(H, pc.B, pc.alvo);
+  let h = '<div class="mk-pc-top"><label class="mk-pc-f mk-pc-sku"><span>Produto</span><select id="mkPcSku">' +
+    lista.map(o => '<option value="' + mkEsc(o.k) + '"' + (o.k === pc.sku ? ' selected' : '') + '>' + mkEsc(o.t) + ' · ' + mkEsc(o.k) + '</option>').join('') + '</select></label>' +
+    '<label class="mk-pc-f"><span>Margem alvo</span>' + pct('mkPcAlvo', pc.alvo) + '</label>' +
+    '<button class="mk-pc-reset" data-mk="pcreset">↺ Voltar ao preço de hoje</button></div>';
+  h += '<div class="kpirow">' + mkKpi('Margem hoje (por unidade)', mkR2(H.liqUn), mkP(H.recUn ? H.liqUn / H.recUn : null) + ' da receita · ' + mkN(H.q) + ' un em 30 dias', (H.liqUn / H.recUn) >= pc.alvo ? 'accent' : 'alerta') +
+    mkKpi('Cenário A', mkR2(A.liq), mkP(A.mg) + ' da receita · preço ' + mkR2(A.P), A.mg >= pc.alvo ? 'accent' : 'alerta') +
+    mkKpi('Cenário B', mkR2(B.liq), mkP(B.mg) + ' da receita · preço ' + mkR2(B.P), B.mg >= pc.alvo ? 'accent' : 'alerta') +
+    mkKpi('Preço mínimo p/ ' + mkP(pc.alvo, 0), minA ? mkR2(minA) : 'não chega', 'com o cupom do cenário A' + (minB && Math.abs(minB - minA) > 0.01 ? ' · B: ' + mkR2(minB) : '')) + '</div>';
+  h += mkCard('Simulação por unidade · ' + mkEsc(H.t), 'Hoje = últimos 30 dias (' + mkDD(H.ini) + ' a ' + mkDD(H.fim) + '), mesma conta da aba DRE',
+    '<div class="mk-scroll"><table class="mk-dre mk-pc"><thead><tr><th></th><th>Hoje</th><th class="mk-pc-cen">Cenário A</th><th class="mk-pc-cen">Cenário B</th></tr></thead><tbody>' +
+    linha('Preço base do anúncio', mkR2(H.preco) + (H.anun && Math.abs(H.anun - H.preco) > 0.5 ? '<small class="mk-sub">anúncio hoje: ' + mkR2(H.anun) + '</small>' : ''), num('mkPcA_preco', pc.A.preco), num('mkPcB_preco', pc.B.preco)) +
+    linha('Cupom pago pela Dobro', mkP(H.cup), pct('mkPcA_cup', pc.A.cup), pct('mkPcB_cup', pc.B.cup)) +
+    linha('Tipo de anúncio', mkTipo(H.tipo), tipoSel('mkPcA_tipo', pc.A.tipo), tipoSel('mkPcB_tipo', pc.B.tipo)) +
+    linha('= Receita (pago pelo comprador)', mkR2(H.recUn), mkR2(A.rec), mkR2(B.rec), 'mk-tot') +
+    linha('− Tarifa do ML', mkR2(H.preco * H.fee) + '<small class="mk-sub">' + mkP(H.fee) + ' do preço</small>', mkR2(A.tar) + '<small class="mk-sub">' + mkP(A.fee) + ' · ' + A.fonte + '</small>', mkR2(B.tar) + '<small class="mk-sub">' + mkP(B.fee) + ' · ' + B.fonte + '</small>') +
+    linha('− Frete pago pela Dobro', mkR2(H.envUn), mkR2(A.envUn) + '<small class="mk-sub">' + (A.P >= 79 ? 'acima' : 'abaixo') + ' de R$ 79 · ' + A.fonte + '</small>', mkR2(B.envUn) + '<small class="mk-sub">' + (B.P >= 79 ? 'acima' : 'abaixo') + ' de R$ 79 · ' + B.fonte + '</small>') +
+    linha('− Imposto', mkR2(H.recUn * H.imp) + '<small class="mk-sub">' + mkP(H.imp) + ' da receita</small>', mkR2(A.imp), mkR2(B.imp)) +
+    linha('− CMV líquido', mkR2(H.cmvUn) + (H.sem ? ' <span class="pill y">sem CMV</span>' : ''), mkR2(A.cmv), mkR2(B.cmv)) +
+    linha('− Armazenagem Full', mkR2(H.armUn), mkR2(A.arm), mkR2(B.arm)) +
+    linha('− Ads', mkR2(H.recUn * H.ads) + '<small class="mk-sub">' + mkP(H.ads) + ' da receita (TACOS do SKU)</small>', pct('mkPcA_ads', pc.A.ads != null ? pc.A.ads : H.ads), pct('mkPcB_ads', pc.B.ads != null ? pc.B.ads : H.ads)) +
+    linha('= Margem por unidade', '<span style="' + cor(H.recUn ? H.liqUn / H.recUn : null) + '">' + mkR2(H.liqUn) + '</span>', '<span style="' + cor(A.mg) + '">' + mkR2(A.liq) + '</span>', '<span style="' + cor(B.mg) + '">' + mkR2(B.liq) + '</span>', 'mk-tot') +
+    linha('Margem %', '<span style="' + cor(H.recUn ? H.liqUn / H.recUn : null) + '">' + mkP(H.recUn ? H.liqUn / H.recUn : null) + '</span>', '<span style="' + cor(A.mg) + '">' + mkP(A.mg) + '</span>', '<span style="' + cor(B.mg) + '">' + mkP(B.mg) + '</span>', 'mk-pct') +
+    '</tbody></table></div>' +
+    '<div class="mk-note">Cupom: só a parte paga pela Dobro (a parte do ML não sai da margem). Tarifa e frete: na mesma faixa de preço e tipo de anúncio de hoje vale o histórico do próprio SKU; se o preço cruzar a faixa (R$ 29 / 50 / 79) ou mudar o tipo, vale a mediana medida nos pedidos do ML dos últimos 90 dias ' +
+    '(Premium ~15% · frete ~R$ 7–8 abaixo de R$ 79 e ~R$ 17 acima; Clássico ~11–12% · ~R$ 8 / ~R$ 21). Imposto, CMV, Full e Ads por unidade = os do SKU hoje. Fora daqui (são da conta, não do SKU): outras cobranças do ML e antecipação.</div>');
+  return h;
 }
 
 try{ mkRegistrar(); }catch(e){ console.error('marketplace: registrar', e); }
