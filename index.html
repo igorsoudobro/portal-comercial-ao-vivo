@@ -22016,6 +22016,8 @@ try{ pcRegistrar(); }catch(e){ console.error('precificacao: registrar', e); }
 .ux-xls{font-size:11px;font-weight:700;color:var(--navy);background:#fff;border:1.5px solid var(--line);padding:4px 11px;cursor:pointer;white-space:nowrap}
 .ux-xls:hover{border-color:var(--navy);background:#EEF2FB}
 .ux-xls-bar{display:flex;justify-content:flex-end;margin:0 0 6px}
+/* Carteira: um botao so - o "Extrair carteira" (18/11/2026, Igor) */
+#cardClientesCarteira .btn-exp,#cardClientesCarteira .ux-xls{display:none !important}
 /* topo: busca e menu do celular */
 .ux-top-bt{background:rgba(255,255,255,.13);color:#fff;border:none;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
 .ux-top-bt:hover{background:rgba(255,255,255,.25)}
@@ -22399,6 +22401,42 @@ function uxBaixarTabela(t, nome){
   document.body.appendChild(a); a.click(); a.remove();
 }
 window.uxBaixarTabela = uxBaixarTabela;
+
+/* EXTRAIR CARTEIRA (18/11/2026, Igor: "saisse a carteira completa, independente da pagina, e viesse o
+   e-mail e telefone do cliente"). Antes o "Extrair carteira" baixava o RESUMO por vendedor e o "Excel"
+   so os 250 clientes da pagina. Agora os dois saem pelo exportador completo da Carteira (cartExportar:
+   todos os clientes que a tela montou, com e-mail e WhatsApp) e ganham a coluna Telefone fixo. So no
+   Ao Vivo - o Portal antigo fica como esta. */
+(function(){
+  try{
+    if(typeof cartExportar === 'function' && typeof expBaixar === 'function' && !window.__uxCartFone){
+      window.__uxCartFone = true;
+      const _cart = cartExportar;
+      cartExportar = function(card){
+        const _b = expBaixar;
+        expBaixar = function(linhas, nome){
+          const iW = linhas[0].indexOf('WhatsApp');
+          if(iW >= 0){
+            linhas[0].splice(iW + 1, 0, 'Telefone fixo');
+            for(let i = 1; i < linhas.length; i++){
+              const ct = (typeof contatoDe === 'function' && contatoDe(linhas[i][1])) || {};
+              linhas[i].splice(iW + 1, 0, ct.f ? ("'" + ct.f) : '');
+            }
+          }
+          return _b(linhas, nome);
+        };
+        try{ return _cart(card); } finally { expBaixar = _b; }
+      };
+    }
+  }catch(e){ console.error('ux: carteira completa', e); }
+  document.addEventListener('click', ev => {
+    const b = ev.target && ev.target.closest && ev.target.closest('#btnExtrairCarteira');
+    if(!b || typeof cartExportar !== 'function') return;
+    ev.stopImmediatePropagation(); ev.preventDefault();
+    const r = cartExportar(document.getElementById('cardClientesCarteira'));
+    if(!r) alert('A carteira ainda não terminou de carregar — tente de novo em alguns segundos.');
+  }, true);
+})();
 function uxExcel(raiz){
   raiz.querySelectorAll('table').forEach(t => {
     if(t.dataset.uxX || t.closest('#v-premissas') || t.closest('#uxBusca')) return;
@@ -22413,7 +22451,8 @@ function uxExcel(raiz){
                     ((VIEWS.find(v => v.id === CURRENT) || {}).lab || 'tabela')).replace(/ⓘ/g, '').trim();
     const bt = document.createElement('button');
     bt.type = 'button'; bt.className = 'ux-xls'; bt.textContent = '⬇ Excel'; bt.title = 'Baixar esta tabela (abre no Excel)';
-    bt.onclick = () => uxBaixarTabela(t, titulo);
+    /* Carteira: a tabela e paginada (250 de ~3 mil) - o botao usa o exportador completo, com contatos (18/11/2026) */
+    bt.onclick = () => (card && card.id === 'cardClientesCarteira' && typeof cartExportar === 'function' && cartExportar(card)) || uxBaixarTabela(t, titulo);
     const h = card && card.querySelector('.card-h');
     if(h) h.appendChild(bt);
     else { const bar = document.createElement('div'); bar.className = 'ux-xls-bar'; bar.appendChild(bt); t.parentNode.insertBefore(bar, t); }
