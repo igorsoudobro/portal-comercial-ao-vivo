@@ -19952,7 +19952,8 @@ function mkGerencial(){
     const A = ids.reduce((a, id) => { const v = d.A30[id];
       if(v) { a.cli += v.cli; a.imp += v.imp; a.un += v.un; } return a; }, {cli: 0, imp: 0, un: 0});
     return {inv: x[0], s: dob[String(x[1]).toUpperCase()] || x[1], sml: x[1], t: x[2], fam: x[11] || 'Outros', disp, transf, est, g7, g15, g30, r30, media, dias, dias0,
-            preco: ultPreco(x[0]), pago: g30 ? r30 / g30 : null,
+            preco: ultPreco(x[0]), phoje: (mkPrecoHoje([x[1], dob[String(x[1]).toUpperCase()]]) || {}).v ?? null,
+            phojeObj: mkPrecoHoje([x[1], dob[String(x[1]).toUpperCase()]]), pago: g30 ? r30 / g30 : null,
             tipo: tipos.map(mkTipo).sort().join(' + ') || '', tipoRaw: tipos, ads, roas: ads > 0 ? adsRec / ads : null, repor, urgente,
             ids, imp: A.imp, cli: A.cli, adsUn: A.un,
             ctr: A.imp > 0 ? A.cli / A.imp : null, conv: A.cli > 0 ? A.un / A.cli : null,
@@ -20013,8 +20014,8 @@ function mkGerencial(){
        <th> de verdade (e nao um colspan) porque o CSS congela a coluna 1 e 2 por
        nth-child: com colspan na frente, a faixa escorregaria por baixo delas. */
     '<div class="mk-scroll"><table class="mk-ger"><thead>' +
-    '<tr class="mk-grp"><th></th><th></th><th colspan="14"></th><th colspan="8" class="mk-adsg">ADS · últimos 30 dias</th></tr>' +
-    '<tr>' + th('s', 'SKU') + th('t', 'Descrição') + th('fam', 'Família') + th('abc', 'ABC') + th('r30', 'Receita 30 dias') + th('preco', 'Preço do anúncio') + th('pago', 'Preço médio pago') +
+    '<tr class="mk-grp"><th></th><th></th><th colspan="15"></th><th colspan="8" class="mk-adsg">ADS · últimos 30 dias</th></tr>' +
+    '<tr>' + th('s', 'SKU') + th('t', 'Descrição') + th('fam', 'Família') + th('abc', 'ABC') + th('r30', 'Receita 30 dias') + th('phoje', 'Preço do anúncio hoje') + th('preco', 'Preço da última venda') + th('pago', 'Preço médio pago') +
     th('disp', 'Estoque hoje') + th('transf', 'A caminho') + th('g7', 'Giro 7 dias') + th('g15', 'Giro 15 dias') + th('g30', 'Giro mês') + th('media', 'Média/dia') +
     th('dias0', 'Ruptura com o estoque de hoje') + th('dias', 'Ruptura após chegar o que está a caminho') + th('repor', 'Sugestão de reposição (30 dias + lead time)') +
     th('tipo', 'Tipo de anúncio') + th('ads', 'Investido') + th('imp', 'Impressões') + th('cli', 'Cliques') +
@@ -20023,8 +20024,9 @@ function mkGerencial(){
       '<td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) + '</td><td style="text-align:left;white-space:nowrap">' + mkEsc(o.fam) + '</td>' +
       '<td><span class="mk-abc ' + o.abc + '">' + o.abc + '</span></td>' +
       '<td>' + (o.r30 ? mkR(o.r30) : '—') + '</td>' +
+      '<td><b>' + mkPrecoHojeTxt(o.phojeObj) + '</b></td>' +
       '<td>' + (o.preco != null ? mkR2(o.preco) : '—') + '</td>' +
-      '<td>' + (o.pago != null ? mkR2(o.pago) + (o.preco ? '<small class="mk-sub">' + mkP(o.pago / o.preco - 1) + ' do anúncio</small>' : '') : '—') + '</td>' +
+      '<td>' + (o.pago != null ? mkR2(o.pago) + ((o.phoje || o.preco) ? '<small class="mk-sub">' + mkP(o.pago / (o.phoje || o.preco) - 1) + ' do anúncio' + (o.phoje ? ' hoje' : '') + '</small>' : '') : '—') + '</td>' +
       '<td>' + mkN(o.disp) + '</td><td>' + (o.transf ? mkN(o.transf) : '<span style="color:var(--mk-muted)">—</span>') + '</td>' +
       '<td>' + mkN(o.g7) + '</td><td>' + mkN(o.g15) + '</td><td>' + mkN(o.g30) + '</td><td>' + mkN1(o.media) + '</td>' +
       '<td>' + rup(o.dias0, o.data0, o.disp) + '</td><td>' + rup(o.dias, o.data, o.est) + '</td>' +
@@ -20048,7 +20050,7 @@ function mkGerencial(){
     (T.ads ? mkN1(T.adsRec / T.ads) + 'x' : '—') + '</td></tr>' +
     '</tbody></table></div>' +
     '<div class="mk-note">Ruptura = estoque ÷ média dos giros diários de 7, 15 e 30 dias. Sugestão de reposição = média diária × (30 dias + lead time do envio) − (estoque de hoje + a caminho), arredondado para cima: o estoque precisa durar até a mercadoria chegar ao Full e mais 30 dias depois. "Acaba antes de chegar" = a cobertura atual é menor que o lead time. "Com o estoque de hoje" usa só o disponível; "após chegar" soma o que está a caminho (transferência entre centros do Full). ' +
-    'Preço do anúncio = preço cheio da última venda (o preço atual do anúncio entra na Fase 2). Preço médio pago = líquido ÷ unidades em 30 dias. ' +
+    'Preço do anúncio hoje = o preço que está no ML agora (coleta diária de anúncios; o menor entre os anúncios ativos do SKU). Preço da última venda = preço cheio da última venda. Preço médio pago = líquido ÷ unidades em 30 dias. ' +
     'Bloco ADS = Product Ads dos anúncios desse SKU nos últimos 30 dias. ROAS = receita atribuída ÷ investido. CTR = cliques ÷ impressões. ' +
     'Conv. por clique = unidades vendidas por Ads ÷ cliques: mede só o tráfego pago, não a visita orgânica do anúncio — o Mercado Livre não manda visita. ' +
     'O detalhe por anúncio só existe desde 30/07/2026. Um anúncio que cobre mais de um SKU aparece inteiro em cada linha, mas conta uma vez só no total — por isso a soma das linhas fica acima do rodapé. ' +
@@ -20141,13 +20143,13 @@ function mkSkus(){
   const th = (c, lab) => '<th style="cursor:pointer" data-mk="ord:' + c + '">' + lab + (MKT.ord === c ? ' ▼' : '') + '</th>';
   h += mkCard('Ranking ' + (campo === 'q' ? 'por unidades' : 'por receita') + ' e curva ABC', 'clique em Receita ou Unidades para reordenar',
     '<div class="mk-scroll"><table><thead><tr><th style="text-align:left">SKU</th><th>' + (MKT.agrupar ? 'Produto' : 'Anúncio') + '</th><th>Categoria</th><th>ABC</th>' + th('rec', 'Receita') + th('q', 'Unidades') +
-    '<th>Pedidos</th><th title="preço cheio da última venda (sem cupom)">Preço do anúncio</th><th title="receita ÷ unidades no período (depois do cupom pago pela Dobro)">Preço médio pago</th><th>Un/dia</th><th>% do total</th><th>% acumulado</th></tr></thead><tbody>' +
+    '<th>Pedidos</th><th title="o preço que está no ML agora (coleta diária de anúncios)">Preço do anúncio hoje</th><th title="preço cheio da última venda (sem cupom)">Preço da última venda</th><th title="receita ÷ unidades no período (depois do cupom pago pela Dobro)">Preço médio pago</th><th>Un/dia</th><th>% do total</th><th>% acumulado</th></tr></thead><tbody>' +
     vis.map(o => '<tr><td style="text-align:left;white-space:nowrap;font-size:12px">' + [...o.skus].map(mkEsc).join('<br>') + (o.dob ? '<br><small style="color:var(--muted)">Dobro: ' + mkEsc(o.dob) + '</small>' : '') +
       '</td><td class="mk-t" title="' + mkEsc(o.t) + '">' + mkEsc(o.t) +
       '</td><td>' + mkEsc(o.cat) + '</td><td><span class="mk-abc ' + o.abc + '">' + o.abc + '</span></td><td>' + mkR(o.rec) + '</td><td>' + mkN(o.q) +
-      '</td><td>' + mkN(o.ped) + '</td><td>' + (o.anun != null ? mkR2(o.anun) : '—') + '</td><td>' + mkR2(o.q ? o.rec / o.q : 0) +
-      (o.anun ? '<small class="mk-sub">' + mkP((o.q ? o.rec / o.q : 0) / o.anun - 1) + ' do anúncio</small>' : '') + '</td><td>' + mkN1(o.q / dias) + '</td><td><div class="mk-share">' + mkP(o[campo] / totC) + '<i style="width:' + Math.max(2, Math.round(60 * o[campo] / (lista[0] ? lista[0][campo] : 1))) + 'px"></i></div></td><td>' + mkP(o.acum) + '</td></tr>').join('') +
-    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td></td><td>' + mkR(tot.rec) + '</td><td>' + mkN(tot.q) + '</td><td></td><td></td><td>' + mkR2(tot.q ? tot.rec / tot.q : 0) + '</td><td>' + mkN1(tot.q / dias) + '</td><td></td><td></td></tr>' +
+      '</td><td>' + mkN(o.ped) + '</td><td><b>' + mkPrecoHojeTxt(mkPrecoHoje([...o.skus])) + '</b></td><td>' + (o.anun != null ? mkR2(o.anun) : '—') + '</td><td>' + mkR2(o.q ? o.rec / o.q : 0) +
+      (o.anun ? '<small class="mk-sub">' + mkP((o.q ? o.rec / o.q : 0) / o.anun - 1) + ' da última venda</small>' : '') + '</td><td>' + mkN1(o.q / dias) + '</td><td><div class="mk-share">' + mkP(o[campo] / totC) + '<i style="width:' + Math.max(2, Math.round(60 * o[campo] / (lista[0] ? lista[0][campo] : 1))) + 'px"></i></div></td><td>' + mkP(o.acum) + '</td></tr>').join('') +
+    '<tr class="mk-tot"><td>Total</td><td></td><td></td><td></td><td>' + mkR(tot.rec) + '</td><td>' + mkN(tot.q) + '</td><td></td><td></td><td></td><td>' + mkR2(tot.q ? tot.rec / tot.q : 0) + '</td><td>' + mkN1(tot.q / dias) + '</td><td></td><td></td></tr>' +
     '</tbody></table></div>');
   /* dia da semana por SKU (top 10) */
   const top = lista.slice(0, 10), d = MKT.d, chave = sk => MKT.agrupar ? sk.p : sk.s;
@@ -20759,6 +20761,22 @@ const MKT_PC_FAIXA = {   /* [tarifa mediana, frete pago pela Dobro por unidade] 
   gold_pro:     {a: [0.1529, 7.21], b: [0.1529, 7.21], c: [0.1529, 8.31], d: [0.1496, 16.88]},
   gold_special: {a: [0.1200, 7.21], b: [0.1200, 7.21], c: [0.1200, 8.41], d: [0.1056, 21.17]},
 };
+/* PRECO DO ANUNCIO HOJE (18/11/2026, Igor: o Whey Choco Mousse esta R$ 219,90 no ML e o Portal
+   mostrava R$ 198 - o preco da UNICA venda em 30 dias). Vem da coleta diaria de anuncios (f2.anuncios,
+   meli.vw_anuncio_atual): menor preco entre os anuncios ATIVOS que tem o SKU. */
+function mkPrecoHoje(skus){
+  const f = (MKT.d && MKT.d.f2) || null; if(!f) return null;
+  const alvo = new Set([].concat(skus || []).filter(Boolean).map(x => String(x).toUpperCase()));
+  let min = null, max = null;
+  (f.anuncios || []).forEach(x => {
+    if(x[3] !== 'active' || !(+x[7] > 0)) return;
+    const tem = String(x[2] || '').split(' · ').some(k => alvo.has(k.trim().toUpperCase()));
+    if(!tem) return;
+    min = min == null ? +x[7] : Math.min(min, +x[7]); max = max == null ? +x[7] : Math.max(max, +x[7]);
+  });
+  return min == null ? null : {v: min, max};
+}
+function mkPrecoHojeTxt(ph){ return ph ? mkR2(ph.v) + (ph.max > ph.v + 0.005 ? '<small class="mk-sub">até ' + mkR2(ph.max) + ' em outro anúncio</small>' : '') : '—'; }
 function mkPcFaixa(p){ return p < 29 ? 'a' : (p < 50 ? 'b' : (p < 79 ? 'c' : 'd')); }
 function mkPcHoje(sku){
   const fim = mkDia(mkHoje(), -1), ini = mkDia(fim, -29);
@@ -20768,7 +20786,8 @@ function mkPcHoje(sku){
   const cheio = o.rec + o.cup, q = o.q;
   const it = Object.values(MKT.d.I || {}).find(i => String(i.s || '').toUpperCase() === String(sku).toUpperCase());
   const tipo = (it && it.tipo) || 'gold_pro';
-  return {ini, fim, q, t: o.t, tipo, preco: cheio / q, anun: o.anun, cup: cheio ? o.cup / cheio : 0,
+  const ph = mkPrecoHoje([sku]);
+  return {ini, fim, q, t: o.t, tipo, preco: cheio / q, anun: o.anun, hoje: ph ? ph.v : null, cup: cheio ? o.cup / cheio : 0,
           fee: cheio ? o.tar / cheio : 0, envUn: o.env / q, imp: o.rec ? o.imp / o.rec : 0, cmvUn: o.cmv / q,
           armUn: o.arm / q, ads: o.rec ? o.ads / o.rec : 0, liqUn: o.liq / q, recUn: o.rec / q, sem: o.sem};
 }
@@ -20802,7 +20821,7 @@ function mkPrecos(){
   if(!MKT.pc.sku || !lista.find(o => o.k === MKT.pc.sku)) MKT.pc.sku = lista[0].k;
   const H = mkPcHoje(MKT.pc.sku);
   const pc = MKT.pc;
-  ['A', 'B'].forEach(k => { const c = pc[k]; if(c.preco == null) c.preco = Math.round(H.preco * 100) / 100; if(c.cup == null) c.cup = Math.round(H.cup * 1000) / 1000; if(!c.tipo) c.tipo = H.tipo; });
+  ['A', 'B'].forEach(k => { const c = pc[k]; if(c.preco == null) c.preco = Math.round((H.hoje || H.preco) * 100) / 100; if(c.cup == null) c.cup = Math.round(H.cup * 1000) / 1000; if(!c.tipo) c.tipo = H.tipo; });
   const A = mkPcConta(H, pc.A), B = mkPcConta(H, pc.B);
   const caixa = (id, v, d, pre, suf) => '<span class="mk-pc-in">' + (pre ? '<i>' + pre + '</i>' : '') +
     '<input id="' + id + '" inputmode="decimal" value="' + (v == null ? '' : String((+v).toFixed(d == null ? 2 : d)).replace('.', ',')) + '">' + (suf ? '<i>' + suf + '</i>' : '') + '</span>';
@@ -20817,14 +20836,15 @@ function mkPrecos(){
   let h = '<div class="mk-pc-top"><label class="mk-pc-f mk-pc-sku"><span>Produto</span><select id="mkPcSku">' +
     lista.map(o => '<option value="' + mkEsc(o.k) + '"' + (o.k === pc.sku ? ' selected' : '') + '>' + mkEsc(o.t) + ' · ' + mkEsc(o.k) + '</option>').join('') + '</select></label>' +
     '<label class="mk-pc-f"><span>Margem alvo</span>' + pct('mkPcAlvo', pc.alvo) + '</label>' +
-    '<button class="mk-pc-reset" data-mk="pcreset">↺ Voltar ao preço de hoje</button></div>';
+    '<button class="mk-pc-reset" data-mk="pcreset">↺ Voltar ao preço do anúncio hoje</button></div>';
   h += '<div class="kpirow">' + mkKpi('Margem hoje (por unidade)', mkR2(H.liqUn), mkP(H.recUn ? H.liqUn / H.recUn : null) + ' da receita · ' + mkN(H.q) + ' un em 30 dias', (H.liqUn / H.recUn) >= pc.alvo ? 'accent' : 'alerta') +
     mkKpi('Cenário A', mkR2(A.liq), mkP(A.mg) + ' da receita · preço ' + mkR2(A.P), A.mg >= pc.alvo ? 'accent' : 'alerta') +
     mkKpi('Cenário B', mkR2(B.liq), mkP(B.mg) + ' da receita · preço ' + mkR2(B.P), B.mg >= pc.alvo ? 'accent' : 'alerta') +
     mkKpi('Preço mínimo p/ ' + mkP(pc.alvo, 0), minA ? mkR2(minA) : 'não chega', 'com o cupom do cenário A' + (minB && Math.abs(minB - minA) > 0.01 ? ' · B: ' + mkR2(minB) : '')) + '</div>';
   h += mkCard('Simulação por unidade · ' + mkEsc(H.t), 'Hoje = últimos 30 dias (' + mkDD(H.ini) + ' a ' + mkDD(H.fim) + '), mesma conta da aba DRE',
     '<div class="mk-scroll"><table class="mk-dre mk-pc"><thead><tr><th></th><th>Hoje</th><th class="mk-pc-cen">Cenário A</th><th class="mk-pc-cen">Cenário B</th></tr></thead><tbody>' +
-    linha('Preço base do anúncio', mkR2(H.preco) + (H.anun && Math.abs(H.anun - H.preco) > 0.5 ? '<small class="mk-sub">anúncio hoje: ' + mkR2(H.anun) + '</small>' : ''), num('mkPcA_preco', pc.A.preco), num('mkPcB_preco', pc.B.preco)) +
+    linha('Preço do anúncio hoje (ML)', H.hoje ? '<b>' + mkR2(H.hoje) + '</b>' : '—', '', '') +
+    linha('Preço base', mkR2(H.preco) + '<small class="mk-sub">média vendida em 30 dias (' + mkN(H.q) + ' un)</small>', num('mkPcA_preco', pc.A.preco), num('mkPcB_preco', pc.B.preco)) +
     linha('Cupom pago pela Dobro', mkP(H.cup), pct('mkPcA_cup', pc.A.cup), pct('mkPcB_cup', pc.B.cup)) +
     linha('Tipo de anúncio', mkTipo(H.tipo), tipoSel('mkPcA_tipo', pc.A.tipo), tipoSel('mkPcB_tipo', pc.B.tipo)) +
     linha('= Receita (pago pelo comprador)', mkR2(H.recUn), mkR2(A.rec), mkR2(B.rec), 'mk-tot') +
