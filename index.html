@@ -22170,6 +22170,508 @@ try{ pcRegistrar(); }catch(e){ console.error('precificacao: registrar', e); }
 </script>
 
 <style>
+#v-radar{--rd:#2A3E7E;--rd2:#1d2c5c;--am:#D8C733;--vm:#B23A48;--vd:#1F9D6B;--cz:#5b6475}
+#v-radar .rd-hero{background:linear-gradient(135deg,var(--rd),var(--rd2));color:#fff;border-radius:14px;padding:18px 22px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+#v-radar .rd-hero h2{margin:4px 0 2px;font-family:'Barlow Condensed',sans-serif;font-size:30px;letter-spacing:.3px}
+#v-radar .rd-hero p{margin:0;opacity:.85;font-size:13px}
+#v-radar .rd-chip{display:inline-block;background:var(--am);color:var(--rd);border-radius:999px;padding:3px 10px;font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase}
+#v-radar .rd-nav{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border-radius:12px;padding:6px 8px}
+#v-radar .rd-nav button{background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;width:30px;height:30px;border-radius:8px}
+#v-radar .rd-nav button:hover{background:rgba(255,255,255,.15)}#v-radar .rd-nav button[disabled]{opacity:.3;cursor:default}
+#v-radar .rd-nav select{border:none;border-radius:8px;padding:6px 8px;font:inherit;font-weight:700;color:var(--rd)}
+#v-radar .rd-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+#v-radar .rd-tabs button{border:1px solid #d5dae5;background:#fff;color:var(--rd);border-radius:999px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+#v-radar .rd-tabs button.on{background:var(--rd);color:#fff;border-color:var(--rd)}
+#v-radar .rd-tabs .rd-lock{font-size:10px;background:var(--am);color:var(--rd);border-radius:6px;padding:0 5px;margin-left:5px;font-weight:800}
+#v-radar .rd-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+#v-radar .rd-kpi{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(42,62,126,.08);padding:14px 16px;border-top:4px solid var(--rd)}
+#v-radar .rd-kpi.vm{border-top-color:var(--vm)}#v-radar .rd-kpi.am{border-top-color:var(--am)}
+#v-radar .rd-kpi small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--cz);font-weight:700}
+#v-radar .rd-kpi b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:30px;color:var(--rd);line-height:1.1;margin-top:4px}
+#v-radar .rd-kpi span{font-size:12px;color:var(--cz)}
+#v-radar .rd-up{color:var(--vm);font-weight:800}#v-radar .rd-down{color:var(--vd);font-weight:800}
+#v-radar .rd-card{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(42,62,126,.08);margin-bottom:14px;overflow:hidden}
+#v-radar .rd-card h3{margin:0;padding:13px 18px;border-bottom:1px solid #eef0f6;font-family:'Barlow Condensed',sans-serif;font-size:20px;color:var(--rd);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#v-radar .rd-card h3 small{font-family:inherit;font-size:12px;color:var(--cz);font-weight:400}
+#v-radar .rd-in{padding:14px 18px}
+#v-radar .rd-dois{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+@media(max-width:900px){#v-radar .rd-dois{grid-template-columns:1fr}}
+#v-radar .rd-tw{overflow-x:auto}
+#v-radar table{width:100%;border-collapse:collapse;font-size:13px}
+#v-radar th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--cz);padding:8px 10px;border-bottom:1px solid #eef0f6;white-space:nowrap;cursor:default}
+#v-radar th.ord{cursor:pointer}#v-radar th.ord:hover{color:var(--rd)}
+#v-radar td{padding:8px 10px;border-bottom:1px solid #f2f4f8;vertical-align:top;text-align:left}
+#v-radar th{text-align:left}
+#v-radar td.n,#v-radar th.n{text-align:right;white-space:nowrap}
+#v-radar tr.clk{cursor:pointer}#v-radar tr.clk:hover td{background:#f7f8fc}
+#v-radar .rd-sev{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:800;white-space:nowrap}
+#v-radar .s1{background:#EEF0F6;color:#4a5378}#v-radar .s2{background:#FFF3D6;color:#8a6200}#v-radar .s3{background:#FBE3E6;color:#a3364a}#v-radar .s4{background:#B23A48;color:#fff}
+#v-radar .rd-tag{display:inline-block;border-radius:6px;padding:1px 6px;font-size:10.5px;font-weight:800;background:#EEF0F6;color:var(--rd);margin-left:4px}
+#v-radar .rd-tag.sem{background:#FBE3E6;color:#a3364a}
+#v-radar .rd-abrir{color:var(--rd);font-weight:700;text-decoration:none;white-space:nowrap}
+#v-radar .rd-filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 18px;border-bottom:1px solid #eef0f6}
+#v-radar select,#v-radar input[type=text],#v-radar input[type=password],#v-radar input[type=date],#v-radar input[type=search]{border:1px solid #d5dae5;border-radius:10px;padding:8px 10px;font:inherit;background:#fff}
+#v-radar .rd-pri{background:var(--rd);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
+#v-radar .rd-pri[disabled]{opacity:.5;cursor:not-allowed}
+#v-radar .rd-sec{background:#fff;color:var(--rd);border:1px solid var(--rd);border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer}
+#v-radar .rd-perigo{background:#fff;color:var(--vm);border:1px solid var(--vm);border-radius:8px;padding:4px 10px;font-weight:700;cursor:pointer;font-size:12px}
+#v-radar .rd-aviso{background:#FFF6D6;border-radius:10px;padding:10px 14px;font-size:13px;color:#6b5500;margin:0 0 10px}
+#v-radar .rd-erro{background:#FBE7E6;border-radius:10px;padding:10px 14px;font-size:13px;color:#a12f2b;margin:0 0 10px}
+#v-radar .rd-ok{background:#E4F5EE;border-radius:10px;padding:10px 14px;font-size:13px;color:#16714d;margin:0 0 10px}
+#v-radar .rd-note{font-size:12px;color:var(--cz);line-height:1.5}
+#v-radar .rd-login{max-width:380px;margin:20px auto;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(42,62,126,.12);padding:22px}
+#v-radar .rd-login label,#v-radar .rd-form label{display:block;font-size:12px;font-weight:700;color:var(--cz);margin:12px 0 4px}
+#v-radar .rd-login input{width:100%;box-sizing:border-box}
+#v-radar .rd-drop{border:2px dashed #c9cfe0;border-radius:14px;padding:26px;text-align:center;color:var(--cz);cursor:pointer;background:#fafbfe}
+#v-radar .rd-drop.on{border-color:var(--rd);background:#eef1fa}
+#v-radar .rd-drop b{display:block;color:var(--rd);font-size:15px;margin-bottom:4px}
+#v-radar .rd-prev{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+#v-radar .rd-prev div{background:#f4f6fb;border-radius:10px;padding:10px 12px}
+#v-radar .rd-prev small{display:block;font-size:11px;color:var(--cz);text-transform:uppercase;font-weight:700}
+#v-radar .rd-prev b{font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--rd)}
+#v-radar tr.novo td{background:#FFFBEA}
+#v-radar tr.alt td{background:#FFF6D6}
+#v-radar .rd-bar{position:sticky;bottom:0;background:#fff;border-top:1px solid #eef0f6;padding:10px 18px;display:flex;gap:10px;align-items:center;justify-content:flex-end}
+#v-radar svg text{font-family:inherit}
+</style>
+<script>
+/* ===================== RADAR DE PMA (23/11/2026) ===================== */
+const RADAR_URL = 'https://ovvtdzpbmdtipeoewnle.supabase.co/functions/v1/radar-portal';
+const RADAR_EDITORES = ['geovanna carvalho'];            /* alem dos admins (a funcao confere de novo) */
+const RD = {d: null, erro: '', carregando: false, aba: 'geral', ci: null, f: {eq: '', vend: '', canal: '', q: ''}, ord: {k: 'gap', d: -1},
+            adm: null, admErro: '', admMsg: '', arq: null, prev: null, enviando: false, sel: {}, selQ: '', selSo: '', patch: false};
+const RD_SEM = 'Sem vendedor', RD_1P = 'Dobro / varejo 1P';
+const RD_HOUSE = new Set(['amazon','amazoncombr','amazoncombrseller','dobro','dobroltda','dobrolojaoficial','drogaraia','drogaraiacombr','drogasil','drogasilcombr','magazineluiza','mercadolivre','mercadolivrecombr','shopee','shopeecombr']);
+
+function rdEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function rdN(v){ return v == null ? '—' : Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 0}); }
+function rdR(v){ return v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+function rdP(v, c){ return v == null ? '—' : (v * 100).toLocaleString('pt-BR', {minimumFractionDigits: c == null ? 1 : c, maximumFractionDigits: c == null ? 1 : c}) + '%'; }
+function rdD(d){ return d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '—'; }
+function rdNorm(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function rdAdId(url){
+  const u = String(url || ''); let m = u.match(/item_id[:=](MLB\d+)/i); if(m) return m[1].toUpperCase();
+  m = u.match(/(MLBU?)-?(\d{6,})/i); if(m) return (m[1] + m[2]).toUpperCase();
+  m = u.match(/\/dp\/([A-Z0-9]{10})/i); if(m) return 'AMZ' + m[1].toUpperCase();
+  return u.split('?')[0].split('#')[0].replace(/\/+$/, '').toLowerCase();
+}
+function rdSev(g){ if(g == null) return ''; if(g <= .05) return 's1'; if(g <= .15) return 's2'; if(g <= .30) return 's3'; return 's4'; }
+function rdEditor(){
+  if(typeof SESSION !== 'object' || !SESSION) return false;
+  return !!SESSION.isAdmin || RADAR_EDITORES.indexOf(String(SESSION.user || '').toLowerCase()) >= 0;
+}
+
+/* ---------- equipe do vendedor: a supervisao do Portal ---------- */
+function rdModeloDe(v){ return (RD.d && RD.d.vend && RD.d.vend[v]) || ''; }
+/* executivo = supervisao do banco (mesma regra da aba Premissas): avulso > modelo > resto dos RCAs */
+function rdExecDe(v){
+  if(!v || v === RD_SEM || v === RD_1P || !RD.d) return '';
+  const sup = RD.d.sup || [], mo = rdModeloDe(v);
+  let s = sup.find(x => (x[3] || []).indexOf(v) >= 0); if(s) return s[0];
+  s = sup.find(x => mo && (x[1] || []).indexOf(mo) >= 0); if(s) return s[0];
+  if(/^RCA\s*-/i.test(v)){ s = sup.find(x => x[2]); if(s) return s[0]; }
+  return '';
+}
+function rdEquipe(v){
+  if(v === RD_SEM) return 'sem'; if(v === RD_1P) return '1p';
+  const ex = rdExecDe(v); if(ex) return 'sup:' + ex;
+  return 'outros';
+}
+function rdEquipeRot(k){
+  if(k === 'sem') return 'Sem vendedor'; if(k === '1p') return 'Dobro / varejo 1P'; if(k === 'outros') return 'Time interno e outros';
+  return 'Equipe ' + String(k).slice(4).split(' ')[0];
+}
+
+/* ---------- dados ---------- */
+async function rdCarregar(forcar){
+  if(RD.carregando) return;
+  RD.carregando = true; RD.erro = ''; if(forcar) RD.d = null; rdDesenhar();
+  try{
+    const d = (typeof aovivoBaixarArquivo === 'function') ? await aovivoBaixarArquivo('radar.json') : null;
+    if(!d || !Array.isArray(d.coletas)) throw new Error('o arquivo radar.json ainda não foi publicado');
+    rdPreparar(d); RD.d = d;
+    if(RD.ci == null || RD.ci >= d.C.length) RD.ci = d.C.length - 1;
+  }catch(e){ RD.erro = e.message || String(e); console.error('radar:', e); }
+  RD.carregando = false;
+  if(typeof CURRENT === 'undefined' || CURRENT === 'radar') rdDesenhar();
+}
+function rdPreparar(d){
+  const S = {}; Object.keys(d.sellers || {}).forEach(s => { S[s.toLowerCase()] = {nome: s, v: d.sellers[s][0], cnpj: d.sellers[s][1], razao: d.sellers[s][2]}; });
+  d.S = S;
+  d.C = d.coletas.map(c => ({d: c[0], orig: c[1], n: c[2], viol: c[3], ok: c[4], semest: c[5], por: c[6], rows: []}));
+  const vendDe = s => { const x = S[String(s).toLowerCase()]; if(x && x.v) return x.v; return RD_HOUSE.has(rdNorm(s)) ? RD_1P : RD_SEM; };
+  d.vendDe = vendDe;
+  const D = d.dic;
+  d.viol.forEach(r => {
+    const s = D.s[r[4]], url = D.u[r[3]], pma = r[5], pr = r[6];
+    const gap = (pma > 0 && pr > 0 && pr <= pma * 3) ? (pma - pr) / pma : null;
+    d.C[r[0]].rows.push({t: D.t[r[1]], c: D.c[r[2]], u: url, s, pma, pr, gap, bb: r[7], v: vendDe(s), key: rdNorm(s) + '|' + rdAdId(url)});
+  });
+  d.C.forEach(c => { c.keys = new Set(c.rows.map(r => r.key)); });
+  if(d.ult){ d.C[d.ult.ci].resto = d.ult.rows.map(r => ({t: D.t[r[0]], c: D.c[r[1]], s: D.s[r[3]], st: r[6]})); }
+  d.canais = [...new Set(d.dic.c)].filter(Boolean).sort();
+}
+function rdFiltrar(rows){
+  const f = RD.f, q = rdNorm(f.q);
+  return rows.filter(r => (!f.canal || r.c === f.canal) && (!f.vend || r.v === f.vend) && (!f.eq || rdEquipe(r.v) === f.eq)
+    && (!q || rdNorm(r.s + ' ' + r.t + ' ' + r.v).indexOf(q) >= 0));
+}
+function rdSeguidas(key, ci){ let n = 0; const C = RD.d.C; while(ci >= 0 && C[ci].keys.has(key)){ n++; ci--; } return n; }
+function rdStats(rows){
+  const gaps = rows.map(r => r.gap).filter(g => g != null);
+  return {n: rows.length, sellers: new Set(rows.map(r => rdNorm(r.s))).size,
+          gap: gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : null,
+          reais: rows.reduce((a, r) => a + ((r.pma > 0 && r.pr > 0 && r.pr < r.pma) ? r.pma - r.pr : 0), 0)};
+}
+
+/* ---------- desenho ---------- */
+function rdDelta(cur, ant, inv){
+  if(ant == null || cur == null) return '';
+  const df = cur - ant; if(!df) return '<span>= anterior</span>';
+  const ruim = inv ? df < 0 : df > 0;
+  return `<span class="${ruim ? 'rd-up' : 'rd-down'}">${df > 0 ? '▲ +' : '▼ '}${rdN(df)}</span> <span>vs anterior</span>`;
+}
+function rdDesenhar(){
+  const el = document.getElementById('v-radar'); if(!el) return;
+  const ed = rdEditor();
+  if(!ed && (RD.aba === 'carga' || RD.aba === 'prem')) RD.aba = 'geral';
+  const d = RD.d, c = d && d.C[RD.ci];
+  const navC = d ? `<div class="rd-nav"><button data-rd="ant" ${RD.ci > 0 ? '' : 'disabled'} title="coleta anterior">‹</button>
+      <select id="rdColeta">${d.C.map((x, i) => `<option value="${i}" ${i === RD.ci ? 'selected' : ''}>${rdD(x.d)}${x.orig === 'historico' ? ' · histórico' : ''}</option>`).slice().reverse().join('')}</select>
+      <button data-rd="prox" ${RD.ci < d.C.length - 1 ? '' : 'disabled'} title="próxima coleta">›</button></div>` : '';
+  const tabs = [['geral', 'Visão geral'], ['anuncios', 'Anúncios violados'], ['sem', 'Sellers sem vendedor']];
+  if(ed) tabs.push(['carga', 'Carregar coleta', 1], ['prem', 'Premissas', 1]);
+  let corpo = '';
+  if(RD.aba === 'carga') corpo = rdCarga();
+  else if(RD.aba === 'prem') corpo = rdPremissas();
+  else if(RD.carregando && !d) corpo = '<div class="rd-card"><div class="rd-in">Carregando o Radar…</div></div>';
+  else if(RD.erro && !d) corpo = `<div class="rd-erro">Não deu para abrir o Radar: ${rdEsc(RD.erro)}</div>`;
+  else if(d && c) corpo = RD.aba === 'anuncios' ? rdAnuncios(c) : RD.aba === 'sem' ? rdSemVendedor(c) : rdGeral(c);
+  el.innerHTML = `<div class="rd-hero"><div><span class="rd-chip">Marketplace</span><h2>Radar de PMA</h2>
+      <p>Anúncios dos sellers abaixo do preço mínimo (PMA), pela coleta diária da consultoria.${d ? ` Atualizado em ${new Date(d.gerado_em).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}.` : ''}</p></div>${navC}</div>
+    <div class="rd-tabs">${tabs.map(t => `<button data-rd-aba="${t[0]}" class="${RD.aba === t[0] ? 'on' : ''}">${t[1]}${t[2] ? '<span class="rd-lock">restrito</span>' : ''}</button>`).join('')}</div>${corpo}`;
+}
+function rdGeral(c){
+  const C = RD.d.C, ant = RD.ci > 0 ? C[RD.ci - 1] : null;
+  const rows = rdFiltrar(c.rows), st = rdStats(rows), sa = ant ? rdStats(rdFiltrar(ant.rows)) : null;
+  const novos = ant ? rows.filter(r => !ant.keys.has(r.key)).length : null;
+  const sairam = ant ? rdFiltrar(ant.rows).filter(r => !c.keys.has(r.key)).length : null;
+  const total = c.orig === 'total' ? c.n : null;
+  const filtro = RD.f.eq || RD.f.vend || RD.f.canal || RD.f.q;
+  const kp = [
+    ['vm', 'Anúncios violados', rdN(st.n), rdDelta(st.n, sa && sa.n)],
+    ['', 'Sellers violando', rdN(st.sellers), rdDelta(st.sellers, sa && sa.sellers)],
+    ['am', 'Desconto médio', rdP(st.gap), 'abaixo do PMA'],
+    ['', 'R$ abaixo do PMA', rdR(st.reais), 'soma da diferença por anúncio'],
+    ['', 'Novos / saíram', novos == null ? '—' : `+${rdN(novos)} / −${rdN(sairam)}`, 'entraram e saíram da lista'],
+  ];
+  if(total && !filtro) kp.splice(1, 0, ['', '% violado', rdP(c.viol / total), `${rdN(total)} anúncios monitorados · ${rdN(c.semest)} sem estoque`]);
+  /* evolucao */
+  const ult = C.slice(Math.max(0, RD.ci - 39), RD.ci + 1), mx = Math.max(1, ...ult.map(x => rdFiltrar(x.rows).length));
+  const W = 760, H = 170, bw = W / Math.max(ult.length, 1);
+  const barras = ult.map((x, i) => { const n = rdFiltrar(x.rows).length, h = Math.round((n / mx) * (H - 30));
+    return `<g><rect x="${(i * bw + 2).toFixed(1)}" y="${H - 18 - h}" width="${Math.max(bw - 4, 2).toFixed(1)}" height="${h}" rx="3" fill="${x === c ? '#B23A48' : '#8A93C9'}"><title>${rdD(x.d)}: ${n} violados</title></rect>
+      ${(i % Math.ceil(ult.length / 10) === 0 || x === c) ? `<text x="${(i * bw + bw / 2).toFixed(1)}" y="${H - 4}" font-size="10" text-anchor="middle" fill="#5b6475">${x.d.slice(8, 10)}/${x.d.slice(5, 7)}</text>` : ''}</g>`; }).join('');
+  /* por vendedor */
+  const pv = {};
+  rows.forEach(r => { const o = pv[r.v] = pv[r.v] || {v: r.v, rows: []}; o.rows.push(r); });
+  const pva = ant ? {} : null; if(ant) rdFiltrar(ant.rows).forEach(r => { pva[r.v] = (pva[r.v] || 0) + 1; });
+  const vend = Object.values(pv).map(o => ({...o, ...rdStats(o.rows)})).sort((a, b) => b.n - a.n);
+  const tv = vend.map(o => `<tr class="clk" data-rd-vend="${rdEsc(o.v)}"><td><b>${rdEsc(o.v)}</b>${o.v === RD_SEM ? '<span class="rd-tag sem">definir</span>' : ''}</td>
+      <td>${rdEsc(rdEquipe(o.v).startsWith('sup:') ? rdExecDe(o.v) : (rdModeloDe(o.v) || rdEquipeRot(rdEquipe(o.v))))}</td>
+      <td class="n">${rdN(o.sellers)}</td><td class="n"><b>${rdN(o.n)}</b></td><td class="n">${pva ? rdDelta(o.n, pva[o.v] || 0).replace(' <span>vs anterior</span>', '') : ''}</td>
+      <td class="n">${rdP(o.gap)}</td><td class="n">${rdR(o.reais)}</td></tr>`).join('');
+  /* por marketplace */
+  const pc = {}; rows.forEach(r => { pc[r.c] = (pc[r.c] || 0) + 1; });
+  const tc = Object.entries(pc).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<tr class="clk" data-rd-canal="${rdEsc(k)}"><td>${rdEsc(k)}</td><td class="n"><b>${rdN(n)}</b></td><td class="n">${rdP(n / Math.max(rows.length, 1), 0)}</td></tr>`).join('');
+  /* profundidade */
+  const sev = {s1: 0, s2: 0, s3: 0, s4: 0}; rows.forEach(r => { const s = rdSev(r.gap); if(s) sev[s]++; });
+  const sevRot = {s1: 'Até 5%', s2: '5 a 15%', s3: '15 a 30%', s4: 'Acima de 30%'};
+  return `${rdFiltros(c)}
+    ${c.orig === 'historico' ? '<div class="rd-aviso">Coleta do histórico (Radar antigo): só os anúncios violados foram guardados.</div>' : ''}
+    <div class="rd-kpis">${kp.map(k => `<div class="rd-kpi ${k[0]}"><small>${k[1]}</small><b>${k[2]}</b><span>${k[3]}</span></div>`).join('')}</div>
+    <div class="rd-card"><h3>Evolução dos violados <small>últimas ${ult.length} coletas · clique numa barra no seletor acima</small></h3>
+      <div class="rd-in"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">${barras}</svg></div></div>
+    <div class="rd-dois">
+      <div class="rd-card"><h3>Por vendedor <small>clique para ver os anúncios</small></h3><div class="rd-tw"><table>
+        <thead><tr><th>Vendedor</th><th>Equipe</th><th class="n">Sellers</th><th class="n">Violados</th><th class="n">Δ</th><th class="n">Desconto médio</th><th class="n">R$ abaixo</th></tr></thead>
+        <tbody>${tv || '<tr><td colspan="7">Nenhum anúncio violado com esses filtros.</td></tr>'}</tbody></table></div></div>
+      <div><div class="rd-card"><h3>Por marketplace</h3><div class="rd-tw"><table><thead><tr><th>Canal</th><th class="n">Violados</th><th class="n">%</th></tr></thead><tbody>${tc}</tbody></table></div></div>
+        <div class="rd-card"><h3>Profundidade do desconto</h3><div class="rd-in">${Object.keys(sev).map(s => `<div style="display:flex;justify-content:space-between;margin:6px 0"><span class="rd-sev ${s}">${sevRot[s]}</span><b>${rdN(sev[s])}</b></div>`).join('')}</div></div></div>
+    </div>`;
+}
+function rdFiltros(c){
+  const d = RD.d, rowsV = c.rows;
+  const vends = [...new Set(rowsV.map(r => r.v))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const eqs = [...new Set(rowsV.map(r => rdEquipe(r.v)))].sort();
+  return `<div class="rd-card" style="margin-bottom:14px"><div class="rd-filtros">
+    <select id="rdEq"><option value="">Todas as equipes</option>${eqs.map(e => `<option value="${rdEsc(e)}" ${RD.f.eq === e ? 'selected' : ''}>${rdEsc(rdEquipeRot(e))}</option>`).join('')}</select>
+    <select id="rdVend"><option value="">Todos os vendedores</option>${vends.map(v => `<option ${RD.f.vend === v ? 'selected' : ''}>${rdEsc(v)}</option>`).join('')}</select>
+    <select id="rdCanal"><option value="">Todos os marketplaces</option>${d.canais.map(x => `<option ${RD.f.canal === x ? 'selected' : ''}>${rdEsc(x)}</option>`).join('')}</select>
+    <input type="search" id="rdQ" placeholder="Buscar seller, produto…" value="${rdEsc(RD.f.q)}" style="min-width:200px">
+    ${(RD.f.eq || RD.f.vend || RD.f.canal || RD.f.q) ? '<button class="rd-sec" data-rd="limpar">Limpar filtros</button>' : ''}
+  </div></div>`;
+}
+function rdAnuncios(c){
+  const rows = rdFiltrar(c.rows).map(r => ({...r, seg: rdSeguidas(r.key, RD.ci)}));
+  const o = RD.ord, k = o.k;
+  rows.sort((a, b) => { const x = a[k], y = b[k]; if(x == null) return 1; if(y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y, 'pt-BR') : x - y) * o.d; });
+  const th = (kk, rot, n) => `<th class="ord ${n ? 'n' : ''}" data-rd-ord="${kk}">${rot}${o.k === kk ? (o.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  const lim = 600;
+  return `${rdFiltros(c)}<div class="rd-card"><h3>Anúncios violados <small>${rdN(rows.length)} anúncios${rows.length > lim ? ' · mostrando os ' + lim + ' primeiros' : ''}</small>
+      <button class="rd-sec" data-rd="csv">Baixar em Excel</button></h3><div class="rd-tw"><table>
+    <thead><tr>${th('s', 'Seller')}${th('v', 'Vendedor')}${th('c', 'Canal')}${th('t', 'Anúncio')}${th('pma', 'PMA', 1)}${th('pr', 'Preço', 1)}${th('gap', 'Abaixo do PMA', 1)}${th('seg', 'Coletas seguidas', 1)}<th></th></tr></thead>
+    <tbody>${rows.slice(0, lim).map(r => `<tr><td><b>${rdEsc(r.s)}</b></td><td>${rdEsc(r.v)}${r.v === RD_SEM ? '<span class="rd-tag sem">definir</span>' : ''}</td><td>${rdEsc(r.c)}</td>
+      <td style="min-width:260px">${rdEsc(r.t)}${r.bb ? '<span class="rd-tag">buy box</span>' : ''}</td><td class="n">${rdR(r.pma)}</td><td class="n">${rdR(r.pr)}</td>
+      <td class="n"><span class="rd-sev ${rdSev(r.gap)}">${r.gap == null ? '—' : '−' + rdP(r.gap)}</span></td><td class="n">${r.seg}</td>
+      <td>${/^https?:\/\//i.test(r.u || '') ? `<a class="rd-abrir" href="${rdEsc(r.u)}" target="_blank" rel="noopener">Abrir ↗</a>` : ''}</td></tr>`).join('') || '<tr><td colspan="9">Nenhum anúncio com esses filtros.</td></tr>'}</tbody></table></div></div>`;
+}
+function rdSemVendedor(c){
+  const g = {}; c.rows.filter(r => r.v === RD_SEM).forEach(r => { const o = g[r.s] = g[r.s] || {s: r.s, n: 0, canais: new Set()}; o.n++; o.canais.add(r.c); });
+  const l = Object.values(g).sort((a, b) => b.n - a.n), ed = rdEditor();
+  return `<div class="rd-card"><h3>Sellers violando sem vendedor <small>${l.length} sellers na coleta de ${rdD(c.d)} · sem dono, ninguém cobra</small></h3>
+    <div class="rd-in rd-note">${ed ? 'Clique em <b>Definir</b> para dizer de quem é o seller na aba Premissas.' : 'Quem define o dono do seller são os admins e a Geovanna, na aba Premissas do Radar.'}</div>
+    <div class="rd-tw"><table><thead><tr><th>Seller</th><th>Marketplaces</th><th class="n">Anúncios violados</th>${ed ? '<th></th>' : ''}</tr></thead>
+    <tbody>${l.map(o => `<tr><td><b>${rdEsc(o.s)}</b></td><td>${rdEsc([...o.canais].join(', '))}</td><td class="n">${rdN(o.n)}</td>${ed ? `<td><button class="rd-sec" data-rd-definir="${rdEsc(o.s)}">Definir</button></td>` : ''}</tr>`).join('') || '<tr><td colspan="4">Todos os sellers violando têm vendedor. 👍</td></tr>'}</tbody></table></div></div>`;
+}
+function rdCsv(){
+  const c = RD.d.C[RD.ci], rows = rdFiltrar(c.rows);
+  const H = ['Coleta', 'Seller', 'Vendedor', 'Equipe', 'Canal', 'Anúncio', 'PMA', 'Preço', 'Abaixo do PMA %', 'Coletas seguidas', 'Buy box', 'URL'];
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"', nb = v => v == null ? '' : String(v).replace('.', ',');
+  const L = [H.map(q).join(';')].concat(rows.map(r => [rdD(c.d), r.s, r.v, rdEquipeRot(rdEquipe(r.v)), r.c, r.t, nb(r.pma), nb(r.pr), r.gap == null ? '' : nb((r.gap * 100).toFixed(1)),
+    rdSeguidas(r.key, RD.ci), r.bb ? 'sim' : '', r.u].map(q).join(';')));
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + L.join('\r\n')], {type: 'text/csv;charset=utf-8'}));
+  a.download = `Radar_PMA_${c.d}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- restrito: login, carga e premissas ---------- */
+function rdToken(){ try{ return sessionStorage.getItem('radarToken'); }catch(e){ return null; } }
+async function rdChamar(corpo){
+  const r = await fetch(RADAR_URL, {method: 'POST', headers: {'content-type': 'application/json', 'x-radar-token': rdToken() || ''}, body: JSON.stringify(corpo)});
+  const j = await r.json().catch(() => ({erro: 'resposta inválida (' + r.status + ')'}));
+  if(r.status === 401 && corpo.acao !== 'entrar'){ try{ sessionStorage.removeItem('radarToken'); }catch(e){} RD.adm = null; }
+  if(!r.ok || j.erro){ const e = new Error(j.erro || ('erro ' + r.status)); e.bloqueios = j.bloqueios; throw e; }
+  return j;
+}
+function rdLogin(){
+  return `<div class="rd-login"><h3 style="margin:0;font-family:'Barlow Condensed',sans-serif;color:#2A3E7E;font-size:22px">Área restrita do Radar</h3>
+    <p class="rd-note">Confirme sua senha do Portal para carregar coletas e editar as premissas. Fica aberto por 30 minutos.</p>
+    ${RD.admErro ? `<div class="rd-erro">${rdEsc(RD.admErro)}</div>` : ''}
+    <label>Usuário</label><input type="text" id="rdU" value="${rdEsc((typeof SESSION === 'object' && SESSION && SESSION.user) || '')}">
+    <label>Senha do Portal</label><input type="password" id="rdS" autocomplete="current-password">
+    <div style="margin-top:14px"><button class="rd-pri" data-rd="entrar">Entrar</button></div></div>`;
+}
+async function rdEntrar(){
+  RD.admErro = '';
+  try{
+    const j = await rdChamar({acao: 'entrar', usuario: document.getElementById('rdU').value, senha: document.getElementById('rdS').value});
+    try{ sessionStorage.setItem('radarToken', j.token); }catch(e){}
+    await rdAdmCarregar();
+  }catch(e){ RD.admErro = e.message; }
+  rdDesenhar();
+}
+async function rdAdmCarregar(){
+  try{ RD.adm = await rdChamar({acao: 'ler'}); RD.admErro = ''; RD.sel = {}; }
+  catch(e){ RD.adm = null; RD.admErro = e.message; }
+}
+function rdCarga(){
+  if(!rdToken()) return rdLogin();
+  if(!RD.adm){ rdAdmCarregar().then(rdDesenhar); return '<div class="rd-card"><div class="rd-in">Carregando…</div></div>'; }
+  const A = RD.adm, P = RD.prev;
+  let prev = '';
+  if(P){
+    const r = P.resumo || {};
+    const semV = (r.sellers_violando_sem_vendedor || []);
+    prev = `<div class="rd-card"><h3>Conferência antes de gravar <small>${rdEsc(RD.arq && RD.arq.nome)} · coleta de ${rdD(P.data)}</small></h3><div class="rd-in">
+      ${(P.bloqueios || []).map(b => `<div class="rd-erro">⛔ ${rdEsc(b)}</div>`).join('')}
+      ${(P.avisos || []).map(b => `<div class="rd-aviso">⚠ ${rdEsc(b)}</div>`).join('')}
+      ${!(P.bloqueios || []).length ? '<div class="rd-ok">✔ Planilha conferida. Nada foi gravado ainda.</div>' : ''}
+      <div class="rd-prev"><div><small>Anúncios</small><b>${rdN(r.anuncios)}</b></div><div><small>Violados</small><b>${rdN(r.violados)}</b></div>
+        <div><small>Não violados</small><b>${rdN(r.nao_violados)}</b></div><div><small>Sem estoque</small><b>${rdN(r.sem_estoque)}</b></div><div><small>Sellers</small><b>${rdN(r.sellers)}</b></div>
+        <div><small>Coleta anterior</small><b style="font-size:16px">${P.anterior ? rdN(P.anterior.linhas) + ' em ' + rdD(P.anterior.data) : '—'}</b></div></div>
+      ${r.canais ? `<p class="rd-note">Por marketplace: ${Object.entries(r.canais).sort((a, b) => b[1] - a[1]).map(([k, n]) => rdEsc(k) + ' ' + rdN(n)).join(' · ')}</p>` : ''}
+      ${semV.length ? `<div class="rd-aviso">${semV.length} seller(s) violando sem vendedor na premissa: ${rdEsc(semV.slice(0, 15).join(', '))}${semV.length > 15 ? '…' : ''}. A coleta grava assim mesmo; defina o dono depois na aba Premissas.</div>` : ''}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+        ${!(P.bloqueios || []).length ? `<button class="rd-pri" data-rd="confirmar" ${RD.enviando ? 'disabled' : ''}>${RD.enviando ? 'Gravando…' : (P.substitui ? 'Confirmar e substituir a coleta do dia' : 'Confirmar e gravar')}</button>` : ''}
+        ${(P.bloqueios || []).length && P.forcavel ? `<button class="rd-perigo" data-rd="forcar" ${RD.enviando ? 'disabled' : ''}>Gravar mesmo assim (só admin)</button>` : ''}
+        <button class="rd-sec" data-rd="cancelar">Cancelar</button></div></div></div>`;
+  }
+  const lista = (A.coletas || []).slice(0, 40).map(k => `<tr><td><b>${rdD(k.data)}</b></td><td>${k.origem === 'historico' ? 'histórico' : 'planilha'}</td><td class="n">${rdN(k.linhas)}</td><td class="n">${rdN(k.violados)}</td>
+      <td>${rdEsc(k.enviado_por)}<br><span class="rd-note">${rdEsc(k.enviado_em)}</span></td><td>${rdEsc(k.arquivo || '')}</td>
+      <td>${A.admin ? `<button class="rd-perigo" data-rd-apagar="${k.id}" data-rd-apagar-d="${k.data}">Apagar</button>` : ''}</td></tr>`).join('');
+  return `${RD.admMsg ? `<div class="rd-ok">${rdEsc(RD.admMsg)}</div>` : ''}${RD.admErro ? `<div class="rd-erro">${rdEsc(RD.admErro)}</div>` : ''}
+    <div class="rd-card"><h3>Carregar coleta do dia <small>entrou como ${rdEsc(A.usuario)}${A.admin ? ' (admin)' : ''} · <a href="#" data-rd="sair">sair</a></small></h3><div class="rd-in rd-form">
+      <div class="rd-drop" id="rdDrop"><b>${RD.arq ? '📄 ' + rdEsc(RD.arq.nome) : 'Arraste aqui a planilha TOTAL ANÚNCIOS DOBRO'}</b>${RD.arq ? 'clique para trocar de arquivo' : 'ou clique para escolher o arquivo (.xlsx)'}
+        <input type="file" id="rdArq" accept=".xlsx" style="display:none"></div>
+      <label>Data da coleta</label><input type="date" id="rdData" value="${rdEsc((RD.arq && RD.arq.data) || '')}" max="${new Date().toISOString().slice(0, 10)}">
+      <p class="rd-note">A data vem do nome do arquivo (ex.: "18 NOV 26"); confira antes de seguir. Nada é gravado sem a sua confirmação; se a planilha vier diferente do normal, o Radar bloqueia e mostra o motivo.</p>
+      <button class="rd-pri" data-rd="conferir" ${RD.arq && !RD.enviando ? '' : 'disabled'}>${RD.enviando && !P ? 'Conferindo…' : 'Conferir planilha'}</button></div></div>
+    ${prev}
+    <div class="rd-card"><h3>Coletas gravadas <small>${(A.coletas || []).length} coletas · carregar de novo o mesmo dia substitui</small></h3><div class="rd-tw"><table>
+      <thead><tr><th>Data</th><th>Origem</th><th class="n">Anúncios</th><th class="n">Violados</th><th>Enviado por</th><th>Arquivo</th><th></th></tr></thead><tbody>${lista}</tbody></table></div></div>`;
+}
+function rdPremissas(){
+  if(!rdToken()) return rdLogin();
+  if(!RD.adm){ rdAdmCarregar().then(rdDesenhar); return '<div class="rd-card"><div class="rd-in">Carregando…</div></div>'; }
+  const A = RD.adm, q = rdNorm(RD.selQ);
+  const base = {}; (A.sellers || []).forEach(s => { base[s.seller] = s; });
+  const novos = (A.novos_sellers || []).filter(n => !base[n.seller] || !base[n.seller].vendedor);
+  const linhas = novos.map(n => ({seller: n.seller, vendedor: (base[n.seller] || {}).vendedor || '', cnpj: (base[n.seller] || {}).cnpj || '', razao: (base[n.seller] || {}).razao || '', obs: (base[n.seller] || {}).obs || '', novo: n}))
+    .concat((A.sellers || []).filter(s => !novos.find(n => n.seller === s.seller)));
+  const vis = linhas.filter(l => (!q || rdNorm(l.seller + ' ' + (l.razao || '') + ' ' + (l.vendedor || '')).indexOf(q) >= 0)
+    && (!RD.selSo || (RD.selSo === 'sem' ? !(RD.sel[l.seller] || l).vendedor : true)));
+  const vOpts = (cur) => `<option value="">— sem vendedor —</option>` + (A.vendedores || []).map(v => `<option ${cur === v.nome ? 'selected' : ''}>${rdEsc(v.nome)}</option>`).join('')
+    + (cur && !(A.vendedores || []).find(v => v.nome === cur) ? `<option selected>${rdEsc(cur)}</option>` : '');
+  const nAlt = Object.keys(RD.sel).length;
+  return `${RD.admMsg ? `<div class="rd-ok">${rdEsc(RD.admMsg)}</div>` : ''}${RD.admErro ? `<div class="rd-erro">${rdEsc(RD.admErro)}</div>` : ''}
+    <div class="rd-card"><h3>Premissas do Radar <small>de quem é cada seller · ${(A.sellers || []).length} cadastrados · ${novos.length} aparecem na última coleta sem vendedor</small></h3>
+      <div class="rd-filtros"><input type="search" id="rdSelQ" placeholder="Buscar seller, razão social, vendedor…" value="${rdEsc(RD.selQ)}" style="min-width:260px">
+        <select id="rdSelSo"><option value="">Todos</option><option value="sem" ${RD.selSo === 'sem' ? 'selected' : ''}>Só sem vendedor</option></select>
+        <span class="rd-note">A equipe (Jonas/Fellipe/Time interno) vem do cadastro do vendedor no Portal.</span></div>
+      <div class="rd-tw"><table><thead><tr><th>Seller</th><th>Vendedor</th><th>CNPJ / CPF</th><th>Razão social</th><th>Observação</th><th></th></tr></thead><tbody>
+      ${vis.slice(0, 400).map(l => { const e = RD.sel[l.seller] || l; return `<tr class="${RD.sel[l.seller] ? 'alt' : (l.novo ? 'novo' : '')}">
+        <td><b>${rdEsc(l.seller)}</b>${l.novo ? `<br><span class="rd-note">novo · ${rdN(l.novo.violados)} violados (${rdEsc(l.novo.canais)})</span>` : ''}</td>
+        <td><select data-rd-sel="${rdEsc(l.seller)}" data-k="vendedor">${vOpts(e.vendedor || '')}</select></td>
+        <td><input type="text" size="16" data-rd-sel="${rdEsc(l.seller)}" data-k="cnpj" value="${rdEsc(e.cnpj || '')}"></td>
+        <td><input type="text" size="26" data-rd-sel="${rdEsc(l.seller)}" data-k="razao" value="${rdEsc(e.razao || '')}"></td>
+        <td><input type="text" size="18" data-rd-sel="${rdEsc(l.seller)}" data-k="obs" value="${rdEsc(e.obs || '')}"></td>
+        <td>${base[l.seller] ? `<button class="rd-perigo" data-rd-selapagar="${rdEsc(l.seller)}" title="tirar da premissa">✕</button>` : ''}</td></tr>`; }).join('')}
+      </tbody></table></div>
+      <div class="rd-bar"><span class="rd-note">${nAlt ? nAlt + ' seller(s) alterado(s)' : 'Nenhuma alteração'}</span>
+        <button class="rd-sec" data-rd="descartar" ${nAlt ? '' : 'disabled'}>Descartar</button><button class="rd-pri" data-rd="salvarsel" ${nAlt && !RD.enviando ? '' : 'disabled'}>${RD.enviando ? 'Salvando…' : 'Salvar tudo'}</button></div></div>`;
+}
+function rdLerArquivo(file){
+  if(!file) return;
+  if(!/\.xlsx$/i.test(file.name)){ RD.admErro = 'Escolha a planilha em Excel (.xlsx).'; rdDesenhar(); return; }
+  const fr = new FileReader();
+  fr.onload = () => {
+    const b64 = String(fr.result).split(',')[1] || '';
+    RD.arq = {nome: file.name, b64, data: rdDataDoNome(file.name)}; RD.prev = null; RD.admErro = ''; RD.admMsg = ''; rdDesenhar();
+  };
+  fr.readAsDataURL(file);
+}
+function rdDataDoNome(n){
+  const M = {JAN: 1, FEV: 2, MAR: 3, ABR: 4, MAI: 5, JUN: 6, JUL: 7, AGO: 8, SET: 9, OUT: 10, NOV: 11, DEZ: 12};
+  const s = String(n).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  let m = s.match(/(\d{1,2})\s*[-_. ]?\s*(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[A-Z]*\s*[-_. ]?\s*(\d{2,4})/);
+  if(m){ const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${String(M[m[2]]).padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
+  m = s.match(/(\d{1,2})[-_.](\d{1,2})[-_.](\d{2,4})/);
+  if(m){ const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
+  return '';
+}
+async function rdConferir(){
+  if(!RD.arq) return;
+  RD.arq.data = (document.getElementById('rdData') || {}).value || RD.arq.data;
+  RD.enviando = true; RD.admErro = ''; RD.admMsg = ''; rdDesenhar();
+  try{ RD.prev = await rdChamar({acao: 'previa', nome: RD.arq.nome, b64: RD.arq.b64, data: RD.arq.data}); }
+  catch(e){ RD.admErro = e.message; }
+  RD.enviando = false; rdDesenhar();
+}
+async function rdConfirmar(forcar){
+  if(!RD.arq || !RD.prev) return;
+  if(forcar && !confirm('A planilha foi bloqueada pelo tamanho. Gravar mesmo assim?')) return;
+  RD.enviando = true; rdDesenhar();
+  try{
+    const j = await rdChamar({acao: 'confirmar', nome: RD.arq.nome, b64: RD.arq.b64, data: RD.prev.data, forcar: !!forcar});
+    RD.admMsg = `Coleta de ${rdD(j.coleta.data)} gravada: ${rdN(j.coleta.linhas)} anúncios, ${rdN(j.coleta.violados)} violados.${j.guardado ? ' Arquivo original guardado.' : ''} O Radar do Portal atualiza em até 10 minutos.`;
+    RD.arq = null; RD.prev = null; await rdAdmCarregar();
+  }catch(e){ RD.admErro = e.message + (e.bloqueios ? ' — ' + e.bloqueios.join(' | ') : ''); }
+  RD.enviando = false; rdDesenhar();
+}
+async function rdApagar(id, d){
+  if(!confirm(`Apagar a coleta de ${rdD(d)}? Os anúncios dela saem do Radar. (o arquivo original continua guardado)`)) return;
+  try{ await rdChamar({acao: 'apagar_coleta', id: +id}); RD.admMsg = `Coleta de ${rdD(d)} apagada.`; await rdAdmCarregar(); }
+  catch(e){ RD.admErro = e.message; }
+  rdDesenhar();
+}
+async function rdSalvarSel(){
+  const itens = Object.keys(RD.sel).map(s => RD.sel[s]);
+  RD.enviando = true; RD.admErro = ''; rdDesenhar();
+  try{ const j = await rdChamar({acao: 'seller_salvar', itens}); RD.admMsg = `${j.salvos} seller(s) salvo(s). O Radar do Portal atualiza em até 10 minutos.`; await rdAdmCarregar(); }
+  catch(e){ RD.admErro = e.message; }
+  RD.enviando = false; rdDesenhar();
+}
+
+/* ---------- eventos ---------- */
+function rdClique(ev){
+  const t = ev.target.closest('[data-rd],[data-rd-aba],[data-rd-vend],[data-rd-canal],[data-rd-ord],[data-rd-definir],[data-rd-apagar],[data-rd-selapagar],#rdDrop');
+  if(!t) return;
+  if(t.id === 'rdDrop'){ if(ev.target.id !== 'rdArq') document.getElementById('rdArq').click(); return; }
+  if(t.dataset.rdAba){ RD.aba = t.dataset.rdAba; RD.admMsg = ''; rdDesenhar(); return; }
+  if(t.dataset.rdVend != null){ RD.f.vend = t.dataset.rdVend; RD.aba = 'anuncios'; rdDesenhar(); return; }
+  if(t.dataset.rdCanal != null){ RD.f.canal = t.dataset.rdCanal; rdDesenhar(); return; }
+  if(t.dataset.rdOrd){ const k = t.dataset.rdOrd; RD.ord = {k, d: RD.ord.k === k ? -RD.ord.d : (['s', 'v', 'c', 't'].indexOf(k) >= 0 ? 1 : -1)}; rdDesenhar(); return; }
+  if(t.dataset.rdDefinir){ RD.aba = 'prem'; RD.selQ = t.dataset.rdDefinir; rdDesenhar(); return; }
+  if(t.dataset.rdApagar){ rdApagar(t.dataset.rdApagar, t.dataset.rdApagarD); return; }
+  if(t.dataset.rdSelapagar){
+    const s = t.dataset.rdSelapagar;
+    if(confirm(`Tirar "${s}" da premissa? Ele passa a aparecer como "Sem vendedor".`))
+      rdChamar({acao: 'seller_apagar', seller: s}).then(async () => { RD.admMsg = `"${s}" retirado.`; await rdAdmCarregar(); rdDesenhar(); }).catch(e => { RD.admErro = e.message; rdDesenhar(); });
+    return;
+  }
+  const a = t.dataset.rd;
+  if(a === 'ant' && RD.ci > 0){ RD.ci--; rdDesenhar(); }
+  else if(a === 'prox' && RD.ci < RD.d.C.length - 1){ RD.ci++; rdDesenhar(); }
+  else if(a === 'limpar'){ RD.f = {eq: '', vend: '', canal: '', q: ''}; rdDesenhar(); }
+  else if(a === 'csv') rdCsv();
+  else if(a === 'entrar') rdEntrar();
+  else if(a === 'sair'){ ev.preventDefault(); rdChamar({acao: 'sair'}).catch(() => {}); try{ sessionStorage.removeItem('radarToken'); }catch(e){} RD.adm = null; rdDesenhar(); }
+  else if(a === 'conferir') rdConferir();
+  else if(a === 'confirmar') rdConfirmar(false);
+  else if(a === 'forcar') rdConfirmar(true);
+  else if(a === 'cancelar'){ RD.prev = null; RD.arq = null; rdDesenhar(); }
+  else if(a === 'salvarsel') rdSalvarSel();
+  else if(a === 'descartar'){ RD.sel = {}; rdDesenhar(); }
+}
+function rdMuda(ev){
+  const t = ev.target, id = t.id;
+  if(id === 'rdColeta'){ RD.ci = +t.value; rdDesenhar(); }
+  else if(id === 'rdEq'){ RD.f.eq = t.value; rdDesenhar(); }
+  else if(id === 'rdVend'){ RD.f.vend = t.value; rdDesenhar(); }
+  else if(id === 'rdCanal'){ RD.f.canal = t.value; rdDesenhar(); }
+  else if(id === 'rdArq'){ rdLerArquivo(t.files && t.files[0]); }
+  else if(id === 'rdData' && RD.arq){ RD.arq.data = t.value; RD.prev = null; }
+  else if(id === 'rdSelSo'){ RD.selSo = t.value; rdDesenhar(); }
+  else if(t.dataset && t.dataset.rdSel){
+    const s = t.dataset.rdSel, base = (RD.adm.sellers || []).find(x => x.seller === s) || {seller: s, vendedor: '', cnpj: '', razao: '', obs: ''};
+    const e = RD.sel[s] || {seller: s, vendedor: base.vendedor || '', cnpj: base.cnpj || '', razao: base.razao || '', obs: base.obs || ''};
+    e[t.dataset.k] = t.value; RD.sel[s] = e; rdDesenhar();
+  }
+}
+let RD_QT = null;
+function rdDigita(ev){
+  const id = ev.target.id;
+  if(id === 'rdQ'){ clearTimeout(RD_QT); RD_QT = setTimeout(() => { RD.f.q = ev.target.value; rdDesenhar(); const q = document.getElementById('rdQ'); if(q){ q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 350); }
+  else if(id === 'rdSelQ'){ clearTimeout(RD_QT); RD_QT = setTimeout(() => { RD.selQ = ev.target.value; rdDesenhar(); const q = document.getElementById('rdSelQ'); if(q){ q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 350); }
+  else if(id === 'rdS' && ev.key === 'Enter') rdEntrar();
+}
+async function vRadar(){
+  rdDesenhar();
+  if(!RD.d && !RD.carregando) await rdCarregar();
+}
+function rdRegistrar(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  if(!VIEWS.find(x => x.id === 'radar')) VIEWS.push({id: 'radar', lab: 'Radar de PMA', fn: vRadar});
+  if(!document.getElementById('v-radar')){
+    const irmao = document.querySelector('.view');
+    if(irmao && irmao.parentNode){
+      const div = document.createElement('div'); div.className = 'view'; div.id = 'v-radar';
+      irmao.parentNode.appendChild(div);
+      div.addEventListener('click', rdClique);
+      div.addEventListener('change', rdMuda);
+      div.addEventListener('keyup', rdDigita);
+      div.addEventListener('dragover', ev => { const d = ev.target.closest && ev.target.closest('#rdDrop'); if(d){ ev.preventDefault(); d.classList.add('on'); } });
+      div.addEventListener('dragleave', ev => { const d = ev.target.closest && ev.target.closest('#rdDrop'); if(d) d.classList.remove('on'); });
+      div.addEventListener('drop', ev => { const d = ev.target.closest && ev.target.closest('#rdDrop'); if(d){ ev.preventDefault(); rdLerArquivo(ev.dataTransfer.files && ev.dataTransfer.files[0]); } });
+    }
+  }
+  const nav = document.getElementById('nav');
+  if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
+}
+try{ rdRegistrar(); }catch(e){ console.error('radar: registrar', e); }
+</script>
+
+<style>
 /* ===================== UX / DESIGN UNICO (07/11/2026) ===================== */
 /* logo da Dobro no lugar do "d" (07/11/2026) */
 .ux-logo{display:block;width:auto}
@@ -22365,7 +22867,7 @@ const UX_GRUPOS = [
   ['clientes', 'Clientes', ['carteira', 'ranking', 'cnpj', 'penetracao', 'crm', 'geo']],
   ['produtos', 'Produtos', ['mix', 'gestcat', 'calc']],
   ['operacao', 'Operação', ['sla', 'degustacoes', 'links']],
-  ['marketplace', 'Marketplace', ['mkgeral', 'marketplace', 'tiktok', 'amazon']],
+  ['marketplace', 'Marketplace', ['mkgeral', 'marketplace', 'tiktok', 'amazon', 'radar']],
   ['admin',    'Admin',    ['premissas', 'relatorios', 'precificacao', 'pendencias', 'acessos']],
 ];
 function uxGrupoAberto(id){
