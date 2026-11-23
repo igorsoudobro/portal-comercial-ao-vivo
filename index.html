@@ -22124,7 +22124,7 @@ const MP_FAIXA_ML = (typeof MKT_PC_FAIXA === 'object' && MKT_PC_FAIXA) ? MKT_PC_
   gold_special: {a: [0.1200, 7.21], b: [0.1200, 7.21], c: [0.1200, 8.41], d: [0.1056, 21.17]},
 };
 function mpFaixa(p){ return p < 29 ? 'a' : (p < 50 ? 'b' : (p < 79 ? 'c' : 'd')); }
-const MP = {tipo: 'gold_pro', alvo: 0.20, ov: {}, msg: '', erro: ''};
+const MP = {tipo: 'gold_pro', alvo: 0.20, ov: {}, msg: '', erro: '', novo: false, nome: ''};
 const MP_GLOBAIS = ['cmv', 'cred'];
 function mpCanais(){ return pcCalc().mkt || []; }
 function mpEhML(c){ return /mercado\s*livre/i.test(c.canal); }
@@ -22132,9 +22132,10 @@ function mpChave(c, campo){ return MP_GLOBAIS.includes(campo) ? '_g' : c.canal; 
 function mpOv(c, campo){ const o = (MP.ov[mpChave(c, campo)] || {})[campo]; return o == null ? null : o; }
 /* sugestao: o banco (marketplace_canal); ML sem taxa gravada = a faixa do preco */
 function mpSugestao(c, campo, P){
-  const K = pcCalc(), sku = PC.sku;
+  const K = pcCalc(), sku = MP.novo ? '' : PC.sku;
   switch(campo){
     case 'preco': {
+      if(MP.novo) return null;
       if(mpEhML(c) && typeof mkPrecoHoje === 'function'){ try{ const ph = mkPrecoHoje([sku]); if(ph) return ph.v; }catch(e){} }
       return (K.precos || {})[sku] ?? null;
     }
@@ -22145,7 +22146,7 @@ function mpSugestao(c, campo, P){
     case 'frUn': return c.frete_un != null ? c.frete_un : (mpEhML(c) ? (MP_FAIXA_ML[MP.tipo] || MP_FAIXA_ML.gold_pro)[mpFaixa(P)][1] : (c.novo ? null : 0));
     case 'ads': return c.ads != null ? c.ads : null;
     case 'imp': return c.imposto != null ? c.imposto : 0.2741;
-    case 'cmv': return (K.cmv || {})[sku] ?? null;
+    case 'cmv': return MP.novo ? null : ((K.cmv || {})[sku] ?? null);
     case 'cred': { const H = pcHistorico(); return (sku && H._cred[sku] != null) ? H._cred[sku] : H._credGeral; }
   }
   return null;
@@ -22223,20 +22224,23 @@ function mpDesenhar(){
   if(MP.erro) h += '<div class="pc-note" style="color:#a12f2b">' + pcEsc(MP.erro) + '</div>';
   if(MP.msg) h += '<div class="pc-note" style="color:#16714d">' + pcEsc(MP.msg) + '</div>';
   h += '<div class="pc-top">' +
-    '<div><label>Produto</label><select id="mpSku" style="max-width:380px">' + skus.map(s => '<option value="' + pcEsc(s) + '"' + (s === PC.sku ? ' selected' : '') + '>' + pcEsc((K.skus[s] || {}).prod || s) + ' · ' + pcEsc(s) + '</option>').join('') + '</select></div>' +
+    '<div><label>Produto</label><select id="mpModo"><option value="atual"' + (!MP.novo ? ' selected' : '') + '>Produto do portfólio</option><option value="novo"' + (MP.novo ? ' selected' : '') + '>Produto novo</option></select></div>' +
+    (MP.novo ? '<div><label>Nome do produto novo</label><input id="mpNome" value="' + pcEsc(MP.nome) + '" placeholder="ex.: Jelly Protein" style="width:220px"></div>'
+             : '<div><label>SKU</label><select id="mpSku" style="max-width:380px">' + skus.map(s => '<option value="' + pcEsc(s) + '"' + (s === PC.sku ? ' selected' : '') + '>' + pcEsc((K.skus[s] || {}).prod || s) + ' · ' + pcEsc(s) + '</option>').join('') + '</select></div>') +
     '<div><label>Anúncio no Mercado Livre</label><select id="mpTipo"><option value="gold_pro"' + (MP.tipo === 'gold_pro' ? ' selected' : '') + '>Premium</option><option value="gold_special"' + (MP.tipo === 'gold_special' ? ' selected' : '') + '>Clássico</option></select></div>' +
     '<div><label>Margem alvo</label><input id="mpAlvo" value="' + (MP.alvo * 100).toFixed(1).replace('.', ',') + '" style="width:70px">%</div>' +
     '<div style="margin-left:auto"><button class="pc-btn2" data-pca="mplimpar">Voltar tudo às sugestões</button></div></div>';
+  if(MP.novo) h += '<p class="pc-note">Produto novo: digite o <b>preço do anúncio</b> em cada canal e o <b>CMV</b> (linhas em vermelho). Taxas, frete, imposto e crédito de insumos (média geral) já vêm sugeridos. No Mercado Livre, a tarifa e o frete seguem a faixa do preço que você digitar.</p>';
   if(!C.length){ alvo.innerHTML = h + '<p class="pc-note">Nenhum marketplace com venda nos últimos 60 dias.</p>'; return; }
   const O = C.map(c => ({c, o: mpConta(c)}));
   const dt = s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) : '—';
   const mil = v => v >= 1e6 ? 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + ' mi' : 'R$ ' + Math.round(v / 1e3).toLocaleString('pt-BR') + ' mil';
-  h += '<div class="pc-wrap"><table class="pc" style="min-width:' + (260 + C.length * 170) + 'px"><thead><tr><th>' + pcEsc((K.skus[PC.sku] || {}).prod || PC.sku) + '<small>' + pcEsc(PC.sku) + '</small></th>' +
+  h += '<div class="pc-wrap"><table class="pc" style="min-width:' + (260 + C.length * 170) + 'px"><thead><tr><th>' + (MP.novo ? pcEsc(MP.nome || 'Produto novo') + '<small>produto novo</small>' : pcEsc((K.skus[PC.sku] || {}).prod || PC.sku) + '<small>' + pcEsc(PC.sku) + '</small>') + '</th>' +
     C.map(c => '<th>' + pcEsc(c.canal) + (c.novo ? '<span class="mp-novo">NOVO</span>' : '') +
       '<small class="mp-ven">' + mil(c.vendas || 0) + ' em 60 d · última ' + dt(c.ultima) + '</small></th>').join('') + '</tr></thead><tbody>' +
     MP_LINHAS.map(l => l[0] === 'sec' ? '<tr class="pc-sec"><td colspan="' + (C.length + 1) + '">' + l[1] + '</td></tr>'
       : '<tr class="' + (l[4] === 'tot' ? 'pc-tot' : '') + '"><td>' + l[0] + '</td>' + O.map(x => mpCelula(x.c, x.o, l)).join('') + '</tr>').join('') +
-    '<tr class="pc-tot"><td>Preço mínimo p/ ' + pcP(MP.alvo) + ' de margem</td>' + O.map(x => { const m = mpMinimo(x.c); return '<td>' + (m == null ? '—' : pcR(m)) + '</td>'; }).join('') + '</tr>' +
+    '<tr class="pc-tot"><td>Preço mínimo p/ ' + pcP(MP.alvo) + ' de margem</td>' + O.map(x => { const m = mpFalta(x.c, 'cmv', x.o.P) ? null : mpMinimo(x.c); return '<td>' + (m == null ? '—' : pcR(m)) + '</td>'; }).join('') + '</tr>' +
     (adm ? '<tr><td>Taxas no banco</td>' + C.map(c => '<td><button class="pc-btn2" data-mps="' + pcEsc(c.canal) + '" title="grava comissão, outras taxas, frete, anúncios e imposto deste canal (o que está na tela)">Salvar taxas</button></td>').join('') + '</tr>' : '') +
     '</tbody></table></div>';
   h += '<p class="pc-note">De onde vem cada número: <b>preço</b> = no Mercado Livre, o menor anúncio ativo hoje do SKU; nos outros, o preço do site (digite o do anúncio). ' +
@@ -22326,6 +22330,8 @@ function pcMudou(ev){
     mpDesenhar(); return;
   }
   if(t.id === 'mpSku'){ PC.sku = t.value; MP.ov = {}; mpDesenhar(); return; }
+  if(t.id === 'mpModo'){ MP.novo = t.value === 'novo'; MP.ov = {}; mpDesenhar(); return; }
+  if(t.id === 'mpNome'){ MP.nome = t.value; mpDesenhar(); return; }
   if(t.id === 'mpTipo'){ MP.tipo = t.value; mpDesenhar(); return; }
   if(t.id === 'mpAlvo'){ const n = pcNum(t.value); if(n != null) MP.alvo = n / 100; mpDesenhar(); return; }
   if(t.id === 'pcModo'){ PC.novo = t.value === 'novo'; PC.ov = {}; }
