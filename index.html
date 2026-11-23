@@ -16619,7 +16619,7 @@ async function anoSubstituirBase(){
       CALC.imp_estado = Object.assign({}, CALC.imp_estado||{}, k.imp_estado||{});
       CALC.frete_estado = Object.assign({}, CALC.frete_estado||{}, k.frete_estado||{});
       CALC.com_modelo = k.com_modelo || {};   /* tela Precificacao (18/11/2026) */
-      CALC.mkt = k.mkt || [];               /* Precificacao Marketplaces (23/11/2026) */
+      CALC.mkt = Array.isArray(k.mkt) ? k.mkt : null;               /* Precificacao Marketplaces (23/11/2026) */
     }
     /* contatos (30/10/2026): os do arquivo do ano POR CIMA dos da rodada - a
        tabela e a mesma, so que agora alimentada tambem pelo banco */
@@ -22123,8 +22123,91 @@ const MP_FAIXA_ML = (typeof MKT_PC_FAIXA === 'object' && MKT_PC_FAIXA) ? MKT_PC_
   gold_pro:     {a: [0.1529, 7.21], b: [0.1529, 7.21], c: [0.1529, 8.31], d: [0.1496, 16.88]},
   gold_special: {a: [0.1200, 7.21], b: [0.1200, 7.21], c: [0.1200, 8.41], d: [0.1056, 21.17]},
 };
+
+/* ---------- REFERENCIAS REAIS POR CANAL (23/11/2026, Igor: "nao esta trazendo ADS" e
+   "Preco do anuncio do MELI incorreto - ex. Carbs Jabuticaba": vinha o preco do site, R$ 109,99,
+   e o anuncio esta R$ 89,90). A calculadora carrega sozinha os arquivos das abas:
+     Mercado Livre  marketplace.json - preco do anuncio ativo HOJE (coleta diaria) e, do proprio SKU
+                    nos ultimos 30 dias, tarifa, frete, cupom pago pela Dobro, Ads e armazenagem
+                    (a mesma conta da Calculadora da aba Marketplace, mkPcHoje)
+     TikTok Shop    tiktok.json  - preco medio vendido do SKU em 60 dias e o desconto medio na nota
+     Amazon 3P      amazon.json  - idem
+   Sem arquivo ou sem venda do SKU: preco do site e as taxas do cadastro. ---------- */
+const MPD = {ml: null, tt: null, az: null, ok: {}};
+/* TikTok: o desconto da NOTA (Bling) junta o que a Dobro paga e o que o TikTok subsidia (Igor, 23/11: "uma
+   parte e subsidio do TikTok"). Extrato do Seller Center (Downloads/income_*.xlsx, 2.472 itens de fev a
+   17/11/2026): descontos financiados pelo vendedor R$ 4.309 x desconto da plataforma R$ 4.639 -> a Dobro
+   paga 48% do desconto. O cupom da calculadora e so essa parte; o resto o TikTok repassa. */
+const MP_TT_PARTE_DOBRO = 0.48;
+function mpArqDe(c){ return mpEhML(c) ? 'ml' : (/tiktok/i.test(c.canal) ? 'tt' : (/amazon/i.test(c.canal) ? 'az' : null)); }
+function mpCarregarRefs(){
+  const vistos = new Set(mpCanais().map(mpArqDe).filter(Boolean));
+  const fim = () => { if(typeof CURRENT !== 'undefined' && CURRENT === 'precificacao' && PC.modo === 'mkt') mpDesenhar(); };
+  if(vistos.has('ml') && !MPD.ok.ml){
+    MPD.ok.ml = 1;
+    if(typeof MKT === 'object' && MKT && MKT.d){ MPD.ml = true; }
+    else if(typeof mkCarregar === 'function'){
+      /* a aba Marketplace pode ja estar carregando: espera o MKT.d ate 90 s */
+      try{ mkCarregar(); }catch(e){ console.error('precificacao: mkCarregar', e); }
+      let n = 0; const t = setInterval(() => { n++; if((MKT && MKT.d) || n > 90 || (MKT && MKT.erro && !MKT.carregando)){ clearInterval(t); MPD.ml = !!(MKT && MKT.d); fim(); } }, 1000);
+    }
+  }
+  [['tt', 'tiktok.json', 3], ['az', 'amazon.json', 4]].forEach(([k, arq, iq]) => {
+    if(!vistos.has(k) || MPD.ok[k] || typeof aovivoBaixarArquivo !== 'function') return;
+    MPD.ok[k] = 1;
+    aovivoBaixarArquivo(arq).then(d => {
+      if(!d || !Array.isArray(d.venda)) return;
+      /* tiktok_pacote: [dia, i, notas, unidades, bruto, liquido (nota), ...]   amazon: [dia, i, modal, notas, unidades, bruto, liquido, ...] */
+      const lim = new Date(Date.now() - 60 * 864e5).toLocaleDateString('sv'), sk = d.skus || [], R = {};
+      d.venda.forEach(x => {
+        if(String(x[0]) < lim) return;
+        const can = String((sk[x[1]] || [])[2] || '').toUpperCase(); if(!can) return;
+        const q = +x[iq] || 0, b = +x[iq + 1] || 0, l = +x[iq + 2] || 0; if(q <= 0 || b <= 0) return;
+        const o = R[can] || (R[can] = {q: 0, b: 0, l: 0}); o.q += q; o.b += b; o.l += l;
+      });
+      MPD[k] = R;
+    }).catch(e => console.error('precificacao: ' + arq, e)).then(fim);
+  });
+}
+/* historico do SKU no ML (30 dias) - null se nao vendeu */
+function mpHistML(){
+  if(!MPD.ml || MP.novo || typeof mkPcHoje !== 'function') return null;
+  const ch = 'h:' + PC.sku; if(MPD[ch] !== undefined) return MPD[ch];
+  let H = null; try{ H = mkPcHoje(PC.sku); }catch(e){ console.error('precificacao: mkPcHoje', e); }
+  if(!MPD.adsGeral && typeof mkDreCalc === 'function'){
+    try{ const fim = mkDia(mkHoje(), -1), T = mkDreCalc(mkDia(fim, -29), fim).T; MPD.adsGeral = T.rec ? T.ads / T.rec : 0; }catch(e){ MPD.adsGeral = 0; }
+  }
+  return (MPD[ch] = H);
+}
+function mpTipoML(){ const H = mpHistML(); return MP.tipo || (H && H.tipo) || 'gold_pro'; }
+/* referencia de preco por canal: {v, cup, fonte} */
+function mpRefPreco(c){
+  if(MP.novo) return null;
+  const K = pcCalc(), site = (K.precos || {})[PC.sku];
+  const k = mpArqDe(c);
+  if(k === 'ml'){
+    if(typeof mkPrecoHoje === 'function' && MPD.ml){ try{ const ph = mkPrecoHoje([PC.sku]); if(ph) return {v: ph.v, fonte: 'anúncio ativo hoje' + (ph.max > ph.v + 0.005 ? ' (até ' + pcR(ph.max) + ')' : '')}; }catch(e){} }
+    const H = mpHistML(); if(H && H.preco) return {v: H.preco, fonte: 'preço médio vendido 30 d'};
+    if(!MPD.ml && MPD.ok.ml) return site != null ? {v: site, fonte: 'carregando o ML…'} : null;
+  }
+  if(k === 'tt' || k === 'az'){
+    const R = MPD[k] || {}, sku = String(PC.sku).toUpperCase();
+    let o = R[sku], n = 1;
+    /* kit "10X30" sem venda propria: o canal vende o sache ("-30") - preco do sache x 10 */
+    const m = sku.match(/^(.*)-(\d+)X(\d+(?:\.\d+)?)$/);
+    if(!o && m && R[m[1] + '-' + m[3]]){ o = R[m[1] + '-' + m[3]]; n = +m[2]; }
+    if(o){
+      const desc = o.b ? Math.max(0, 1 - o.l / o.b) : 0, parte = k === 'tt' ? MP_TT_PARTE_DOBRO : 1;
+      return {v: o.b / o.q * n, cup: desc * parte,
+              fonte: 'preço médio vendido 60 d' + (n > 1 ? ' (' + n + ' × o sachê)' : '') +
+                     (k === 'tt' && desc > 0.005 ? ' · desconto na nota ' + pcP(desc, 0) + ', a Dobro paga 48% dele' : '')};
+    }
+    if(!MPD[k] && MPD.ok[k]) return site != null ? {v: site, fonte: 'carregando…'} : null;
+  }
+  return site != null ? {v: site, fonte: 'preço do site (sem venda do SKU no canal)'} : null;
+}
 function mpFaixa(p){ return p < 29 ? 'a' : (p < 50 ? 'b' : (p < 79 ? 'c' : 'd')); }
-const MP = {tipo: 'gold_pro', alvo: 0.20, ov: {}, msg: '', erro: '', novo: false, nome: ''};
+const MP = {tipo: null, alvo: 0.20, ov: {}, msg: '', erro: '', novo: false, nome: ''};
 const MP_GLOBAIS = ['cmv', 'cred'];
 function mpCanais(){ return pcCalc().mkt || []; }
 function mpEhML(c){ return /mercado\s*livre/i.test(c.canal); }
@@ -22134,18 +22217,36 @@ function mpOv(c, campo){ const o = (MP.ov[mpChave(c, campo)] || {})[campo]; retu
 function mpSugestao(c, campo, P){
   const K = pcCalc(), sku = MP.novo ? '' : PC.sku;
   switch(campo){
-    case 'preco': {
-      if(MP.novo) return null;
-      if(mpEhML(c) && typeof mkPrecoHoje === 'function'){ try{ const ph = mkPrecoHoje([sku]); if(ph) return ph.v; }catch(e){} }
-      return (K.precos || {})[sku] ?? null;
+    case 'preco': { const r = mpRefPreco(c); return r ? r.v : null; }
+    case 'cup': {
+      if(MP.novo) return 0;
+      if(mpEhML(c)){ const H = mpHistML(); return H ? (H.cup || 0) : 0; }
+      const r = mpRefPreco(c); return r && r.cup != null ? r.cup : 0;
     }
-    case 'cup': return 0;
-    case 'com': return c.comissao != null ? c.comissao : (mpEhML(c) ? (MP_FAIXA_ML[MP.tipo] || MP_FAIXA_ML.gold_pro)[mpFaixa(P)][0] : null);
+    case 'arm': { if(!mpEhML(c)) return 0; const H = mpHistML(); return H ? (H.armUn || 0) : 0; }
+    case 'com': {
+      if(c.comissao != null) return c.comissao;
+      if(!mpEhML(c)) return null;
+      const H = mpHistML(), t = mpTipoML();
+      if(H && mpFaixa(P) === mpFaixa(H.preco) && t === H.tipo && H.fee) return H.fee;    /* mesma faixa: a tarifa real do SKU */
+      return (MP_FAIXA_ML[t] || MP_FAIXA_ML.gold_pro)[mpFaixa(P)][0];
+    }
     case 'tx': return c.taxa_extra != null ? c.taxa_extra : (c.novo ? null : 0);
     case 'frPct': return c.frete_pct != null ? c.frete_pct : (c.novo ? null : 0);
-    case 'frUn': return c.frete_un != null ? c.frete_un : (mpEhML(c) ? (MP_FAIXA_ML[MP.tipo] || MP_FAIXA_ML.gold_pro)[mpFaixa(P)][1] : (c.novo ? null : 0));
-    case 'ads': return c.ads != null ? c.ads : null;
-    case 'imp': return c.imposto != null ? c.imposto : 0.2741;
+    case 'frUn': {
+      if(c.frete_un != null) return c.frete_un;
+      if(!mpEhML(c)) return c.novo ? null : 0;
+      const H = mpHistML(), t = mpTipoML();
+      if(H && mpFaixa(P) === mpFaixa(H.preco) && t === H.tipo && H.envUn != null) return H.envUn;   /* frete real do SKU */
+      return (MP_FAIXA_ML[t] || MP_FAIXA_ML.gold_pro)[mpFaixa(P)][1];
+    }
+    case 'ads': {
+      if(c.ads != null) return c.ads;
+      if(!mpEhML(c)) return null;
+      const H = mpHistML(); if(H) return H.ads || 0;           /* Ads do proprio SKU 30 d (0 = nao anunciou) */
+      return MPD.ml ? (MPD.adsGeral || 0) : null;             /* produto sem venda: a media do ML */
+    }
+    case 'imp': { if(mpEhML(c)){ const H = mpHistML(); if(H && H.imp) return H.imp; } return c.imposto != null ? c.imposto : 0.2741; }
     case 'cmv': return MP.novo ? null : ((K.cmv || {})[sku] ?? null);
     case 'cred': { const H = pcHistorico(); return (sku && H._cred[sku] != null) ? H._cred[sku] : H._credGeral; }
   }
@@ -22156,11 +22257,12 @@ function mpFalta(c, campo, P){ return mpOv(c, campo) == null && mpSugestao(c, ca
 function mpConta(c, Pforcado){
   const P = Pforcado != null ? Pforcado : (+mpVal(c, 'preco', 0) || 0);
   const v = k => +mpVal(c, k, P) || 0;
-  const o = {P, cup: v('cup'), com: v('com'), tx: v('tx'), frPct: v('frPct'), frUn: v('frUn'), ads: v('ads'), imp: v('imp'), cmvB: v('cmv'), cred: v('cred')};
+  const o = {P, cup: v('cup'), com: v('com'), tx: v('tx'), frPct: v('frPct'), frUn: v('frUn'), arm: v('arm'), ads: v('ads'), imp: v('imp'), cmvB: v('cmv'), cred: v('cred')};
   o.rec = P * (1 - o.cup);
-  o.vCom = o.rec * o.com; o.vTx = o.rec * o.tx; o.vFr = o.rec * o.frPct + o.frUn; o.vAds = o.rec * o.ads; o.vImp = o.rec * o.imp;
+  /* ML cobra a tarifa sobre o preco do anuncio (igual a aba Marketplace) */
+  o.vCom = (mpEhML(c) ? P : o.rec) * o.com; o.vTx = o.rec * o.tx; o.vFr = o.rec * o.frPct + o.frUn; o.vAds = o.rec * o.ads; o.vImp = o.rec * o.imp;
   o.cmv = o.cmvB * (1 - o.cred);
-  o.custos = o.vCom + o.vTx + o.vFr + o.vAds + o.vImp + o.cmv;
+  o.custos = o.vCom + o.vTx + o.vFr + o.arm + o.vAds + o.vImp + o.cmv;
   o.contrib = o.rec - o.custos;
   o.mc = o.rec ? o.contrib / o.rec : null;
   return o;
@@ -22176,15 +22278,16 @@ const MP_LINHAS = [
   ['sec', 'Preço'],
   ['Preço do anúncio', 'preco', 'r'],
   ['Cupom / desconto pago pela Dobro', 'cup', 'p'],
-  ['Receita (o que o cliente paga)', null, 'r', o => o.rec, 'tot'],
+  ['Receita da Dobro (preço − cupom da Dobro)', null, 'r', o => o.rec, 'tot'],
   ['sec', 'Taxas do canal (sobre a receita)'],
-  ['Comissão do canal', 'com', 'p', o => o.vCom],
+  ['Comissão do canal (ML: sobre o preço)', 'com', 'p', o => o.vCom],
   ['Outras taxas (SFP, afiliado…)', 'tx', 'p', o => o.vTx],
   ['Frete (% da venda)', 'frPct', 'p'],
   ['Frete por unidade (R$)', 'frUn', 'r'],
   ['Frete total', null, 'r', o => o.vFr],
+  ['Armazenagem Full (R$/un)', 'arm', 'r'],
   ['Anúncios (ads)', 'ads', 'p', o => o.vAds],
-  ['Imposto (ICMS+FCP+DIFAL + PIS/COFINS)', 'imp', 'p', o => o.vImp],
+  ['Imposto (ICMS+FCP+DIFAL + PIS/COFINS; ML: real do SKU)', 'imp', 'p', o => o.vImp],
   ['sec', 'Produto'],
   ['CMV bruto', 'cmv', 'r'],
   ['Crédito de insumos', 'cred', 'p'],
@@ -22201,7 +22304,8 @@ function mpCelula(c, o, l){
     const shown = falta ? '' : (fmt === 'p' ? (val * 100).toFixed(2).replace('.', ',') : (+val).toFixed(2).replace('.', ','));
     const sug = mpSugestao(c, campo, o.P);
     const tip = sug == null ? 'sem taxa cadastrada — digite' : 'sugestão: ' + (fmt === 'p' ? pcP(sug, 2) : pcR(sug));
-    const extra = fn ? '<span class="pc-rs">' + pcR(fn(o)) + '</span>' : '';
+    const ref = campo === 'preco' && !mex ? mpRefPreco(c) : null;
+    const extra = fn ? '<span class="pc-rs">' + pcR(fn(o)) + '</span>' : (ref ? '<span class="pc-rs">' + pcEsc(ref.fonte) + '</span>' : '');
     return '<td><input data-mp="' + pcEsc(c.canal) + '|' + campo + '" value="' + pcEsc(shown) + '" placeholder="a preencher" class="' + (mex ? 'pc-mx' : (falta ? 'mp-falta' : '')) + '" title="' + pcEsc(tip) + '">' +
       (fmt === 'p' ? '%' : '') + (mex ? '<button class="pc-reset" data-mpr="' + pcEsc(c.canal) + '|' + campo + '" title="voltar à sugestão (' + pcEsc(tip) + ')">↺</button>' : '') + extra + '</td>';
   }
@@ -22214,6 +22318,7 @@ function mpCelula(c, o, l){
 function mpDesenhar(){
   const alvo = document.getElementById('v-precificacao'); if(!alvo) return;
   const K = pcCalc(), C = mpCanais();
+  mpCarregarRefs();
   const skus = Object.keys(K.skus || {}).filter(s => (K.skus[s] || {}).calc && !(K.skus[s] || {}).brinde)
     .sort((a, b) => ((K.skus[a] || {}).prod || a).localeCompare((K.skus[b] || {}).prod || b));
   if(!PC.sku && skus.length) PC.sku = skus[0];
@@ -22227,11 +22332,13 @@ function mpDesenhar(){
     '<div><label>Produto</label><select id="mpModo"><option value="atual"' + (!MP.novo ? ' selected' : '') + '>Produto do portfólio</option><option value="novo"' + (MP.novo ? ' selected' : '') + '>Produto novo</option></select></div>' +
     (MP.novo ? '<div><label>Nome do produto novo</label><input id="mpNome" value="' + pcEsc(MP.nome) + '" placeholder="ex.: Jelly Protein" style="width:220px"></div>'
              : '<div><label>SKU</label><select id="mpSku" style="max-width:380px">' + skus.map(s => '<option value="' + pcEsc(s) + '"' + (s === PC.sku ? ' selected' : '') + '>' + pcEsc((K.skus[s] || {}).prod || s) + ' · ' + pcEsc(s) + '</option>').join('') + '</select></div>') +
-    '<div><label>Anúncio no Mercado Livre</label><select id="mpTipo"><option value="gold_pro"' + (MP.tipo === 'gold_pro' ? ' selected' : '') + '>Premium</option><option value="gold_special"' + (MP.tipo === 'gold_special' ? ' selected' : '') + '>Clássico</option></select></div>' +
+    '<div><label>Anúncio no Mercado Livre</label><select id="mpTipo"><option value=""' + (!MP.tipo ? ' selected' : '') + '>o do anúncio (' + (mpTipoML() === 'gold_special' ? 'Clássico' : 'Premium') + ')</option><option value="gold_pro"' + (MP.tipo === 'gold_pro' ? ' selected' : '') + '>Premium</option><option value="gold_special"' + (MP.tipo === 'gold_special' ? ' selected' : '') + '>Clássico</option></select></div>' +
     '<div><label>Margem alvo</label><input id="mpAlvo" value="' + (MP.alvo * 100).toFixed(1).replace('.', ',') + '" style="width:70px">%</div>' +
     '<div style="margin-left:auto"><button class="pc-btn2" data-pca="mplimpar">Voltar tudo às sugestões</button></div></div>';
   if(MP.novo) h += '<p class="pc-note">Produto novo: digite o <b>preço do anúncio</b> em cada canal e o <b>CMV</b> (linhas em vermelho). Taxas, frete, imposto e crédito de insumos (média geral) já vêm sugeridos. No Mercado Livre, a tarifa e o frete seguem a faixa do preço que você digitar.</p>';
-  if(!C.length){ alvo.innerHTML = h + '<p class="pc-note">Nenhum marketplace com venda nos últimos 60 dias.</p>'; return; }
+  if(!C.length){ alvo.innerHTML = h + '<div class="pc-cen"><h3>Sem canais para mostrar</h3><p class="pc-note" style="margin:0">' +
+    (Array.isArray(pcCalc().mkt) ? 'Nenhum marketplace vendeu nos últimos 60 dias.'
+      : 'A lista de canais ainda não chegou neste Portal: ela vem na base do ano, que se atualiza sozinha em até 10 minutos. Recarregue a página daqui a pouco.') + '</p></div>'; return; }
   const O = C.map(c => ({c, o: mpConta(c)}));
   const dt = s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) : '—';
   const mil = v => v >= 1e6 ? 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + ' mi' : 'R$ ' + Math.round(v / 1e3).toLocaleString('pt-BR') + ' mil';
@@ -22243,8 +22350,9 @@ function mpDesenhar(){
     '<tr class="pc-tot"><td>Preço mínimo p/ ' + pcP(MP.alvo) + ' de margem</td>' + O.map(x => { const m = mpFalta(x.c, 'cmv', x.o.P) ? null : mpMinimo(x.c); return '<td>' + (m == null ? '—' : pcR(m)) + '</td>'; }).join('') + '</tr>' +
     (adm ? '<tr><td>Taxas no banco</td>' + C.map(c => '<td><button class="pc-btn2" data-mps="' + pcEsc(c.canal) + '" title="grava comissão, outras taxas, frete, anúncios e imposto deste canal (o que está na tela)">Salvar taxas</button></td>').join('') + '</tr>' : '') +
     '</tbody></table></div>';
-  h += '<p class="pc-note">De onde vem cada número: <b>preço</b> = no Mercado Livre, o menor anúncio ativo hoje do SKU; nos outros, o preço do site (digite o do anúncio). ' +
-    '<b>Comissão e frete do Mercado Livre</b> = a tarifa e o frete medidos nos pedidos dos últimos 90 dias, pela faixa de preço (abaixo de R$ 79 muda) e pelo tipo de anúncio. ' +
+  h += '<p class="pc-note">De onde vem cada número: <b>preço</b> = no Mercado Livre, o menor anúncio ativo hoje do SKU; no TikTok e na Amazon, o preço médio vendido do SKU em 60 dias (com o desconto médio na nota como cupom); sem venda, o preço do site. ' +
+    '<b>TikTok</b>: o desconto da nota mistura o que a Dobro paga e o subsídio do TikTok; pelo extrato do Seller Center (fev–nov/26) a Dobro paga 48% dele, então o cupom é 48% do desconto da nota. ' +
+    '<b>Mercado Livre</b> = do próprio SKU nos últimos 30 dias: tarifa, frete, cupom pago pela Dobro, Ads e armazenagem Full (a mesma conta da aba Marketplace). Se o preço mudar de faixa (R$ 79) ou de tipo de anúncio, tarifa e frete passam para a mediana da faixa; SKU sem venda usa o Ads médio do ML. ' +
     '<b>TikTok Shop</b> = estimativas do extrato de out/26 (comissão 6,7%, SFP + afiliado 11,3%, frete 0,9%, anúncios 6,7%). <b>Amazon</b> = comissão 12%; frete e anúncios sem dado ainda. ' +
     '<b>Imposto</b> 27,41% = ICMS+FCP+DIFAL 18,16% + PIS/COFINS 9,25%. <b>CMV</b> = custo do SKU, líquido do crédito de insumos real dele. ' +
     'Comissão, taxas, frete %, anúncios e imposto são sobre a receita (preço menos o cupom pago pela Dobro).' +
@@ -22332,7 +22440,7 @@ function pcMudou(ev){
   if(t.id === 'mpSku'){ PC.sku = t.value; MP.ov = {}; mpDesenhar(); return; }
   if(t.id === 'mpModo'){ MP.novo = t.value === 'novo'; MP.ov = {}; mpDesenhar(); return; }
   if(t.id === 'mpNome'){ MP.nome = t.value; mpDesenhar(); return; }
-  if(t.id === 'mpTipo'){ MP.tipo = t.value; mpDesenhar(); return; }
+  if(t.id === 'mpTipo'){ MP.tipo = t.value || null; mpDesenhar(); return; }
   if(t.id === 'mpAlvo'){ const n = pcNum(t.value); if(n != null) MP.alvo = n / 100; mpDesenhar(); return; }
   if(t.id === 'pcModo'){ PC.novo = t.value === 'novo'; PC.ov = {}; }
   else if(t.id === 'pcSku'){ PC.sku = t.value; PC.ov = {}; }
