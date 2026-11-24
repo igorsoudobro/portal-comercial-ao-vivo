@@ -21206,9 +21206,9 @@ function ttDre(p){
 function ttGerencial(){
   const a = TTK.d.api; if(!a) return mkCard('Sem dados da API', '', '<div class="mk-note">O arquivo ainda não tem a API do TikTok.</div>');
   const ontem = mkDia(mkHoje(), -1), d7 = mkDia(ontem, -6), d15 = mkDia(ontem, -14), d30 = mkDia(ontem, -29);
-  const M = {}, novo = sk => M[sk] || (M[sk] = {sk, d: '', fam: '', dob: '', q7: 0, q15: 0, q30: 0, rec: 0, cheio30: 0, pago30: 0, ult: '', pUlt: null, hoje: null, est: null, ativo: false});
+  const M = {}, novo = sk => M[sk] || (M[sk] = {sk, d: '', fam: '', dob: '', q7: 0, q15: 0, q30: 0, rec: 0, cheio30: 0, pago30: 0, dd30: 0, dt30: 0, ult: '', pUlt: null, hoje: null, est: null, ativo: false});
   a.SK.forEach(x => { if(x.d > ontem && x.d !== mkHoje()) return; const o = novo(x.sk);
-    if(x.d >= d30 && x.d <= ontem){ o.q30 += x.un; o.rec += x.cheio - x.dd; o.cheio30 += x.cheio; o.pago30 += x.cheio - x.dd - x.dt;
+    if(x.d >= d30 && x.d <= ontem){ o.q30 += x.un; o.rec += x.cheio - x.dd; o.cheio30 += x.cheio; o.pago30 += x.cheio - x.dd - x.dt; o.dd30 += x.dd; o.dt30 += x.dt;
       if(x.d >= d15) o.q15 += x.un; if(x.d >= d7) o.q7 += x.un; }
     if(x.un > 0 && x.d >= o.ult){ o.ult = x.d; o.pUlt = x.cheio / x.un; } });
   (a.prod || []).forEach(x => { const sk = String(x[3] || '').toUpperCase(); if(!sk || x[2] === 'DELETED') return; const o = novo(sk);
@@ -21219,6 +21219,8 @@ function ttGerencial(){
     if(!o.d){ const s = TTK.d.S.find(s => s.p && s.p === o.dob); o.d = s ? s.d : o.sk; }
     o.med = (o.q7 / 7 + o.q15 / 15 + o.q30 / 30) / 3;
     o.pm = o.q30 ? o.pago30 / o.q30 : null;
+    o.cm = o.q30 ? o.cheio30 / o.q30 : null;            /* preco cheio medio: cm - sDob - sTT = preco medio pago */
+    o.sDob = o.q30 ? o.dd30 / o.q30 : null; o.sTT = o.q30 ? o.dt30 / o.q30 : null;
     o.rup = (o.est != null && o.med > 0) ? o.est / o.med : null;
     o.rep = o.med > 0 ? Math.max(0, Math.ceil(o.med * 30 - (o.est || 0))) : 0; });
   const tot = L.reduce((s, o) => s + o.rec, 0);
@@ -21241,14 +21243,16 @@ function ttGerencial(){
     '</select><input id="ttGBusca" placeholder="buscar SKU ou produto" value="' + mkEsc(TTK.gBusca) + '" style="min-width:200px"></div>';
   h += '<div class="card"><div class="card-h"><h3>Tabela gerencial por SKU</h3>' + filtros + '</div><div class="mk-scroll"><table class="mk-ger"><thead><tr>' +
     th('sk', 'SKU') + th('d', 'Descrição') + th('fam', 'Família') + th('abc', 'ABC', 'curva pela receita de 30 dias') + th('rec', 'Receita 30 d', 'preço cheio − desconto pago pela Dobro') +
-    th('hoje', 'Preço do anúncio hoje', 'menor preço entre os anúncios ativos do SKU') + th('pUlt', 'Preço da última venda', 'preço cheio da última venda') + th('pm', 'Preço médio pago', 'o que o cliente pagou por unidade em 30 dias') +
+    th('hoje', 'Preço do anúncio hoje', 'menor preço entre os anúncios ativos do SKU') + th('pUlt', 'Preço da última venda', 'preço cheio da última venda') + th('sDob', 'Subsídio médio Dobro', 'R$ de desconto por unidade pago só pela Dobro (30 dias)') + th('sTT', 'Subsídio médio TikTok', 'R$ de desconto por unidade pago só pelo TikTok (30 dias) - ele repassa à Dobro') +
+    th('pm', 'Preço final médio pago', 'o que o cliente pagou por unidade em 30 dias = preço cheio médio − subsídio Dobro − subsídio TikTok') +
     th('est', 'Estoque hoje') + th('q7', 'Giro 7 d') + th('q15', 'Giro 15 d') + th('q30', 'Giro 30 d') + th('med', 'Média por dia', 'média dos giros diários de 7, 15 e 30 dias') +
     th('rup', 'Previsão de ruptura', 'estoque ÷ média por dia') + th('rep', 'Sugestão de reposição', 'média por dia × 30 − estoque') + '</tr></thead><tbody>' +
     L.map(o => { const rup = o.rup == null ? '—' : '<span class="mk-chip ' + (o.rup < 7 ? 'dn' : (o.rup < 15 ? 'nt' : 'up')) + '">' + mkN(Math.round(o.rup)) + ' dias</span><small class="mk-sub">' + mkDD(mkDia(mkHoje(), Math.round(o.rup))) + '</small>';
       return '<tr><td class="mk-sku"><b>' + mkEsc(o.sk) + '</b>' + (o.dob ? '<small class="mk-sub">' + mkEsc(o.dob) + '</small>' : '') + (o.ativo ? '' : '<small class="mk-sub">sem anúncio ativo</small>') + '</td>' +
         '<td class="mk-t" title="' + mkEsc(o.d) + '">' + mkEsc(o.d) + '</td><td style="text-align:left">' + mkEsc(o.fam) + '</td><td>' + (o.abc === '—' ? '—' : '<span class="mk-abc ' + o.abc + '">' + o.abc + '</span>') + '</td>' +
         '<td>' + mkR(o.rec) + '</td><td>' + (o.hoje == null ? '—' : mkR2(o.hoje)) + '</td><td>' + (o.pUlt == null ? '—' : mkR2(o.pUlt) + '<small class="mk-sub">' + mkDD(o.ult) + '</small>') + '</td>' +
-        '<td>' + (o.pm == null ? '—' : mkR2(o.pm)) + '</td><td>' + (o.est == null ? '—' : mkN(o.est)) + '</td><td>' + mkN(o.q7) + '</td><td>' + mkN(o.q15) + '</td><td>' + mkN(o.q30) + '</td>' +
+        '<td>' + (o.sDob == null ? '—' : mkR2(o.sDob)) + '</td><td>' + (o.sTT == null ? '—' : mkR2(o.sTT)) + '</td>' +
+        '<td title="preço cheio médio ' + (o.cm == null ? '—' : mkR2(o.cm)) + '">' + (o.pm == null ? '—' : '<b>' + mkR2(o.pm) + '</b>' + (o.cm != null && Math.abs(o.cm - (o.hoje || o.cm)) > 0.5 ? '<small class="mk-sub">cheio médio ' + mkR2(o.cm) + '</small>' : '')) + '</td><td>' + (o.est == null ? '—' : mkN(o.est)) + '</td><td>' + mkN(o.q7) + '</td><td>' + mkN(o.q15) + '</td><td>' + mkN(o.q30) + '</td>' +
         '<td>' + (o.med ? mkN1(o.med) : '0') + '</td><td>' + rup + '</td><td>' + (o.rep ? '<b>' + mkN(o.rep) + '</b>' : '0') + '</td></tr>'; }).join('') +
     '</tbody></table></div><div class="mk-note">Fonte: API do TikTok (pedidos e anúncios) · janelas de 7, 15 e 30 dias até ontem, sem amostras e sem cancelados · estoque de hoje = estoque do TikTok (envio pela própria Dobro). ' +
     'Pedidos atualizados às ' + new Date(a.sync.pedidos).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) + ', anúncios às ' +
@@ -23147,6 +23151,68 @@ function rdRegistrar(){
   if(nav && nav.children.length && typeof buildNav === 'function'){ try{ buildNav(); }catch(e){} }
 }
 try{ rdRegistrar(); }catch(e){ console.error('radar: registrar', e); }
+</script>
+
+<script>
+/* ===================== MIX POR CNPJ PELA CARTEIRA ATUAL (24/11/2026) ===================== */
+(function(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  const vw = VIEWS.find(v => v.id === 'mix'); if(!vw || vw._carteira) return;
+  const orig = vw.fn;
+  const norm = cn => String(cn || '').replace(/\D/g, '').replace(/^0+/, '');
+  vw.fn = function(){
+    const lin = window.linhas;
+    const dono = {};
+    try{ (typeof CARTEIRA !== 'undefined' && Array.isArray(CARTEIRA) ? CARTEIRA : []).forEach(c => { if(c && c.cn && c.v) dono[norm(c.cn)] = {v: c.v, mo: c.mo}; }); }catch(e){}
+    window.linhas = function(){
+      const fv = FILTER.vend, fm = FILTER.mod, vis = VEND_VIS;
+      let base;
+      try{
+        FILTER.vend = '(todos)'; FILTER.mod = '(todos)';
+        if(!SESSION.isAdmin) VEND_VIS = new Set(ROWS.map(r => r.v));    /* a trava volta abaixo, sobre o dono */
+        base = lin.apply(this, arguments);
+      } finally { FILTER.vend = fv; FILTER.mod = fm; VEND_VIS = vis; }
+      const filtra = typeof podeFiltrar === 'function' ? podeFiltrar() : SESSION.isAdmin;
+      const ok = (typeof multiOK === 'function') ? multiOK : ((f, v) => f === '(todos)' || f == null || v === f);
+      const out = [];
+      base.forEach(r => {
+        const d = dono[norm(r.cn)];
+        const x = (d && (d.v !== r.v || (d.mo && d.mo !== r.mo))) ? Object.assign({}, r, {v: d.v, mo: d.mo || r.mo, vVenda: r.v}) : r;
+        if(!SESSION.isAdmin && !VEND_VIS.has(x.v)) return;
+        if(filtra && (!ok(FILTER.vend, x.v) || !ok(FILTER.mod, x.mo))) return;
+        out.push(x);
+      });
+      return out;
+    };
+    /* "Liquido no ano" (mixLiquidoDoAno) le ROWS direto: mesma troca pelo dono atual */
+    const liq = window.mixLiquidoDoAno;
+    if(typeof liq === 'function') window.mixLiquidoDoAno = function(){
+      const filtra = typeof podeFiltrar === 'function' ? podeFiltrar() : SESSION.isAdmin;
+      const ok = (typeof multiOK === 'function') ? multiOK : ((f, v) => f === '(todos)' || f == null || v === f);
+      const o = {};
+      ROWS.forEach(r => {
+        if((r.tipo !== 0 && r.tipo !== 1) || !r.cn) return;
+        const d = dono[norm(r.cn)], v = d ? d.v : r.v, mo = d ? (d.mo || r.mo) : r.mo;
+        if(!SESSION.isAdmin && !VEND_VIS.has(v)) return;
+        if(filtra && (!ok(FILTER.vend, v) || !ok(FILTER.mod, mo) || !ok(FILTER.reg, r.reg) || !ok(FILTER.uf, r.uf) || !ok(FILTER.canal, r.ca))) return;
+        o[r.cn] = (o[r.cn] || 0) + r.fat;
+      });
+      return o;
+    };
+    try{ return orig.apply(this, arguments); }
+    finally{ window.linhas = lin; if(typeof liq === 'function') window.mixLiquidoDoAno = liq; }
+  };
+  vw._carteira = true;
+  /* nota embaixo da matriz: deixa claro que aqui vale a carteira de hoje */
+  const obs = new MutationObserver(() => {
+    const out = document.getElementById('mixCnpjOut'); if(!out || out.querySelector('.mix-cart-nota')) return;
+    const n = document.createElement('div'); n.className = 'mix-cart-nota';
+    n.style.cssText = 'font-size:11.5px;color:#5b6475;padding:8px 20px 12px';
+    n.innerHTML = '<b>Vendedor = dono do cliente na carteira de hoje.</b> As compras feitas com outro vendedor (antes de o cliente mudar de carteira) entram para o dono atual. Faturamento, DRE e comissão continuam por quem vendeu.';
+    out.appendChild(n);
+  });
+  try{ obs.observe(document.body, {childList: true, subtree: true}); }catch(e){}
+})();
 </script>
 
 <style>
