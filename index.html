@@ -23216,6 +23216,60 @@ try{ rdRegistrar(); }catch(e){ console.error('radar: registrar', e); }
 </script>
 
 <style>
+#v-dre table.dre-mod th, #v-dre table.dre-mod td{padding:6px 10px;font-size:12px;white-space:nowrap}
+#v-dre table.dre-mod td.rowlab{position:sticky;left:0;background:var(--card, #fff);z-index:1}
+#v-dre table.dre-mod th.dm-tot, #v-dre table.dre-mod td.dm-tot{background:#FFF7D6;border-left:2px solid #D8C733;border-right:2px solid #D8C733;font-weight:700}
+#v-dre table.dre-mod thead th.dm-tot{background:#D8C733;color:#2A3E7E}
+#v-dre table.dre-mod td.dm-zero{color:#a3abbb}
+#v-dre table.dre-mod th small{display:block;font-weight:500;opacity:.75;font-size:10.5px}
+</style>
+<script>
+/* ===================== DRE POR ATENDIMENTO x CANAL (24/11/2026) ===================== */
+(function(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  const vw = VIEWS.find(v => v.id === 'dre'); if(!vw || vw._porCanal) return;
+  const orig = vw.fn;
+  const sel = campo => { const f = FILTER[campo]; if(Array.isArray(f)) return f.filter(x => x && x !== '(todos)'); return (f && f !== '(todos)') ? [f] : []; };
+  vw.fn = function(){
+    const mods = sel('mod');
+    if(!mods.length || typeof dre !== 'function' || typeof dreRowsFor !== 'function') return orig.apply(this, arguments);
+    let promoAntes; try{ promoAntes = PROMO_CTX; PROMO_CTX = {}; }catch(e){}
+    try{
+      const L = linhas();
+      /* canais: os vendidos no recorte + os da carteira do atendimento (zerados se nao venderam) */
+      const fat = {};
+      L.forEach(r => { if(r.ca) fat[r.ca] = (fat[r.ca] || 0) + (r.venda ? (r.fat || 0) : 0); });
+      try{ (CARTEIRA || []).forEach(c => { if(c && c.ca && mods.indexOf(c.mo) >= 0 && !(c.ca in fat)) fat[c.ca] = 0; }); }catch(e){}
+      const canais = Object.keys(fat).sort((a, b) => (fat[b] - fat[a]) || a.localeCompare(b));
+      /* contexto da promotoria novo a cada dre(), como faz a propria aba */
+      /* a promotoria e rateada pelo FILTRO da barra (dono da rede: vendedor/modelo/canal), nao pelas linhas:
+         em cada coluna o filtro de canal vira so aquele canal, senao todo canal levaria a promotoria inteira */
+      const dreCtx = (X, canal) => { const fc = FILTER.canal;
+        try{ PROMO_CTX = {}; }catch(e){}
+        if(canal != null) FILTER.canal = [canal];
+        try{ return dre(X); } finally { FILTER.canal = fc; } };
+      const T = dreCtx(L), C = canais.map(c => { const X = L.filter(r => r.ca === c); return {c, d: dreCtx(X, c), n: X.length}; });
+      const meses = MESES.filter(m => L.some(r => r.m === m));
+      const nome = mods.length === 1 ? mods[0] : mods.join(' + ');
+      const head = '<tr><th>Linha</th><th class="dm-tot" style="text-align:right">Total<small>' + nome + '</small></th>' +
+        C.map(x => '<th style="text-align:right">' + x.c + '<small>' + (fat[x.c] && T.fatLiq ? pct(fat[x.c] / (T.fat || T.fatLiq)) + ' do fat.' : 'sem venda') + '</small></th>').join('') + '</tr>';
+      const body = dreRowsFor().map(([lab, key, f, flag]) => {
+        const sens = flag === 's', bold = flag === 'b';
+        const cel = (dd, extra, vazio) => { const v = dd[key]; let cls = DRE_PCT_FAROL.indexOf(key) >= 0 ? (v >= 0 ? 'pos' : 'neg') : (key === 'dev' && v < 0 ? 'neg' : '');
+          return '<td class="mono ' + cls + ' ' + (bold ? 'tot ' : '') + (extra || '') + (vazio ? ' dm-zero' : '') + '">' + fmtCell(v, f, key) + '</td>'; };
+        return '<tr class="' + (bold ? 'tot' : '') + '" data-dre="' + key + '"><td class="rowlab ' + (bold ? 'tot' : '') + '">' + lab + (sens ? SENS : '') + '</td>' +
+          cel(T, 'dm-tot') + C.map(x => cel(x.d, '', !x.n)).join('') + '</tr>';
+      }).join('');
+      const titulo = 'DRE — ' + nome + ' por canal';
+      el('v-dre').innerHTML = '<div class="card"><div class="card-h"><h3>' + titulo + '</h3><span class="hint">' + meses.length + ' mês(es) somados · total do atendimento + cada canal · canal sem venda fica zerado</span></div>' +
+        '<div class="scroll"><table class="dre-mensal dre-mod"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div></div>';
+    } finally { try{ PROMO_CTX = promoAntes === undefined ? null : promoAntes; }catch(e){} }
+  };
+  vw._porCanal = true;
+})();
+</script>
+
+<style>
 /* ===================== UX / DESIGN UNICO (07/11/2026) ===================== */
 /* logo da Dobro no lugar do "d" (07/11/2026) */
 .ux-logo{display:block;width:auto}
@@ -23273,6 +23327,12 @@ try{ rdRegistrar(); }catch(e){ console.error('radar: registrar', e); }
 .ux-grupo.fechado .ux-grupo-itens{display:none}
 .ux-grupo-itens{display:flex;flex-direction:column;gap:1px}
 .nav > button[data-v="resumo"]{margin-bottom:6px}
+/* 24/11/2026 (Igor: "o Resumo sumindo") */
+/* a causa de verdade: o .nav e uma coluna flex de altura fixa; com as secoes abertas passando da tela o
+   navegador ESPREMIA os itens (flex-shrink) e o Resumo ficava com 18px, cortado. Item de menu nao encolhe. */
+.nav > *{flex-shrink:0 !important}
+/* 24/11/2026 (Igor): sem o filtro de Regiao na barra; "Modelo" agora se chama "Atendimento" */
+#admRegGroup{display:none !important}
 .ux-grupo-h .ux-badge{margin-left:auto;margin-right:6px}
 .ux-grupo:not(.fechado) .ux-grupo-h .ux-badge{display:none}
 /* entre 761 e 900px o menu e uma fita deitada: secoes somem, abas seguem em fila */
@@ -23487,6 +23547,15 @@ function uxAbrirSecaoAtiva(){
   const g = b && b.closest('.ux-grupo');
   if(g && g.classList.contains('fechado')){ g.classList.remove('fechado'); const h = g.querySelector('.ux-grupo-h'); if(h) h.setAttribute('aria-expanded', 'true'); }
 }
+/* 24/11/2026 (Igor): "Mudar de Modelo para Atendimento e pode excluir regiao da barra de filtros" */
+function uxFiltroAtendimento(){
+  const g = document.getElementById('admModGroup'), lab = g && g.querySelector('label');
+  if(lab && lab.textContent !== 'Atendimento') lab.textContent = 'Atendimento';
+  /* regiao escondida: nao pode ficar filtrando sem aparecer */
+  try{ if(FILTER.reg && FILTER.reg !== '(todos)' && !(Array.isArray(FILTER.reg) && !FILTER.reg.length)) FILTER.reg = Array.isArray(FILTER.reg) ? [] : '(todos)'; }catch(e){}
+}
+embrulha('buildFilters', uxFiltroAtendimento);
+try{ uxFiltroAtendimento(); }catch(e){}
 embrulha('buildNav', function(){
   const nav = ux$('nav'); if(!nav) return;
   nav.setAttribute('role', 'navigation'); nav.setAttribute('aria-label', 'Abas do Portal');
@@ -23506,7 +23575,7 @@ function uxMarcarAba(){
 
 /* ---------- 5) BARRA DE ESTADO: data da base, mes parcial, filtros ativos + Limpar */
 const UX_CAMPOS = (typeof CAMPOS_CHIP !== 'undefined') ? CAMPOS_CHIP : [['admVend','vend'],['admMod','mod'],['admReg','reg'],['admUf','uf'],['admCanal','canal']];
-const UX_ROT = {vend: 'vendedor', mod: 'modelo', reg: 'região', uf: 'UF', canal: 'canal'};
+const UX_ROT = {vend: 'vendedor', mod: 'atendimento', reg: 'região', uf: 'UF', canal: 'canal'};   /* 24/11: Modelo virou Atendimento na barra */
 function uxSel(campo){
   const f = FILTER[campo];
   if(Array.isArray(f)) return f.slice();
