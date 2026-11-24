@@ -20917,7 +20917,7 @@ try{ mkRegistrar(); }catch(e){ console.error('marketplace: registrar', e); }
 <script>
 /* ===================== ABA TIKTOK SHOP (notas do Bling) ===================== */
 const TTK = {d: null, carregando: false, erro: null, aba: 'geral', fam: '', busca: '', gs: {k: 'liq', dir: -1}, charts: {}, patch: false};
-const TTK_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['amostras', 'Amostras para criadores'], ['dre', 'DRE'], ['notas', 'Notas (conferir OMIE)']];
+const TTK_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['amostras', 'Creators & amostras'], ['dre', 'DRE'], ['envios', 'Envios & cancelamentos'], ['devol', 'Devoluções'], ['anuncios', 'Anúncios & estoque'], ['notas', 'Notas (conferir OMIE)']];
 
 function ttRegistrar(){
   if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
@@ -20926,7 +20926,8 @@ function ttRegistrar(){
     const irmao = document.querySelector('.view');
     if(irmao && irmao.parentNode){
       const div = document.createElement('div'); div.className = 'view'; div.id = 'v-tiktok';
-      irmao.parentNode.appendChild(div);
+      const rodape = document.getElementById('carimboV8') || irmao.parentNode.querySelector('.foot');   /* antes do rodape (24/11) */
+      if(rodape && rodape.parentNode === irmao.parentNode) irmao.parentNode.insertBefore(div, rodape); else irmao.parentNode.appendChild(div);
       div.addEventListener('click', ev => { const b = ev.target.closest('[data-tt]'); if(!b) return;
         const [a, v] = b.dataset.tt.split(':');
         if(a === 'aba'){ TTK.aba = v; ttDesenhar(); window.scrollTo(0, 0); }
@@ -20953,6 +20954,7 @@ async function ttCarregar(forcar){
     d.V = (d.venda || []).map(x => ({d: x[0], i: x[1], n: +x[2], q: +x[3], b: +x[4], l: +x[5], imp: +x[6], cmv: +x[7], sem: !!x[8]}));
     d.A = (d.amostra || []).map(x => ({d: x[0], i: x[1], q: +x[3], v: +x[4], cmv: +x[5]}));
     d.D = {}; d.dia.forEach(x => d.D[x[0]] = {pv: +x[1], qv: +x[2], bv: +x[3] || 0, lv: +x[4] || 0, dv: +x[5] || 0, fv: +x[6] || 0, nd: +x[7], vd: +x[8] || 0, na: +x[9]});
+    try{ if(d.api) ttPrepApi(d); }catch(e){ console.error('tiktok: api', e); d.api = null; }
     TTK.d = d;
   }catch(e){ TTK.erro = e.message || String(e); console.error('tiktok:', e); }
   TTK.carregando = false;
@@ -20984,7 +20986,7 @@ function ttDesenhar(manter){
   if(TTK.erro){ alvo.innerHTML = h + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(TTK.erro) + '</div>'); return; }
   if(!d){ alvo.innerHTML = h; return; }
   h += '<div class="mk-tabs">' + TTK_ABAS.map(a => '<button data-tt="aba:' + a[0] + '" class="' + (TTK.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
-  try{ h += ({geral: ttGeral, skus: ttSkus, amostras: ttAmostras, dre: ttDre, notas: ttNotas}[TTK.aba] || ttGeral)(pr); }
+  try{ h += ({geral: ttGeral, skus: ttSkus, amostras: ttAmostras, dre: ttDre, envios: ttEnvios, devol: ttDevol, anuncios: ttAnuncios, notas: ttNotas}[TTK.aba] || ttGeral)(pr); }
   catch(e){ console.error('tiktok: tela', e); h += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
   h += '<div class="mk-note">Fonte: notas do Bling, canal Tiktok Shop. O OMIE recebe essas notas por importação manual e costuma ficar alguns dias atrás — confira na aba "Notas".</div>';
   alvo.innerHTML = h;
@@ -21056,9 +21058,9 @@ function ttAmostras(p){
   const M = {}; Object.keys(TTK.d.D).forEach(x => { const m = x.slice(0, 7), o = M[m] || (M[m] = {pv: 0, lv: 0, na: 0, cmvA: 0}); o.pv += TTK.d.D[x].pv; o.lv += TTK.d.D[x].lv; o.na += TTK.d.D[x].na; });
   TTK.d.A.forEach(r => { const o = M[r.d.slice(0, 7)]; if(o) o.cmvA += r.cmv; });
   const meses = Object.keys(M).sort().slice(-12).reverse();
-  let h = '<div class="kpirow">' + mkKpi('Amostras enviadas', mkN(t.na), 'notas de bonificação no período', 'accent') + mkKpi('Unidades', mkN(T.q)) +
+  let h = ttCreators(p) + '<div class="kpirow">' + mkKpi('Amostras enviadas', mkN(t.na), 'notas de bonificação no período', 'accent') + mkKpi('Unidades', mkN(T.q)) +
     mkKpi('Custo das amostras (CMV)', mkR(T.cmv), mkP(t.lv ? T.cmv / t.lv : 0) + ' do faturamento líquido do TikTok', T.cmv > 0.3 * t.lv ? 'alerta' : '') +
-    mkKpi('Frete das amostras (estimado)', mkR(t.na * TT_TAXA.freteAmostra), 'R$ 11,33 por envio (extrato de out/26)', 'alerta') +
+    mkKpi('Frete das amostras', mkR(ttDreCalc(p.ini, p.fim).frA), 'real da API desde out/26 (antes: R$ 11,33 por envio)', 'alerta') +
     mkKpi('Valor nas notas', mkR(T.v), 'preço de tabela — não é custo') + '</div>';
   h += mkCard('Amostras × venda por mês', 'quanto se gasta em amostra para cada real vendido',
     '<table class="mk-dre"><thead><tr><th>Mês</th><th>Pedidos de venda</th><th>Líquido vendido</th><th>Amostras (notas)</th><th>Custo das amostras</th><th>Custo ÷ venda</th></tr></thead><tbody>' +
@@ -21070,6 +21072,42 @@ function ttAmostras(p){
     '<tr class="mk-tot"><td>Total</td><td></td><td>' + mkN(T.q) + '</td><td>' + mkR(T.cmv) + '</td><td>' + mkR(T.v) + '</td></tr></tbody></table></div>');
   return h;
 }
+
+/* ===================== API DO TIKTOK (24/11/2026) ===================== */
+const TT_API_INI = '2026-10-01';   /* o acerto financeiro (extrato) da API comeca em 09/10/2026 - antes disso, estimativa */
+function ttPrepApi(d){
+  const a = d.api, P = {};
+  (a.ped || []).forEach(x => { const o = P[x[0]] || (P[x[0]] = {});
+    o[x[1]] = {n: +x[2], un: +x[3], cheio: +x[4], dd: +x[5], dt: +x[6], nl: +x[7], cl: +x[8], com: +x[9], sfp: +x[10], afil: +x[11], item: +x[12], out: +x[13], fr: +x[14], liq: +x[15], cri: +x[16]}; });
+  a.P = P;
+  a.AJ = (a.aj || []).map(x => ({d: x[0], t: x[1], v: +x[2]}));
+  a.SK = (a.sku || []).map(x => ({d: x[0], sk: String(x[1] || '').toUpperCase(), un: +x[2], cheio: +x[3], dd: +x[4], dt: +x[5]}));
+  a.EV = {}; (a.envio || []).forEach(x => a.EV[x[0]] = {nd: +x[1], na: +x[2], hd: +x[3] || 0, ne: +x[4], de: +x[5] || 0});
+  /* SKU do TikTok -> SKU da Dobro: 1o a planilha "SKU por canal"; 2o o codigo do Bling (o TikTok poe "MKT_" na frente) */
+  const bl = {}; (d.S || []).forEach(s => bl[String(s.c).toUpperCase()] = s);
+  a.dobro = sk => { sk = String(sk || '').toUpperCase(); const p = (a.depara || {})[sk]; if(p) return {sku: p[0], fam: p[1] || ''};
+    const b = bl[sk.replace(/^MKT_/, '')]; return b ? {sku: b.p || '', fam: b.fam || '', bling: true} : null; };
+  /* taxas medias REAIS dos ultimos 60 dias (pedidos de venda ja liquidados), sobre o preco cheio */
+  const lim = mkDia(mkHoje(), -60); const r = {cl: 0, com: 0, sfp: 0, afil: 0, item: 0, out: 0, fr: 0, cheio: 0, dd: 0, nlA: 0, frA: 0};
+  Object.keys(P).forEach(dia => { if(dia < lim) return; const v = P[dia].V, am = P[dia].A;
+    if(v){ r.cl += v.cl; r.com += v.com; r.sfp += v.sfp; r.afil += v.afil; r.item += v.item; r.out += v.out; r.fr += v.fr; r.cheio += v.cheio; r.dd += v.dd; }
+    if(am){ r.nlA += am.nl; r.frA += am.fr; } });
+  const ads = a.AJ.filter(x => x.d >= lim && x.t === 'GMV_PAYMENT_FOR_TIKTOK_ADS').reduce((s, x) => s - x.v, 0);
+  a.R = r.cl > 0 ? {com: r.com / r.cl, sfp: r.sfp / r.cl, afil: r.afil / r.cl, item: r.item / r.cl, out: r.out / r.cl, fr: r.fr / r.cl,
+                    frA: r.nlA ? r.frA / r.nlA : TT_TAXA.freteAmostra, ddShare: r.cheio ? r.dd / r.cheio : 0,
+                    ads: (r.cheio - r.dd) > 0 ? ads / (r.cheio - r.dd) : 0, base: r.cl} : null;
+}
+/* soma da API num intervalo (dias de pedido) */
+function ttApiTot(ini, fim){
+  const a = TTK.d && TTK.d.api, z = () => ({n: 0, un: 0, cheio: 0, dd: 0, dt: 0, nl: 0, cl: 0, com: 0, sfp: 0, afil: 0, item: 0, out: 0, fr: 0, liq: 0, cri: 0});
+  const T = {V: z(), A: z(), ads: 0, aj: 0, ajTipos: {}};
+  if(!a) return T;
+  Object.keys(a.P).forEach(dia => { if(dia < ini || dia > fim) return; ['V', 'A'].forEach(k => { const o = a.P[dia][k]; if(o) Object.keys(o).forEach(c => T[k][c] += o[c]); }); });
+  a.AJ.forEach(x => { if(x.d < ini || x.d > fim) return;
+    if(x.t === 'GMV_PAYMENT_FOR_TIKTOK_ADS') T.ads -= x.v; else { T.aj += x.v; T.ajTipos[x.t] = (T.ajTipos[x.t] || 0) + x.v; } });
+  return T;
+}
+const TT_AJ_NOME = {LOGISTICS_REIMBURSEMENT: 'reembolso de logística', NET_EARNINGS_BALANCE: 'saldo de ganhos', NET_EARNINGS_DEDUCTION: 'dedução de ganhos'};
 
 /* ---------------- DRE com as taxas ESTIMADAS do TikTok ----------------
    11/11/2026, Igor ("Sim."): ate a API do TikTok chegar, as taxas entram como % medidos no extrato de
@@ -21083,27 +21121,43 @@ const TT_TAXA = {repasse: 0.135, com: 0.067, sfp: 0.061, afil: 0.052, frete: 0.0
 function ttDreCalc(ini, fim){
   const t = ttTot(ini, fim), V = ttPorSku(ini, fim, 'V'), A = ttPorSku(ini, fim, 'A');
   const imp = V.reduce((a, o) => a + o.imp, 0), cmv = V.reduce((a, o) => a + o.cmv, 0), cmvA = A.reduce((a, o) => a + o.cmv, 0);
-  const T = {bv: t.bv, dv: t.dv, lv: t.lv, vd: t.vd, cmv, cmvA, pv: t.pv, na: t.na};
-  T.rep = t.lv * TT_TAXA.repasse;
+  const T = {bv: t.bv, dv: t.dv, lv: t.lv, vd: t.vd, cmv, cmvA, pv: t.pv, na: t.na, item: 0, aj: 0, real: false, pctLiq: null};
+  const api = TTK.d && TTK.d.api && TTK.d.api.R ? TTK.d.api : null;
+  const corte = api ? TT_API_INI : '9999-12-31';
+  /* pedaco ESTIMADO (antes da API financeira): % do extrato de out/26, como antes */
+  let repE = 0, fatE = 0;
+  if(ini < corte){ const fE = fim < corte ? fim : mkDia(corte, -1), tE = ttTot(ini, fE);
+    repE = tE.lv * TT_TAXA.repasse; fatE = tE.lv + repE - tE.vd;
+    T.com = fatE * TT_TAXA.com; T.sfp = fatE * TT_TAXA.sfp; T.afil = fatE * TT_TAXA.afil; T.fr = fatE * TT_TAXA.frete;
+    T.frA = tE.na * TT_TAXA.freteAmostra; T.ads = fatE * TT_TAXA.ads;
+  } else { T.com = T.sfp = T.afil = T.fr = T.frA = T.ads = 0; }
+  T.rep = repE;
+  /* pedaco REAL (API): o liquidado pelo TikTok + o que falta liquidar pela taxa media real dos ultimos 60 dias */
+  if(fim >= corte && api){
+    const R = api.R, X = ttApiTot(ini > corte ? ini : corte, fim), v = X.V, am = X.A, falta = Math.max(0, v.cheio - v.cl);
+    T.real = true; T.pctLiq = v.cheio ? v.cl / v.cheio : null; T.apiV = v; T.apiA = am;
+    T.rep += v.dt;
+    T.com += v.com + falta * R.com; T.sfp += v.sfp + falta * R.sfp; T.afil += v.afil + falta * R.afil;
+    T.item = v.item + v.out + falta * (R.item + R.out); T.fr += v.fr + falta * R.fr;
+    T.frA += am.fr + Math.max(0, am.n - am.nl) * R.frA;
+    T.ads += X.ads; T.aj = X.aj; T.ajTipos = X.ajTipos;
+  }
   T.fatLiq = t.lv + T.rep - t.vd;
   T.imp = t.lv ? imp * (t.lv - t.vd) / t.lv : 0;          /* imposto estimado sobre as notas, liquido das devolucoes */
   T.mb = T.fatLiq - T.imp - cmv;
-  T.com = T.fatLiq * TT_TAXA.com; T.sfp = T.fatLiq * TT_TAXA.sfp; T.afil = T.fatLiq * TT_TAXA.afil; T.fr = T.fatLiq * TT_TAXA.frete;
-  T.taxas = T.com + T.sfp + T.afil + T.fr;
+  T.taxas = T.com + T.sfp + T.afil + T.item + T.fr;
   T.liq = T.mb - T.taxas;
-  T.frA = t.na * TT_TAXA.freteAmostra;
-  T.ads = T.fatLiq * TT_TAXA.ads;
-  T.res = T.liq - cmvA - T.frA - T.ads;
+  T.res = T.liq - cmvA - T.frA - T.ads + T.aj;
   return T;
 }
 const TT_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos (vendedor + TikTok)', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
-  ['+ Desconto do TikTok repassado à Dobro (est. 13,5% das notas)', T => T.rep], ['− Devoluções', T => -T.vd], ['= Faturamento líquido', T => T.fatLiq, 'tot'],
+  ['+ Desconto pago pelo TikTok (repassado à Dobro)', T => T.rep], ['− Devoluções', T => -T.vd], ['= Faturamento líquido', T => T.fatLiq, 'tot'],
   ['− Impostos (estimado: % real do ML por UF + PIS/COFINS 9,25%)', T => -T.imp], ['− CMV (líquido do crédito de insumos)', T => -T.cmv],
   ['= Margem bruta', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
-  ['− Comissão do TikTok (est. 6,7%)', T => -T.com], ['− Taxa SFP (est. 6,1%)', T => -T.sfp], ['− Comissão de afiliados (est. 5,2%)', T => -T.afil], ['− Frete das vendas (est. 0,9%)', T => -T.fr],
+  ['− Comissão do TikTok', T => -T.com], ['− Taxa SFP', T => -T.sfp], ['− Comissão de afiliados (creators)', T => -T.afil], ['− Taxa por item vendido', T => -T.item], ['− Frete das vendas', T => -T.fr],
   ['= Margem depois das taxas', T => T.liq, 'tot'], ['% margem depois das taxas', T => T.fatLiq ? T.liq / T.fatLiq : null, 'pct'],
-  ['− Amostras para criadores (CMV)', T => -T.cmvA], ['− Frete das amostras (est. R$ 11,33 por envio)', T => -T.frA],
-  ['− Anúncios GMV Max (est. 6,7%)', T => -T.ads],
+  ['− Amostras para criadores (CMV)', T => -T.cmvA], ['− Frete das amostras', T => -T.frA],
+  ['− Anúncios GMV Max', T => -T.ads], ['± Outros ajustes do TikTok (reembolso de logística…)', T => T.aj],
   ['= Resultado', T => T.res, 'tot'], ['% resultado', T => T.fatLiq ? T.res / T.fatLiq : null, 'pct'], ['Pedidos', T => T.pv, 'n'], ['Amostras enviadas', T => T.na, 'n']];
 function ttDre(p){
   const meses = Object.keys(mkMesesFrac(p)).sort(), T = ttDreCalc(p.ini, p.fim);
@@ -21120,15 +21174,121 @@ function ttDre(p){
     corpo = TT_DRE.map(l => { const v = l[1](T); return '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td><td>' + fmt(v, l[2]) + '</td><td>' +
       (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.fatLiq ? v / T.fatLiq : 0)) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkR2(T.pv ? v / T.pv : 0)) + '</td></tr>'; }).join('');
   }
-  return '<div class="mk-note warn">⚠ As taxas do TikTok, o repasse do desconto e o frete das amostras são ESTIMADOS com os % medidos no extrato de pagamentos do Seller Center de out/26. Os anúncios (GMV Max) também são estimados: R$ 3,1 mil de 01/10 a 11/11 = 6,7% do faturamento líquido. Quando a API do TikTok chegar, entram os valores reais de cada pedido.</div>' +
+  const R = TTK.d.api && TTK.d.api.R;
+  const aviso = !R ? '<div class="mk-note warn">⚠ Sem os dados da API do TikTok neste arquivo: taxas, repasse, frete das amostras e anúncios são ESTIMADOS com os % do extrato de out/26.</div>'
+    : '<div class="mk-note">' + (p.ini < TT_API_INI ? '⚠ Antes de ' + mkDD(TT_API_INI) + ' as taxas são ESTIMADAS (o acerto financeiro da API começa em out/26). ' : '') +
+      (T.real ? '<b>Valores reais da API do TikTok</b>: repasse do desconto, comissão, SFP, afiliado, taxa por item, frete e anúncios GMV Max. ' +
+        mkP(T.pctLiq) + ' do período já foi liquidado pelo TikTok; o resto usa a taxa média real dos últimos 60 dias (comissão ' + mkP(R.com) + ', SFP ' + mkP(R.sfp) +
+        ', afiliado ' + mkP(R.afil) + ', taxa por item ' + mkP(R.item + R.out) + ' do preço cheio). Os anúncios entram pela data da cobrança. Pedidos atualizados às ' +
+        new Date(TTK.d.api.sync.pedidos).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) + '.' : '') + '</div>';
+  return aviso +
     '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.fatLiq), mkN(T.pv) + ' pedidos · com o repasse do TikTok', 'accent') +
     mkKpi('Margem depois das taxas', mkR(T.liq), mkP(T.fatLiq ? T.liq / T.fatLiq : 0) + ' · taxas do TikTok ' + mkR(T.taxas)) +
     mkKpi('Amostras (CMV + frete)', mkR(T.cmvA + T.frA), mkN(T.na) + ' envios · ' + mkP(T.fatLiq ? (T.cmvA + T.frA) / T.fatLiq : 0) + ' do faturamento', (T.cmvA + T.frA) > 0.3 * T.fatLiq ? 'alerta' : '') +
-    mkKpi('Resultado', mkR(T.res), mkP(T.fatLiq ? T.res / T.fatLiq : 0) + ' · depois dos anúncios (est.)', T.res >= 0 ? 'pos' : 'alerta') + '</div>' +
+    mkKpi('Resultado', mkR(T.res), mkP(T.fatLiq ? T.res / T.fatLiq : 0) + ' · depois dos anúncios' + (T.real ? '' : ' (est.)'), T.res >= 0 ? 'pos' : 'alerta') + '</div>' +
     mkCard('DRE do TikTok Shop · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), meses.length > 1 ? 'meses lado a lado · última coluna = total' : 'por pedido = valor ÷ pedidos',
       '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
       '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(TTK.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real), sobre o valor das notas. ' +
-      'O desconto do TikTok repassado à Dobro não está na nota — confirmar com o contábil como ele é tributado. A comissão é cobrada desde a primeira venda do mês (a isenção dos R$ 10 mil foi só no início da loja).</div>');
+      'O desconto pago pelo TikTok não está na nota: o TikTok repassa à Dobro no acerto — confirmar com o contábil como ele é tributado. A comissão é cobrada desde a primeira venda do mês (a isenção dos R$ 10 mil foi só no início da loja).</div>');
+}
+
+/* ---------------- CREATORS (cards da API) ----------------
+   A API de pedidos/financas NAO diz qual creator gerou a venda nem traz visualizacoes - so se a venda pagou
+   comissao de afiliado. A aba por creator depende da coleta da parte de Afiliados da API (pedida em 24/11/2026). */
+function ttCreators(p){
+  const a = TTK.d.api; if(!a) return '';
+  const X = ttApiTot(p.ini, p.fim), v = X.V, am = X.A, T = ttDreCalc(p.ini, p.fim);
+  const reemb = (a.devol || []).filter(x => x[0] >= p.ini && x[0] <= p.fim && /refundable sample/i.test(x[3] || '')).length;
+  const canc = (a.canc || []).filter(x => x[1] === 'A' && Object.keys(mkMesesFrac(p)).indexOf(x[0]) >= 0).reduce((s, x) => s + +x[4], 0);
+  let h = '<div class="kpirow">' +
+    mkKpi('Amostras enviadas', mkN(am.n), 'pedidos de amostra no TikTok (API)', 'accent') +
+    mkKpi('Amostras canceladas', mkN(canc), 'meses do período') +
+    mkKpi('Custo das amostras', mkR(T.cmvA + T.frA), 'produto ' + mkR(T.cmvA) + ' + frete ' + mkR(T.frA), (T.cmvA + T.frA) > 0.3 * T.fatLiq ? 'alerta' : '') +
+    mkKpi('Vendas que vieram de creator', v.nl ? mkP(v.cri / v.nl) : '—', mkN(v.cri) + ' de ' + mkN(v.nl) + ' vendas já liquidadas pagaram comissão de afiliado') +
+    mkKpi('Comissão paga aos creators', mkR(T.afil), mkP(T.fatLiq ? T.afil / T.fatLiq : 0) + ' do faturamento líquido') +
+    mkKpi('Amostras reembolsáveis', mkN(reemb), 'creator cumpriu a meta e o TikTok devolveu a amostra') + '</div>';
+  const M = {}; Object.keys(a.P).forEach(d => { const m = d.slice(0, 7), o = M[m] || (M[m] = {am: 0, frA: 0, nlA: 0, v: 0, nl: 0, cri: 0, afil: 0});
+    const V = a.P[d].V, A = a.P[d].A; if(A){ o.am += A.n; o.frA += A.fr; o.nlA += A.nl; } if(V){ o.v += V.n; o.nl += V.nl; o.cri += V.cri; o.afil += V.afil; } });
+  const ms = Object.keys(M).sort().filter(m => m >= '2026-01').reverse();
+  h += mkCard('Creators e amostras por mês', 'API do TikTok · "via creator" só nos pedidos já liquidados (a comissão de afiliado aparece no acerto)',
+    '<table class="mk-dre"><thead><tr><th>Mês</th><th>Amostras enviadas</th><th>Frete das amostras</th><th>Vendas</th><th>Vendas via creator</th><th>Comissão de creators</th></tr></thead><tbody>' +
+    ms.map(m => { const o = M[m]; return '<tr><td>' + mkNomeMes(m) + '</td><td>' + mkN(o.am) + '</td><td>' + (o.nlA ? mkR(o.frA) : '—') + '</td><td>' + mkN(o.v) +
+      '</td><td>' + (o.nl ? mkP(o.cri / o.nl) + ' <small class="mk-sub">' + mkN(o.cri) + ' de ' + mkN(o.nl) + '</small>' : '—') + '</td><td>' + (o.nl ? mkR(o.afil) : '—') + '</td></tr>'; }).join('') + '</tbody></table>' +
+    '<div class="mk-note">Ainda não dá para ver <b>por creator</b> (quanto cada um vendeu, visualizações, vídeos e lives) nem as amostras <b>solicitadas/recusadas</b>: isso fica na parte de Afiliados da API do TikTok, que ainda não é coletada.</div>');
+  return h;
+}
+
+/* ---------------- ENVIOS & CANCELAMENTOS ---------------- */
+function ttEnvios(p){
+  const a = TTK.d.api; if(!a) return mkCard('Sem dados da API', '', '<div class="mk-note">O arquivo ainda não tem a API do TikTok.</div>');
+  const E = {nd: 0, na: 0, hd: 0, ne: 0, de: 0}; Object.keys(a.EV).forEach(d => { if(d < p.ini || d > p.fim) return; Object.keys(E).forEach(k => E[k] += a.EV[d][k]); });
+  const meses = Object.keys(mkMesesFrac(p)), C = (a.canc || []).filter(x => meses.indexOf(x[0]) >= 0 && x[1] === 'V');
+  const X = ttApiTot(p.ini, p.fim), nc = C.reduce((s, x) => s + +x[4], 0), vc = C.reduce((s, x) => s + +x[5], 0);
+  const quem = {}; C.forEach(x => quem[x[2]] = (quem[x[2]] || 0) + +x[4]);
+  const QN = {BUYER: 'comprador', SYSTEM: 'sistema (ex.: Pix/boleto não pago)', SELLER: 'Dobro'};
+  const mot = {}; C.forEach(x => { const k = x[3]; mot[k] = mot[k] || {n: 0, v: 0, q: x[2]}; mot[k].n += +x[4]; mot[k].v += +x[5]; });
+  let h = '<div class="kpirow">' +
+    mkKpi('Tempo até despachar', E.nd ? mkN1(E.hd / E.nd) + ' h' : '—', 'média do pagamento até o despacho · ' + mkN(E.nd) + ' pedidos', 'accent') +
+    mkKpi('Despachados fora do prazo', mkN(E.na), E.nd ? mkP(E.na / E.nd) + ' dos despachados' : '', E.na ? 'alerta' : '') +
+    mkKpi('Tempo até entregar', E.ne ? mkN1(E.de / E.ne) + ' dias' : '—', 'do pagamento à entrega · ' + mkN(E.ne) + ' entregues') +
+    mkKpi('Cancelados', mkN(nc), mkP((X.V.n + nc) ? nc / (X.V.n + nc) : 0) + ' dos pedidos · ' + mkR(vc) + ' de preço cheio (meses do período)', nc ? 'atencao' : '') + '</div>';
+  h += '<div class="grid2">' + mkCard('Quem cancelou', 'meses do período', '<table><thead><tr><th>Quem</th><th>Pedidos</th><th>%</th></tr></thead><tbody>' +
+      Object.entries(quem).sort((x, y) => y[1] - x[1]).map(([k, n]) => '<tr><td>' + mkEsc(QN[k] || k) + '</td><td>' + mkN(n) + '</td><td>' + mkP(nc ? n / nc : 0) + '</td></tr>').join('') + '</tbody></table>') +
+    mkCard('Motivos de cancelamento', 'meses do período', '<div class="mk-scroll"><table><thead><tr><th>Motivo</th><th>Quem</th><th>Pedidos</th><th>Preço cheio</th></tr></thead><tbody>' +
+      Object.entries(mot).sort((x, y) => y[1].n - x[1].n).map(([k, o]) => '<tr><td style="text-align:left">' + mkEsc(k) + '</td><td>' + mkEsc(QN[o.q] || o.q) + '</td><td>' + mkN(o.n) + '</td><td>' + mkR(o.v) + '</td></tr>').join('') +
+      '</tbody></table></div>') + '</div>';
+  const dias = []; for(let x = p.ini; x <= p.fim; x = mkDia(x, 1)) if(a.EV[x]) dias.push(x);
+  h += mkCard('Envios por dia', 'pedidos de venda pela data do pedido', '<div class="mk-scroll"><table><thead><tr><th>Dia</th><th>Despachados</th><th>Fora do prazo</th><th>Horas até despachar</th><th>Entregues</th><th>Dias até entregar</th></tr></thead><tbody>' +
+    dias.reverse().map(x => { const o = a.EV[x]; return '<tr><td>' + mkDD(x) + '</td><td>' + mkN(o.nd) + '</td><td>' + (o.na ? '<span class="mk-chip dn">' + mkN(o.na) + '</span>' : '0') + '</td><td>' + (o.nd ? mkN1(o.hd / o.nd) : '—') +
+      '</td><td>' + mkN(o.ne) + '</td><td>' + (o.ne ? mkN1(o.de / o.ne) : '—') + '</td></tr>'; }).join('') + '</tbody></table></div>');
+  return h;
+}
+
+/* ---------------- DEVOLUCOES ---------------- */
+function ttDevol(p){
+  const a = TTK.d.api; if(!a) return mkCard('Sem dados da API', '', '');
+  const L = (a.devol || []).filter(x => x[0] >= p.ini && x[0] <= p.fim);
+  const ST = {RETURN_OR_REFUND_REQUEST_COMPLETE: 'concluída', RETURN_OR_REFUND_REQUEST_PENDING: 'pendente', RETURN_OR_REFUND_REQUEST_CANCEL: 'cancelada', RETURN_OR_REFUND_REQUEST_REJECT: 'recusada'};
+  const TP = {REFUND: 'só reembolso', RETURN_AND_REFUND: 'devolução + reembolso', REPLACEMENT: 'troca'};
+  const amo = x => /refundable sample/i.test(x[3] || '');
+  const reais = L.filter(x => !amo(x)), conc = reais.filter(x => /COMPLETE/.test(x[2] || ''));
+  const mot = {}; reais.forEach(x => { const k = x[3] || '?'; mot[k] = mot[k] || {n: 0, v: 0}; mot[k].n++; mot[k].v += +x[4] || 0; });
+  let h = '<div class="kpirow">' + mkKpi('Pedidos de devolução', mkN(reais.length), 'no período · sem as amostras reembolsáveis', 'accent') +
+    mkKpi('Concluídas', mkN(conc.length), mkR(conc.reduce((s, x) => s + (+x[4] || 0), 0)) + ' reembolsados') +
+    mkKpi('Pendentes', mkN(reais.filter(x => /PENDING/.test(x[2] || '')).length), 'aguardando a Dobro ou o comprador', reais.some(x => /PENDING/.test(x[2] || '')) ? 'atencao' : '') +
+    mkKpi('Amostras reembolsáveis', mkN(L.length - reais.length), 'não é devolução: o creator cumpriu a meta') + '</div>';
+  h += '<div class="grid2">' + mkCard('Motivos', 'pedidos de devolução no período', '<table><thead><tr><th>Motivo</th><th>Pedidos</th><th>Valor</th></tr></thead><tbody>' +
+      Object.entries(mot).sort((x, y) => y[1].n - x[1].n).map(([k, o]) => '<tr><td style="text-align:left">' + mkEsc(k) + '</td><td>' + mkN(o.n) + '</td><td>' + mkR(o.v) + '</td></tr>').join('') + '</tbody></table>') +
+    mkCard('Lista', 'mais recentes primeiro', '<div class="mk-scroll"><table><thead><tr><th>Dia</th><th>Tipo</th><th>Situação</th><th>Motivo</th><th>Valor</th></tr></thead><tbody>' +
+      reais.slice().reverse().map(x => '<tr><td>' + mkDD(x[0]) + '</td><td>' + mkEsc(TP[x[1]] || x[1]) + '</td><td>' + mkEsc(ST[x[2]] || x[2]) + '</td><td style="text-align:left">' + mkEsc(x[3]) + '</td><td>' + mkR2(+x[4] || 0) + '</td></tr>').join('') +
+      '</tbody></table></div>') + '</div>';
+  return h;
+}
+
+/* ---------------- ANUNCIOS & ESTOQUE ---------------- */
+function ttAnuncios(p){
+  const a = TTK.d.api; if(!a) return mkCard('Sem dados da API', '', '');
+  const lim = mkDia(mkHoje(), -30), V30 = {};
+  a.SK.forEach(x => { if(x.d >= lim) V30[x.sk] = (V30[x.sk] || 0) + x.un; });
+  const ST = {ACTIVATE: ['ativo', 'up'], SELLER_DEACTIVATED: ['desativado', 'nt'], FREEZE: ['congelado pelo TikTok', 'dn'], DRAFT: ['rascunho', 'nt'], DELETED: ['apagado', 'nt'], PLATFORM_DEACTIVATED: ['desativado pelo TikTok', 'dn'], PENDING: ['em análise', 'nt'], FAILED: ['reprovado', 'dn']};
+  const L = (a.prod || []).filter(x => x[2] !== 'DELETED').map(x => { const sk = String(x[3] || '').toUpperCase(), db = a.dobro(sk), v = V30[sk] || 0;
+    return {t: x[1], st: x[2], sk: x[3] || '', dob: db ? db.sku : '', preco: +x[4] || 0, est: +x[5] || 0, v30: v, cob: v ? (+x[5] || 0) / (v / 30) : null}; })
+    .sort((x, y) => (x.st === 'ACTIVATE' ? 0 : 1) - (y.st === 'ACTIVATE' ? 0 : 1) || y.v30 - x.v30);
+  const at = L.filter(x => x.st === 'ACTIVATE'), cont = k => L.filter(x => x.st === k).length;
+  const acaba = at.filter(x => x.cob != null && x.cob < 15);
+  let h = '<div class="kpirow">' + mkKpi('Anúncios ativos', mkN(at.length), mkN(cont('SELLER_DEACTIVATED')) + ' desativados pela Dobro', 'accent') +
+    mkKpi('Congelados / reprovados', mkN(cont('FREEZE') + cont('FAILED') + cont('PLATFORM_DEACTIVATED')), 'travados pelo TikTok', (cont('FREEZE') + cont('FAILED')) ? 'alerta' : '') +
+    mkKpi('Estoque no TikTok', mkN(at.reduce((s, x) => s + x.est, 0)), 'unidades dos anúncios ativos, hoje') +
+    mkKpi('Acabam em menos de 15 dias', mkN(acaba.length), 'pelo ritmo dos últimos 30 dias', acaba.length ? 'atencao' : '') +
+    mkKpi('Ativos sem estoque', mkN(at.filter(x => x.est <= 0).length), '', at.some(x => x.est <= 0) ? 'alerta' : '') + '</div>';
+  h += mkCard('Anúncios', 'hoje · venda e cobertura pelos últimos 30 dias · produtos atualizados às ' +
+      new Date(a.sync.produtos).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}),
+    '<div class="mk-scroll"><table><thead><tr><th>Anúncio</th><th>SKU TikTok</th><th>SKU Dobro</th><th>Situação</th><th>Preço</th><th>Estoque</th><th>Vendidos 30 d</th><th>Cobertura</th></tr></thead><tbody>' +
+    L.map(x => { const s = ST[x.st] || [x.st, 'nt'];
+      return '<tr><td class="mk-t" title="' + mkEsc(x.t) + '">' + mkEsc(x.t) + '</td><td class="mk-sku">' + mkEsc(x.sk) + '</td><td>' + mkEsc(x.dob || '—') + '</td><td><span class="mk-chip ' + s[1] + '">' + mkEsc(s[0]) + '</span></td><td>' + mkR2(x.preco) +
+        '</td><td>' + mkN(x.est) + '</td><td>' + mkN(x.v30) + '</td><td>' + (x.cob == null ? '—' : '<span class="mk-chip ' + (x.cob < 15 ? 'dn' : 'nt') + '">' + mkN(Math.round(x.cob)) + ' dias</span>') + '</td></tr>'; }).join('') +
+    '</tbody></table></div>');
+  return h;
 }
 
 /* ---------------- notas (conferir a importacao no OMIE) ---------------- */
@@ -21418,7 +21578,7 @@ function mgCanal(c, ini, fim){
     o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.tar, fr: T.env, arm: T.armaz, out: T.outras, ads: T.adsTot, amo: null, antec: T.antec, ped: T.ped};
   } else if(c === 'tt'){
     const T = ttDreCalc(ini, fim);
-    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.sfp + T.afil, fr: T.fr, arm: null, out: null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv};
+    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.sfp + T.afil + (T.item || 0), fr: T.fr, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv};   /* 24/11: API do TikTok */
   } else {
     const T = azDreCalc(ini, fim);
     o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com, fr: MKG_FALTA, arm: MKG_FALTA, out: null, ads: MKG_FALTA, amo: null, antec: null, ped: T.pv};
@@ -22166,6 +22326,24 @@ function mpCarregarRefs(){
         const o = R[can] || (R[can] = {q: 0, b: 0, l: 0}); o.q += q; o.b += b; o.l += l;
       });
       MPD[k] = R;
+      /* API do TikTok (24/11/2026): preco do anuncio (cheio) e desconto pago pela Dobro por SKU, 60 dias, e as
+         taxas medias reais (sobre o preco cheio) dos pedidos ja liquidados */
+      if(k === 'tt' && d.api && Array.isArray(d.api.sku)){
+        const a = d.api, bl = {}; (d.skus || []).forEach(x => bl[String(x[0]).toUpperCase()] = String(x[2] || '').toUpperCase());
+        const dob = sk => { sk = String(sk || '').toUpperCase(); const p = (a.depara || {})[sk]; return p ? String(p[0]).toUpperCase() : (bl[sk.replace(/^MKT_/, '')] || ''); };
+        const A = {}; a.sku.forEach(x => { if(String(x[0]) < lim) return; const can = dob(x[1]); if(!can) return;
+          const o = A[can] || (A[can] = {q: 0, b: 0, dd: 0, dt: 0}); o.q += +x[2] || 0; o.b += +x[3] || 0; o.dd += +x[4] || 0; o.dt += +x[5] || 0; });
+        const r = {cl: 0, com: 0, sfp: 0, afil: 0, item: 0, out: 0, fr: 0, cheio: 0, dd: 0};
+        (a.ped || []).forEach(x => { if(String(x[0]) < lim || x[1] !== 'V') return;
+          r.cheio += +x[4]; r.dd += +x[5]; r.cl += +x[8]; r.com += +x[9]; r.sfp += +x[10]; r.afil += +x[11]; r.item += +x[12]; r.out += +x[13]; r.fr += +x[14]; });
+        const ads = (a.aj || []).filter(x => String(x[0]) >= lim && x[1] === 'GMV_PAYMENT_FOR_TIKTOK_ADS').reduce((t, x) => t - (+x[2] || 0), 0);
+        if(r.cl > 0){
+          const f = 1 / Math.max(0.01, 1 - (r.cheio ? r.dd / r.cheio : 0));   /* taxa sobre o cheio -> sobre a receita da Dobro */
+          MPD.ttR = {com: r.com / r.cl * f, tx: (r.sfp + r.afil + r.item + r.out) / r.cl * f, fr: r.fr / r.cl * f,
+                     ads: (r.cheio - r.dd) > 0 ? ads / (r.cheio - r.dd) : 0};
+        }
+        MPD.ttApi = A;
+      }
     }).catch(e => console.error('precificacao: ' + arq, e)).then(fim);
   });
 }
@@ -22189,6 +22367,11 @@ function mpRefPreco(c){
     if(typeof mkPrecoHoje === 'function' && MPD.ml){ try{ const ph = mkPrecoHoje([PC.sku]); if(ph) return {v: ph.v, fonte: 'anúncio ativo hoje' + (ph.max > ph.v + 0.005 ? ' (até ' + pcR(ph.max) + ')' : '')}; }catch(e){} }
     const H = mpHistML(); if(H && H.preco) return {v: H.preco, fonte: 'preço médio vendido 30 d'};
     if(!MPD.ml && MPD.ok.ml) return site != null ? {v: site, fonte: 'carregando o ML…'} : null;
+  }
+  if(k === 'tt' && MPD.ttApi){
+    const R = MPD.ttApi, sku = String(PC.sku).toUpperCase(), o = R[sku];
+    if(o && o.q > 0) return {v: o.b / o.q, cup: o.b ? o.dd / o.b : 0,
+      fonte: 'preço do anúncio, média 60 d (API) · a Dobro paga ' + pcP(o.b ? o.dd / o.b : 0, 0) + ' de desconto, o TikTok ' + pcP(o.b ? o.dt / o.b : 0, 0)};
   }
   if(k === 'tt' || k === 'az'){
     const R = MPD[k] || {}, sku = String(PC.sku).toUpperCase();
@@ -22225,14 +22408,17 @@ function mpSugestao(c, campo, P){
     }
     case 'arm': { if(!mpEhML(c)) return 0; const H = mpHistML(); return H ? (H.armUn || 0) : 0; }
     case 'com': {
+      if(mpArqDe(c) === 'tt' && MPD.ttR) return MPD.ttR.com;          /* real da API, 60 dias */
       if(c.comissao != null) return c.comissao;
       if(!mpEhML(c)) return null;
       const H = mpHistML(), t = mpTipoML();
       if(H && mpFaixa(P) === mpFaixa(H.preco) && t === H.tipo && H.fee) return H.fee;    /* mesma faixa: a tarifa real do SKU */
       return (MP_FAIXA_ML[t] || MP_FAIXA_ML.gold_pro)[mpFaixa(P)][0];
     }
-    case 'tx': return c.taxa_extra != null ? c.taxa_extra : (c.novo ? null : 0);
-    case 'frPct': return c.frete_pct != null ? c.frete_pct : (c.novo ? null : 0);
+    case 'tx': if(mpArqDe(c) === 'tt' && MPD.ttR) return MPD.ttR.tx;   /* SFP + afiliado + taxa por item, reais */
+      return c.taxa_extra != null ? c.taxa_extra : (c.novo ? null : 0);
+    case 'frPct': if(mpArqDe(c) === 'tt' && MPD.ttR) return MPD.ttR.fr;
+      return c.frete_pct != null ? c.frete_pct : (c.novo ? null : 0);
     case 'frUn': {
       if(c.frete_un != null) return c.frete_un;
       if(!mpEhML(c)) return c.novo ? null : 0;
@@ -22241,6 +22427,7 @@ function mpSugestao(c, campo, P){
       return (MP_FAIXA_ML[t] || MP_FAIXA_ML.gold_pro)[mpFaixa(P)][1];
     }
     case 'ads': {
+      if(mpArqDe(c) === 'tt' && MPD.ttR) return MPD.ttR.ads;          /* GMV Max cobrado ÷ receita, 60 dias */
       if(c.ads != null) return c.ads;
       if(!mpEhML(c)) return null;
       const H = mpHistML(); if(H) return H.ads || 0;           /* Ads do proprio SKU 30 d (0 = nao anunciou) */
@@ -22351,7 +22538,7 @@ function mpDesenhar(){
     (adm ? '<tr><td>Taxas no banco</td>' + C.map(c => '<td><button class="pc-btn2" data-mps="' + pcEsc(c.canal) + '" title="grava comissão, outras taxas, frete, anúncios e imposto deste canal (o que está na tela)">Salvar taxas</button></td>').join('') + '</tr>' : '') +
     '</tbody></table></div>';
   h += '<p class="pc-note">De onde vem cada número: <b>preço</b> = no Mercado Livre, o menor anúncio ativo hoje do SKU; no TikTok e na Amazon, o preço médio vendido do SKU em 60 dias (com o desconto médio na nota como cupom); sem venda, o preço do site. ' +
-    '<b>TikTok</b>: o desconto da nota mistura o que a Dobro paga e o subsídio do TikTok; pelo extrato do Seller Center (fev–nov/26) a Dobro paga 48% dele, então o cupom é 48% do desconto da nota. ' +
+    '<b>TikTok</b> = API do TikTok, últimos 60 dias: preço do anúncio, desconto pago pela Dobro (o do TikTok não entra), comissão, SFP + afiliado + taxa por item, frete e anúncios GMV Max reais. ' +
     '<b>Mercado Livre</b> = do próprio SKU nos últimos 30 dias: tarifa, frete, cupom pago pela Dobro, Ads e armazenagem Full (a mesma conta da aba Marketplace). Se o preço mudar de faixa (R$ 79) ou de tipo de anúncio, tarifa e frete passam para a mediana da faixa; SKU sem venda usa o Ads médio do ML. ' +
     '<b>TikTok Shop</b> = estimativas do extrato de out/26 (comissão 6,7%, SFP + afiliado 11,3%, frete 0,9%, anúncios 6,7%). <b>Amazon</b> = comissão 12%; frete e anúncios sem dado ainda. ' +
     '<b>Imposto</b> 27,41% = ICMS+FCP+DIFAL 18,16% + PIS/COFINS 9,25%. <b>CMV</b> = custo do SKU, líquido do crédito de insumos real dele. ' +
