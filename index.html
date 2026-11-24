@@ -20916,8 +20916,9 @@ try{ mkRegistrar(); }catch(e){ console.error('marketplace: registrar', e); }
 
 <script>
 /* ===================== ABA TIKTOK SHOP (notas do Bling) ===================== */
-const TTK = {d: null, carregando: false, erro: null, aba: 'geral', fam: '', busca: '', gs: {k: 'liq', dir: -1}, charts: {}, patch: false};
-const TTK_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['amostras', 'Creators & amostras'], ['dre', 'DRE'], ['envios', 'Envios & cancelamentos'], ['devol', 'Devoluções'], ['anuncios', 'Anúncios & estoque'], ['notas', 'Notas (conferir OMIE)']];
+const TTK = {d: null, carregando: false, erro: null, aba: 'geral', fam: '', busca: '', gs: {k: 'liq', dir: -1}, charts: {}, patch: false,
+             gFam: '', gBusca: '', gg: {k: 'rec', dir: -1}};
+const TTK_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['gerencial', 'Tabela gerencial por SKU'], ['amostras', 'Creators & amostras'], ['dre', 'DRE'], ['envios', 'Envios & cancelamentos'], ['devol', 'Devoluções'], ['anuncios', 'Anúncios & estoque'], ['notas', 'Notas (conferir OMIE)']];
 
 function ttRegistrar(){
   if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
@@ -20932,9 +20933,11 @@ function ttRegistrar(){
         const [a, v] = b.dataset.tt.split(':');
         if(a === 'aba'){ TTK.aba = v; ttDesenhar(); window.scrollTo(0, 0); }
         else if(a === 'atualizar') ttCarregar(true);
-        else if(a === 'sort'){ TTK.gs = {k: v, dir: TTK.gs.k === v ? -TTK.gs.dir : (v === 'd' || v === 'fam' ? 1 : -1)}; ttDesenhar(true); } });
-      div.addEventListener('change', ev => { const t = ev.target; if(t.id === 'ttFam'){ TTK.fam = t.value; ttDesenhar(true); } });
-      div.addEventListener('input', ev => { if(ev.target.id === 'ttBusca'){ TTK.busca = ev.target.value; clearTimeout(TTK.tm); TTK.tm = setTimeout(() => ttDesenhar(true), 250); } });
+        else if(a === 'sort'){ TTK.gs = {k: v, dir: TTK.gs.k === v ? -TTK.gs.dir : (v === 'd' || v === 'fam' ? 1 : -1)}; ttDesenhar(true); }
+        else if(a === 'gsort'){ TTK.gg = {k: v, dir: TTK.gg.k === v ? -TTK.gg.dir : (['sk', 'd', 'fam', 'abc'].indexOf(v) >= 0 ? 1 : -1)}; ttDesenhar(true); } });
+      div.addEventListener('change', ev => { const t = ev.target; if(t.id === 'ttFam'){ TTK.fam = t.value; ttDesenhar(true); } if(t.id === 'ttGFam'){ TTK.gFam = t.value; ttDesenhar(true); } });
+      div.addEventListener('input', ev => { if(ev.target.id === 'ttBusca'){ TTK.busca = ev.target.value; clearTimeout(TTK.tm); TTK.tm = setTimeout(() => ttDesenhar(true), 250); }
+        if(ev.target.id === 'ttGBusca'){ TTK.gBusca = ev.target.value; clearTimeout(TTK.tm); TTK.tm = setTimeout(() => { ttDesenhar(true); const b = document.getElementById('ttGBusca'); if(b){ b.focus(); b.setSelectionRange(b.value.length, b.value.length); } }, 300); } });
     }
   }
   if(!TTK.patch && typeof abasPermitidas === 'function'){
@@ -20986,7 +20989,7 @@ function ttDesenhar(manter){
   if(TTK.erro){ alvo.innerHTML = h + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(TTK.erro) + '</div>'); return; }
   if(!d){ alvo.innerHTML = h; return; }
   h += '<div class="mk-tabs">' + TTK_ABAS.map(a => '<button data-tt="aba:' + a[0] + '" class="' + (TTK.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
-  try{ h += ({geral: ttGeral, skus: ttSkus, amostras: ttAmostras, dre: ttDre, envios: ttEnvios, devol: ttDevol, anuncios: ttAnuncios, notas: ttNotas}[TTK.aba] || ttGeral)(pr); }
+  try{ h += ({geral: ttGeral, skus: ttSkus, gerencial: ttGerencial, amostras: ttAmostras, dre: ttDre, envios: ttEnvios, devol: ttDevol, anuncios: ttAnuncios, notas: ttNotas}[TTK.aba] || ttGeral)(pr); }
   catch(e){ console.error('tiktok: tela', e); h += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
   h += '<div class="mk-note">Fonte: notas do Bling, canal Tiktok Shop. O OMIE recebe essas notas por importação manual e costuma ficar alguns dias atrás — confira na aba "Notas".</div>';
   alvo.innerHTML = h;
@@ -21190,6 +21193,67 @@ function ttDre(p){
       '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
       '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(TTK.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real), sobre o valor das notas. ' +
       'O desconto pago pelo TikTok não está na nota: o TikTok repassa à Dobro no acerto — confirmar com o contábil como ele é tributado. A comissão é cobrada desde a primeira venda do mês (a isenção dos R$ 10 mil foi só no início da loja).</div>');
+}
+
+/* ---------------- TABELA GERENCIAL POR SKU (24/11/2026, Igor: "que nem no MELI") ----------------
+   Fonte: API do TikTok (pedidos e anuncios). Uma linha por SKU do anuncio (seller_sku), sem amostras e sem cancelados.
+   Janelas fixas terminando ONTEM (hoje esta pela metade) - nao segue o filtro do topo, como a gerencial do ML.
+     receita 30 d   = preco cheio - desconto pago pela Dobro (o subsidio do TikTok entra: ele repassa a Dobro)
+     preco medio pago = o que o cliente pagou por unidade (cheio - desconto Dobro - desconto TikTok)
+     estoque hoje   = maior estoque entre os anuncios ATIVOS do SKU (anuncios do mesmo SKU dividem o estoque)
+     media por dia  = media dos giros diarios de 7, 15 e 30 dias
+     ruptura        = estoque / media por dia;  reposicao = media x 30 - estoque (para durar o mes) */
+function ttGerencial(){
+  const a = TTK.d.api; if(!a) return mkCard('Sem dados da API', '', '<div class="mk-note">O arquivo ainda não tem a API do TikTok.</div>');
+  const ontem = mkDia(mkHoje(), -1), d7 = mkDia(ontem, -6), d15 = mkDia(ontem, -14), d30 = mkDia(ontem, -29);
+  const M = {}, novo = sk => M[sk] || (M[sk] = {sk, d: '', fam: '', dob: '', q7: 0, q15: 0, q30: 0, rec: 0, cheio30: 0, pago30: 0, ult: '', pUlt: null, hoje: null, est: null, ativo: false});
+  a.SK.forEach(x => { if(x.d > ontem && x.d !== mkHoje()) return; const o = novo(x.sk);
+    if(x.d >= d30 && x.d <= ontem){ o.q30 += x.un; o.rec += x.cheio - x.dd; o.cheio30 += x.cheio; o.pago30 += x.cheio - x.dd - x.dt;
+      if(x.d >= d15) o.q15 += x.un; if(x.d >= d7) o.q7 += x.un; }
+    if(x.un > 0 && x.d >= o.ult){ o.ult = x.d; o.pUlt = x.cheio / x.un; } });
+  (a.prod || []).forEach(x => { const sk = String(x[3] || '').toUpperCase(); if(!sk || x[2] === 'DELETED') return; const o = novo(sk);
+    if(!o.d) o.d = x[1] || '';
+    if(x[2] === 'ACTIVATE'){ o.ativo = true; o.d = x[1] || o.d; o.hoje = o.hoje == null ? +x[4] : Math.min(o.hoje, +x[4]); o.est = Math.max(o.est || 0, +x[5] || 0); } });
+  let L = Object.values(M).filter(o => o.ativo || o.q30 > 0);
+  L.forEach(o => { const db = a.dobro(o.sk); o.dob = db ? db.sku : ''; o.fam = (db && db.fam) || (TTK.d.S.find(s => s.p && s.p === o.dob) || {}).fam || 'Outros';
+    if(!o.d){ const s = TTK.d.S.find(s => s.p && s.p === o.dob); o.d = s ? s.d : o.sk; }
+    o.med = (o.q7 / 7 + o.q15 / 15 + o.q30 / 30) / 3;
+    o.pm = o.q30 ? o.pago30 / o.q30 : null;
+    o.rup = (o.est != null && o.med > 0) ? o.est / o.med : null;
+    o.rep = o.med > 0 ? Math.max(0, Math.ceil(o.med * 30 - (o.est || 0))) : 0; });
+  const tot = L.reduce((s, o) => s + o.rec, 0);
+  L.sort((x, y) => y.rec - x.rec); let ac = 0;
+  L.forEach(o => { const ant = ac; ac += o.rec; o.abc = o.rec <= 0 ? '—' : (ant / (tot || 1) < 0.8 ? 'A' : (ant / (tot || 1) < 0.95 ? 'B' : 'C')); });
+  const fams = [...new Set(L.map(o => o.fam))].sort();
+  if(TTK.gFam) L = L.filter(o => o.fam === TTK.gFam);
+  const b = (TTK.gBusca || '').toLowerCase(); if(b) L = L.filter(o => (o.sk + ' ' + o.d + ' ' + o.dob).toLowerCase().indexOf(b) >= 0);
+  const g = TTK.gg, val = o => { const v = o[g.k]; return v == null ? (g.dir > 0 ? Infinity : -Infinity) : v; };
+  L.sort((x, y) => { const vx = val(x), vy = val(y); return (typeof vx === 'string' ? vx.localeCompare(vy) : vx - vy) * g.dir; });
+  const th = (k, lab, tip) => '<th data-tt="gsort:' + k + '" title="' + mkEsc(tip || '') + '" style="cursor:pointer;white-space:nowrap">' + lab + (g.k === k ? (g.dir > 0 ? ' ▲' : ' ▼') : ' <span style="opacity:.35">↕</span>') + '</th>';
+  const ativos = L.filter(o => o.ativo), rup15 = ativos.filter(o => o.rup != null && o.rup < 15), sem = ativos.filter(o => (o.est || 0) <= 0 && o.med > 0);
+  const repTot = L.reduce((s, o) => s + o.rep, 0);
+  let h = '<div class="kpirow">' + mkKpi('Receita 30 dias', mkR(L.reduce((s, o) => s + o.rec, 0)), d30.split('-').reverse().slice(0, 2).join('/') + ' a ' + ontem.split('-').reverse().slice(0, 2).join('/') + ' · preço − desconto da Dobro', 'accent') +
+    mkKpi('SKUs com venda em 30 dias', mkN(L.filter(o => o.q30 > 0).length), mkN(ativos.length) + ' com anúncio ativo') +
+    mkKpi('Acabam em menos de 15 dias', mkN(rup15.length), 'pela média de venda', rup15.length ? 'atencao' : '') +
+    mkKpi('Vendendo sem estoque', mkN(sem.length), 'anúncio ativo com estoque zerado', sem.length ? 'alerta' : '') +
+    mkKpi('Sugestão de reposição', mkN(repTot) + ' un', 'para durar 30 dias') + '</div>';
+  const filtros = '<div class="mk-bar">Família <select id="ttGFam"><option value="">todas</option>' + fams.map(f => '<option' + (TTK.gFam === f ? ' selected' : '') + '>' + mkEsc(f) + '</option>').join('') +
+    '</select><input id="ttGBusca" placeholder="buscar SKU ou produto" value="' + mkEsc(TTK.gBusca) + '" style="min-width:200px"></div>';
+  h += '<div class="card"><div class="card-h"><h3>Tabela gerencial por SKU</h3>' + filtros + '</div><div class="mk-scroll"><table class="mk-ger"><thead><tr>' +
+    th('sk', 'SKU') + th('d', 'Descrição') + th('fam', 'Família') + th('abc', 'ABC', 'curva pela receita de 30 dias') + th('rec', 'Receita 30 d', 'preço cheio − desconto pago pela Dobro') +
+    th('hoje', 'Preço do anúncio hoje', 'menor preço entre os anúncios ativos do SKU') + th('pUlt', 'Preço da última venda', 'preço cheio da última venda') + th('pm', 'Preço médio pago', 'o que o cliente pagou por unidade em 30 dias') +
+    th('est', 'Estoque hoje') + th('q7', 'Giro 7 d') + th('q15', 'Giro 15 d') + th('q30', 'Giro 30 d') + th('med', 'Média por dia', 'média dos giros diários de 7, 15 e 30 dias') +
+    th('rup', 'Previsão de ruptura', 'estoque ÷ média por dia') + th('rep', 'Sugestão de reposição', 'média por dia × 30 − estoque') + '</tr></thead><tbody>' +
+    L.map(o => { const rup = o.rup == null ? '—' : '<span class="mk-chip ' + (o.rup < 7 ? 'dn' : (o.rup < 15 ? 'nt' : 'up')) + '">' + mkN(Math.round(o.rup)) + ' dias</span><small class="mk-sub">' + mkDD(mkDia(mkHoje(), Math.round(o.rup))) + '</small>';
+      return '<tr><td class="mk-sku"><b>' + mkEsc(o.sk) + '</b>' + (o.dob ? '<small class="mk-sub">' + mkEsc(o.dob) + '</small>' : '') + (o.ativo ? '' : '<small class="mk-sub">sem anúncio ativo</small>') + '</td>' +
+        '<td class="mk-t" title="' + mkEsc(o.d) + '">' + mkEsc(o.d) + '</td><td style="text-align:left">' + mkEsc(o.fam) + '</td><td>' + (o.abc === '—' ? '—' : '<span class="mk-abc ' + o.abc + '">' + o.abc + '</span>') + '</td>' +
+        '<td>' + mkR(o.rec) + '</td><td>' + (o.hoje == null ? '—' : mkR2(o.hoje)) + '</td><td>' + (o.pUlt == null ? '—' : mkR2(o.pUlt) + '<small class="mk-sub">' + mkDD(o.ult) + '</small>') + '</td>' +
+        '<td>' + (o.pm == null ? '—' : mkR2(o.pm)) + '</td><td>' + (o.est == null ? '—' : mkN(o.est)) + '</td><td>' + mkN(o.q7) + '</td><td>' + mkN(o.q15) + '</td><td>' + mkN(o.q30) + '</td>' +
+        '<td>' + (o.med ? mkN1(o.med) : '0') + '</td><td>' + rup + '</td><td>' + (o.rep ? '<b>' + mkN(o.rep) + '</b>' : '0') + '</td></tr>'; }).join('') +
+    '</tbody></table></div><div class="mk-note">Fonte: API do TikTok (pedidos e anúncios) · janelas de 7, 15 e 30 dias até ontem, sem amostras e sem cancelados · estoque de hoje = estoque do TikTok (envio pela própria Dobro). ' +
+    'Pedidos atualizados às ' + new Date(a.sync.pedidos).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) + ', anúncios às ' +
+    new Date(a.sync.produtos).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) + '.</div></div>';
+  return h;
 }
 
 /* ---------------- CREATORS (cards da API) ----------------
