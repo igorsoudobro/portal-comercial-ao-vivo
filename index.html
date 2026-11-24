@@ -21386,8 +21386,8 @@ try{ ttRegistrar(); }catch(e){ console.error('tiktok: registrar', e); }
 
 <script>
 /* ===================== ABA AMAZON (notas Bling + OMIE) ===================== */
-const AMZ = {d: null, carregando: false, erro: null, aba: 'geral', fam: '', busca: '', gs: {k: 'l', dir: -1}, charts: {}, patch: false};
-const AMZ_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['dre', 'DRE']];
+const AMZ = {d: null, carregando: false, erro: null, aba: 'geral', fam: '', busca: '', gs: {k: 'l', dir: -1}, charts: {}, patch: false, gg: {k: 'rec', dir: -1}};
+const AMZ_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['gerencial', 'Tabela gerencial por SKU'], ['dre', 'DRE'], ['financas', 'Finanças']];
 const AMZ_CANAL = {FBA: 'FBA · estoque na Amazon', DBA: 'DBA · a Dobro envia', OMIE: 'OMIE (desde nov/26)'};
 
 function azRegistrar(){
@@ -21397,12 +21397,14 @@ function azRegistrar(){
     const irmao = document.querySelector('.view');
     if(irmao && irmao.parentNode){
       const div = document.createElement('div'); div.className = 'view'; div.id = 'v-amazon';
-      irmao.parentNode.appendChild(div);
+      const rodape = document.getElementById('carimboV8') || irmao.parentNode.querySelector('.foot');   /* antes do rodape (24/11) */
+      if(rodape && rodape.parentNode === irmao.parentNode) irmao.parentNode.insertBefore(div, rodape); else irmao.parentNode.appendChild(div);
       div.addEventListener('click', ev => { const b = ev.target.closest('[data-az]'); if(!b) return;
         const [a, v] = b.dataset.az.split(':');
         if(a === 'aba'){ AMZ.aba = v; azDesenhar(); window.scrollTo(0, 0); }
         else if(a === 'atualizar') azCarregar(true);
-        else if(a === 'sort'){ AMZ.gs = {k: v, dir: AMZ.gs.k === v ? -AMZ.gs.dir : (v === 'd' || v === 'fam' || v === 'c' ? 1 : -1)}; azDesenhar(true); } });
+        else if(a === 'sort'){ AMZ.gs = {k: v, dir: AMZ.gs.k === v ? -AMZ.gs.dir : (v === 'd' || v === 'fam' || v === 'c' ? 1 : -1)}; azDesenhar(true); }
+        else if(a === 'gsort'){ AMZ.gg = {k: v, dir: AMZ.gg.k === v ? -AMZ.gg.dir : (['sk', 'd', 'fam', 'abc'].indexOf(v) >= 0 ? 1 : -1)}; azDesenhar(true); } });
       div.addEventListener('change', ev => { const t = ev.target; if(t.id === 'azFam'){ AMZ.fam = t.value; azDesenhar(true); } });
       div.addEventListener('input', ev => { if(ev.target.id === 'azBusca'){ AMZ.busca = ev.target.value; clearTimeout(AMZ.tm); AMZ.tm = setTimeout(() => azDesenhar(true), 250); } });
     }
@@ -21425,6 +21427,7 @@ async function azCarregar(forcar){
     d.V = (d.venda || []).map(x => ({d: x[0], i: x[1], k: x[2], n: +x[3], q: +x[4], b: +x[5], l: +x[6], imp: +x[7], cmv: +x[8], sem: !!x[9], cmvb: +x[10] || 0}));
     d.R = (d.devol || []).map(x => ({d: x[0], i: x[1], q: +x[2], l: +x[3], cmv: +x[4]}));
     d.D = {}; d.dia.forEach(x => d.D[x[0]] = {pv: +x[1], qv: +x[2] || 0, bv: +x[3] || 0, lv: +x[4] || 0, dv: +x[5] || 0, fv: +x[6] || 0, nd: +x[7] || 0, vd: +x[8] || 0, pf: +x[9] || 0, lf: +x[10] || 0});
+    try{ if(d.api) azPrepApi(d); }catch(e){ console.error('amazon: api', e); d.api = null; }
     AMZ.d = d;
   }catch(e){ AMZ.erro = e.message || String(e); console.error('amazon:', e); }
   AMZ.carregando = false;
@@ -21459,7 +21462,7 @@ function azDesenhar(manter){
   if(AMZ.erro){ alvo.innerHTML = h + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(AMZ.erro) + '</div>'); return; }
   if(!d){ alvo.innerHTML = h; return; }
   h += '<div class="mk-tabs">' + AMZ_ABAS.map(a => '<button data-az="aba:' + a[0] + '" class="' + (AMZ.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
-  try{ h += ({geral: azGeral, skus: azSkus, dre: azDre}[AMZ.aba] || azGeral)(pr); }
+  try{ h += ({geral: azGeral, skus: azSkus, gerencial: azGerencial, dre: azDre, financas: azFinancas}[AMZ.aba] || azGeral)(pr); }
   catch(e){ console.error('amazon: tela', e); h += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
   h += '<div class="mk-note">Amazon 3P = venda ao consumidor no marketplace (FBA: estoque na Amazon; DBA: a Dobro envia). Fonte: notas do Bling até out/26 e do OMIE (categoria Amazon 3P) desde nov/26. ' +
        'A Amazon 1P (venda para a própria Amazon) é B2B e fica no DRE comercial, não nesta aba.</div>';
@@ -21522,6 +21525,95 @@ function azSkus(p){
     '</tbody></table></div>' + (semV ? '<div class="mk-note warn">⚠ ' + mkR(semV) + ' em SKUs da Amazon sem de-para para o SKU Dobro (entram com CMV zero). Completar a planilha "SKU por canal" (canais amazon / amazon_fba).</div>' : '') + '</div>';
 }
 
+/* ===================== API DA AMAZON (24/11/2026) ===================== */
+const AZ_API_INI = '2026-01-01';     /* o financeiro da API comeca em jan/26 - antes, estimativa */
+const AZ_AJ_NOME = {ProductAdsPayment: 'Anúncios (Product Ads)', FBAStorageBilling: 'Armazenagem FBA', FBALongTermStorageBilling: 'Armazenagem FBA de longo prazo',
+  FBARemoval: 'Remoção de estoque FBA', Subscription: 'Assinatura da conta', FBAPostInboundTransportation: 'Transporte de entrada FBA', DIFALEasyShip: 'DIFAL do frete (EasyShip)',
+  DIFALSellerFlex: 'DIFAL do frete (Seller Flex)', Commission: 'Ajuste de comissão', WAREHOUSE_DAMAGE: 'Reembolso: avaria no armazém', WAREHOUSE_LOST: 'Reembolso: perda no armazém',
+  PAYMENT_RETRACTION_ITEMS: 'Estorno de reembolso', REVERSAL_REIMBURSEMENT: 'Reversão de reembolso', CS_ERROR_ITEMS: 'Reembolso: erro do atendimento', SERRACReimbursement: 'Reembolso SERRAC'};
+function azPrepApi(d){
+  const a = d.api, P = {};
+  (a.ped || []).forEach(x => { const o = P[x[0]] || (P[x[0]] = {n: 0, tot: 0, nl: 0, tl: 0, prod: 0, promo: 0, com: 0, a4a: 0, fba: 0, out: 0, post: 0, liq: 0, nAfn: 0});
+    o.n += +x[2]; o.tot += +x[3]; o.nl += +x[4]; o.tl += +x[5]; o.prod += +x[6]; o.promo += +x[7]; o.com += +x[8]; o.a4a += +x[9]; o.fba += +x[10]; o.out += +x[11]; o.post += +x[12]; o.liq += +x[13];
+    if(x[1] === 'AFN') o.nAfn += +x[2]; });
+  a.P = P;
+  a.AJ = (a.aj || []).map(x => ({d: x[0], t: x[1], desc: x[2], v: +x[3]}));
+  /* taxas medias REAIS dos ultimos 120 dias (pedidos liquidados), sobre o total do pedido */
+  const lim = mkDia(mkHoje(), -120), r = {tl: 0, com: 0, a4a: 0, fba: 0, out: 0, post: 0};
+  Object.keys(P).forEach(dia => { if(dia < lim) return; const o = P[dia]; ['tl', 'com', 'a4a', 'fba', 'out', 'post'].forEach(k => r[k] += o[k]); });
+  a.R = r.tl > 0 ? {com: r.com / r.tl, a4a: r.a4a / r.tl, fba: r.fba / r.tl, out: r.out / r.tl, post: r.post / r.tl} : null;
+  const bl = {}; (d.S || []).forEach(s => bl[String(s.c).toUpperCase()] = s);
+  a.dobro = sk => { sk = String(sk || '').toUpperCase(); const p = (a.depara || {})[sk]; if(p) return {sku: p[0], fam: p[1] || ''};
+    const b = bl[sk]; return b ? {sku: b.p || '', fam: b.fam || ''} : null; };
+}
+function azApiTot(ini, fim){
+  const a = AMZ.d && AMZ.d.api, T = {n: 0, tot: 0, nl: 0, tl: 0, prod: 0, promo: 0, com: 0, a4a: 0, fba: 0, out: 0, post: 0, liq: 0, ads: 0, aj: 0, ajT: {}};
+  if(!a) return T;
+  Object.keys(a.P).forEach(dia => { if(dia < ini || dia > fim) return; const o = a.P[dia]; Object.keys(T).forEach(k => { if(typeof o[k] === 'number') T[k] += o[k]; }); });
+  a.AJ.forEach(x => { if(x.d < ini || x.d > fim) return;
+    if(x.t === 'ProductAdsPayment') T.ads -= x.v; else { T.aj += x.v; const k = AZ_AJ_NOME[x.desc] || x.desc || x.t; T.ajT[k] = (T.ajT[k] || 0) + x.v; } });
+  return T;
+}
+
+/* ---------------- TABELA GERENCIAL POR SKU (24/11/2026, igual a do ML/TikTok) ----------------
+   Estoque = estoque FBA (armazens da Amazon) do ultimo dia da API: disponivel + a caminho. O estoque do DBA fica
+   no deposito da Dobro e nao vem da Amazon. Giro = unidades vendidas na Amazon 3P (notas Bling/OMIE, FBA + DBA)
+   em 7/15/30 dias ate ontem - as notas estao completas; os itens dos pedidos da API ainda estao carregando. */
+function azGerencial(){
+  const d = AMZ.d, a = d.api; if(!a) return mkCard('Sem dados da API', '', '<div class="mk-note">O arquivo ainda não tem a API da Amazon.</div>');
+  const ontem = mkDia(mkHoje(), -1), d7 = mkDia(ontem, -6), d15 = mkDia(ontem, -14), d30 = mkDia(ontem, -29);
+  const M = {}, novo = (k, s) => M[k] || (M[k] = {sk: k, d: s ? s.d : k, fam: s ? s.fam : 'Outros', q7: 0, q15: 0, q30: 0, rec: 0, disp: null, cam: null, asin: ''});
+  d.V.forEach(r => { if(r.d < d30 || r.d > ontem) return; const s = d.S[r.i] || {}; const k = String(s.p || s.c || '?').toUpperCase(); const o = novo(k, s);
+    o.q30 += r.q; o.rec += r.l; if(r.d >= d15) o.q15 += r.q; if(r.d >= d7) o.q7 += r.q; });
+  (a.estoque || []).forEach(x => { const db = a.dobro(x[0]); const k = String((db && db.sku) || x[0]).toUpperCase();
+    const s = d.S.find(s => String(s.p || '').toUpperCase() === k) || null; const o = novo(k, s);
+    if(db && db.fam && o.fam === 'Outros') o.fam = db.fam;
+    o.disp = (o.disp || 0) + (+x[2] || 0); o.cam = (o.cam || 0) + (+x[3] || 0); o.asin = o.asin || x[1] || ''; });
+  let L = Object.values(M).filter(o => o.q30 > 0 || (o.disp || 0) + (o.cam || 0) > 0);
+  L.forEach(o => { o.est = o.disp == null ? null : o.disp; o.med = (o.q7 / 7 + o.q15 / 15 + o.q30 / 30) / 3;
+    o.rup = (o.est != null && o.med > 0) ? o.est / o.med : null; o.rupC = (o.est != null && o.med > 0) ? (o.est + (o.cam || 0)) / o.med : null;
+    o.rep = o.med > 0 ? Math.max(0, Math.ceil(o.med * 30 - (o.est || 0) - (o.cam || 0))) : 0; });
+  const tot = L.reduce((s, o) => s + o.rec, 0); L.sort((x, y) => y.rec - x.rec); let ac = 0;
+  L.forEach(o => { const ant = ac; ac += o.rec; o.abc = o.rec <= 0 ? '—' : (ant / (tot || 1) < 0.8 ? 'A' : (ant / (tot || 1) < 0.95 ? 'B' : 'C')); });
+  const g = AMZ.gg, val = o => { const v = o[g.k]; return v == null ? (g.dir > 0 ? Infinity : -Infinity) : v; };
+  L.sort((x, y) => { const vx = val(x), vy = val(y); return (typeof vx === 'string' ? vx.localeCompare(vy) : vx - vy) * g.dir; });
+  const th = (k, lab, tip) => '<th data-az="gsort:' + k + '" title="' + mkEsc(tip || '') + '" style="cursor:pointer;white-space:nowrap">' + lab + (g.k === k ? (g.dir > 0 ? ' ▲' : ' ▼') : ' <span style="opacity:.35">↕</span>') + '</th>';
+  const fbaTot = L.reduce((s, o) => s + (o.est || 0), 0), camTot = L.reduce((s, o) => s + (o.cam || 0), 0);
+  let h = '<div class="kpirow">' + mkKpi('Receita 30 dias', mkR(tot), 'notas da Amazon 3P · FBA + DBA', 'accent') +
+    mkKpi('Estoque FBA hoje', mkN(fbaTot) + ' un', mkN(camTot) + ' a caminho · ' + mkDD(a.estoque_dia || mkHoje())) +
+    mkKpi('Acabam em menos de 15 dias', mkN(L.filter(o => o.rup != null && o.rup < 15).length), 'estoque FBA ÷ média de venda', '') +
+    mkKpi('Sugestão de reposição', mkN(L.reduce((s, o) => s + o.rep, 0)) + ' un', 'para durar 30 dias (já desconta o a caminho)') + '</div>';
+  h += '<div class="card"><div class="card-h"><h3>Tabela gerencial por SKU · Amazon</h3></div><div class="mk-scroll"><table><thead><tr>' +
+    th('sk', 'SKU') + th('d', 'Descrição') + th('fam', 'Família') + th('abc', 'ABC') + th('rec', 'Receita 30 d', 'valor das notas, 30 dias até ontem') +
+    th('est', 'Estoque FBA', 'disponível nos armazéns da Amazon hoje') + th('cam', 'A caminho', 'enviado ao FBA e ainda não disponível') +
+    th('q7', 'Giro 7 d') + th('q15', 'Giro 15 d') + th('q30', 'Giro 30 d') + th('med', 'Média por dia', 'média dos giros diários de 7, 15 e 30 dias') +
+    th('rup', 'Previsão de ruptura', 'estoque FBA ÷ média por dia') + th('rep', 'Sugestão de reposição', 'média × 30 − estoque − a caminho') + '</tr></thead><tbody>' +
+    L.map(o => { const rup = o.rup == null ? '—' : '<span class="mk-chip ' + (o.rup < 7 ? 'dn' : (o.rup < 15 ? 'nt' : 'up')) + '">' + mkN(Math.round(o.rup)) + ' dias</span><small class="mk-sub">' + mkDD(mkDia(mkHoje(), Math.round(o.rup))) + '</small>';
+      return '<tr><td class="mk-sku"><b>' + mkEsc(o.sk) + '</b>' + (o.asin ? '<small class="mk-sub">' + mkEsc(o.asin) + '</small>' : '') + '</td><td class="mk-t" title="' + mkEsc(o.d) + '">' + mkEsc(o.d) + '</td>' +
+        '<td style="text-align:left">' + mkEsc(o.fam) + '</td><td>' + (o.abc === '—' ? '—' : '<span class="mk-abc ' + o.abc + '">' + o.abc + '</span>') + '</td><td>' + mkR(o.rec) + '</td>' +
+        '<td>' + (o.est == null ? '—' : mkN(o.est)) + '</td><td>' + (o.cam ? mkN(o.cam) : '—') + '</td><td>' + mkN(o.q7) + '</td><td>' + mkN(o.q15) + '</td><td>' + mkN(o.q30) + '</td>' +
+        '<td>' + (o.med ? mkN1(o.med) : '0') + '</td><td>' + rup + '</td><td>' + (o.rep ? '<b>' + mkN(o.rep) + '</b>' : '0') + '</td></tr>'; }).join('') +
+    '</tbody></table></div><div class="mk-note">Estoque: armazéns da Amazon (FBA), pela API, de ' + mkDD(a.estoque_dia || mkHoje()) + '. O estoque do DBA fica no depósito da Dobro e não aparece aqui. ' +
+    'Giro: unidades vendidas na Amazon 3P (FBA + DBA) pelas notas, 7/15/30 dias até ontem.</div></div>';
+  return h;
+}
+
+/* ---------------- FINANCAS: o que a Amazon cobrou e creditou, por mes ---------------- */
+function azFinancas(p){
+  const a = AMZ.d.api; if(!a) return mkCard('Sem dados da API', '', '');
+  const meses = Object.keys(mkMesesFrac(p)).sort();
+  const lin = {}, add = (k, m, v) => { (lin[k] = lin[k] || {})[m] = (lin[k][m] || 0) + v; };
+  Object.keys(a.P).forEach(dia => { const m = dia.slice(0, 7); if(meses.indexOf(m) < 0) return; const o = a.P[dia];
+    add('Vendas (produtos, liquidadas)', m, o.prod); add('− Comissão', m, -o.com); add('− Amazon for All', m, -o.a4a); add('− Taxa FBA', m, -o.fba - o.out); add('− Frete DBA (etiqueta)', m, -o.post); add('Promoções pagas pela Dobro', m, -o.promo); });
+  a.AJ.forEach(x => { const m = x.d.slice(0, 7); if(meses.indexOf(m) < 0) return; add(x.t === 'ProductAdsPayment' ? '− Anúncios (Product Ads)' : (AZ_AJ_NOME[x.desc] || x.desc || x.t), m, x.v); });
+  (a.reemb || []).forEach(x => { const m = String(x[0]).slice(0, 7); if(meses.indexOf(m) >= 0) add('− Reembolsos a clientes', m, +x[1]); });
+  const ks = Object.keys(lin);
+  return mkCard('Finanças da Amazon por mês', 'API da Amazon · vendas e taxas pela data do pedido; cobranças avulsas pela data do lançamento · sem os repasses ao banco',
+    '<div class="mk-scroll"><table class="mk-dre"><thead><tr><th>Lançamento</th>' + meses.map(m => '<th>' + mkNomeMes(m) + '</th>').join('') + '<th class="mk-col-tot">Total</th></tr></thead><tbody>' +
+    ks.map(k => { const t = meses.reduce((s, m) => s + (lin[k][m] || 0), 0); return '<tr><td>' + mkEsc(k) + '</td>' + meses.map(m => '<td>' + (lin[k][m] ? mkR(lin[k][m]) : '—') + '</td>').join('') + '<td class="mk-col-tot">' + mkR(t) + '</td></tr>'; }).join('') +
+    '</tbody></table></div><div class="mk-note">A Amazon lança cada venda duas vezes no financeiro (retida e depois liberada); aqui entra uma vez só. "Promoções pagas pela Dobro" é informativo — não entra na DRE, que parte do valor das notas.</div>');
+}
+
 /* ---------------- DRE 3P (antes das taxas da Amazon) - mesma estrutura do DRE do ML ---------------- */
 function azDreCalc(ini, fim){
   const t = azTot(ini, fim), V = azPorSku(ini, fim);
@@ -21535,7 +21627,19 @@ function azDreCalc(ini, fim){
   T.mb = T.fatLiq - T.imp - T.cmv;
   /* 11/11 (Igor): comissao da Amazon 12% (Saude e Bem-Estar) sobre o faturamento liquido. O frete por conta
      da Dobro (DBA) e as tarifas do FBA NAO estao nessa estimativa. */
-  T.com = T.fatLiq * AZ_COMISSAO; T.liq = T.mb - T.com;
+  T.com = T.fatLiq * AZ_COMISSAO; T.a4a = 0; T.fba = 0; T.post = 0; T.ads = 0; T.aj = 0; T.real = false;
+  /* 24/11/2026: com a API, de jan/26 em diante as taxas sao REAIS (pedido nao liquidado = taxa media real de 120 dias) */
+  const api = AMZ.d && AMZ.d.api && AMZ.d.api.R ? AMZ.d.api : null;
+  if(api && fim >= AZ_API_INI){
+    const i2 = ini > AZ_API_INI ? ini : AZ_API_INI, R = api.R, X = azApiTot(i2, fim), falta = Math.max(0, X.tot - X.tl);
+    let comE = 0;
+    if(ini < AZ_API_INI){ const tE = azTot(ini, mkDia(AZ_API_INI, -1)); comE = (tE.lv - tE.vd) * AZ_COMISSAO; }
+    T.real = true; T.pctLiq = X.tot ? X.tl / X.tot : null; T.apiX = X;
+    T.com = comE + X.com + falta * R.com; T.a4a = X.a4a + falta * R.a4a; T.fba = X.fba + falta * R.fba + X.out + falta * R.out;
+    T.post = X.post + falta * R.post; T.ads = X.ads; T.aj = X.aj; T.ajT = X.ajT;
+  }
+  T.liq = T.mb - T.com - T.a4a - T.fba - T.post;
+  T.res = T.liq - T.ads + T.aj;
   T.semCmv = V.filter(o => o.sem).reduce((a, o) => a + o.l, 0);
   return T;
 }
@@ -21546,8 +21650,10 @@ const AZ_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos', T =
   ['CMV bruto', T => -T.cmvb, 'sub'], ['CMV devolvido', T => T.cmvDev, 'sub'], ['Crédito de insumos', T => T.cred, 'sub'],
   ['− CMV líquido', T => -T.cmv],
   ['= Margem bruta', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
-  ['− Comissão da Amazon (est. 12% · Saúde e Bem-Estar)', T => -T.com],
-  ['= Margem depois da comissão (sem frete e FBA)', T => T.liq, 'tot'], ['% margem depois da comissão', T => T.fatLiq ? T.liq / T.fatLiq : null, 'pct'],
+  ['− Comissão da Amazon', T => -T.com], ['− Taxa Amazon for All', T => -T.a4a], ['− Taxa FBA (envio pela Amazon)', T => -T.fba], ['− Frete DBA (etiqueta da Amazon)', T => -T.post],
+  ['= Margem depois das taxas', T => T.liq, 'tot'], ['% margem depois das taxas', T => T.fatLiq ? T.liq / T.fatLiq : null, 'pct'],
+  ['− Anúncios (Product Ads)', T => -T.ads], ['± Outras cobranças e créditos (armazenagem, DIFAL do frete, reembolsos de estoque…)', T => T.aj],
+  ['= Resultado', T => T.res, 'tot'], ['% resultado', T => T.fatLiq ? T.res / T.fatLiq : null, 'pct'],
   ['Pedidos', T => T.pv, 'n'], ['Ticket médio', T => T.pv ? T.fatLiq / T.pv : null, 'r2']];
 function azDre(p){
   const meses = Object.keys(mkMesesFrac(p)).sort(), T = azDreCalc(p.ini, p.fim);
@@ -21565,10 +21671,16 @@ function azDre(p){
     corpo = AZ_DRE.map(l => { const v = l[1](T); return '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td><td>' + fmt(v, l[2]) + '</td><td>' +
       (semPct(l[2]) ? '' : mkP(T.fatLiq ? v / T.fatLiq : 0)) + '</td><td>' + (semPct(l[2]) ? '' : mkR2(T.pv ? v / T.pv : 0)) + '</td></tr>'; }).join('');
   }
-  return '<div class="mk-note warn">⚠ A comissão da Amazon é ESTIMADA em 12% (categoria Saúde e Bem-Estar). Ainda faltam o frete pago pela Dobro (DBA), as tarifas e a armazenagem do FBA e a publicidade: a margem real é MENOR do que a mostrada. Quando a API da Amazon chegar, entram os valores reais.</div>' +
+  const R = AMZ.d.api && AMZ.d.api.R;
+  const aviso = !R ? '<div class="mk-note warn">⚠ Sem os dados da API da Amazon neste arquivo: comissão ESTIMADA em 12%, sem frete, FBA e anúncios.</div>'
+    : '<div class="mk-note">' + (p.ini < AZ_API_INI ? '⚠ Antes de ' + mkDD(AZ_API_INI) + ' a comissão é ESTIMADA em 12% (o financeiro da API começa em jan/26). ' : '') +
+      '<b>Valores reais da API da Amazon</b>: comissão, Amazon for All, taxa FBA, frete DBA, anúncios e outras cobranças. ' + (T.pctLiq != null ? mkP(T.pctLiq) + ' do período já foi liquidado; ' : '') +
+      'o resto usa a taxa média real de 120 dias (comissão ' + mkP(R.com) + ', Amazon for All ' + mkP(R.a4a) + ', frete DBA ' + mkP(R.post) + ' do total do pedido). Anúncios e outras cobranças entram pela data do lançamento.</div>';
+  return aviso +
     '<div class="kpirow">' + mkKpi('Faturamento líquido 3P', mkR(T.fatLiq), mkN(T.pv) + ' pedidos · depois das devoluções', 'accent') +
     mkKpi('Margem bruta', mkR(T.mb), mkP(T.fatLiq ? T.mb / T.fatLiq : 0) + ' · depois de impostos e CMV') +
-    mkKpi('Depois da comissão', mkR(T.liq), mkP(T.fatLiq ? T.liq / T.fatLiq : 0) + ' · comissão est. 12% · sem frete e FBA', T.liq >= 0 ? 'pos' : 'alerta') +
+    mkKpi('Depois das taxas', mkR(T.liq), mkP(T.fatLiq ? T.liq / T.fatLiq : 0) + (T.real ? ' · comissão, FBA e frete reais' : ' · comissão est. 12%'), T.liq >= 0 ? 'pos' : 'alerta') +
+    mkKpi('Resultado', mkR(T.res), mkP(T.fatLiq ? T.res / T.fatLiq : 0) + ' · depois dos anúncios', T.res >= 0 ? 'pos' : 'alerta') +
     mkKpi('CMV líquido', mkR(T.cmv), mkP(T.fatLiq ? T.cmv / T.fatLiq : 0) + ' do faturamento') + '</div>' +
     mkCard('DRE da Amazon 3P · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), meses.length > 1 ? 'meses lado a lado · última coluna = total' : 'por pedido = valor ÷ pedidos',
       '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
@@ -21649,7 +21761,8 @@ function mgCanal(c, ini, fim){
     o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.sfp + T.afil + (T.item || 0), fr: T.fr, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv};   /* 24/11: API do TikTok */
   } else {
     const T = azDreCalc(ini, fim);
-    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com, fr: MKG_FALTA, arm: MKG_FALTA, out: null, ads: MKG_FALTA, amo: null, antec: null, ped: T.pv};
+    o = T.real ? {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.a4a, fr: T.fba + T.post, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: null, antec: null, ped: T.pv}   /* 24/11: API da Amazon */
+               : {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com, fr: MKG_FALTA, arm: MKG_FALTA, out: null, ads: MKG_FALTA, amo: null, antec: null, ped: T.pv};
   }
   const v = k => (typeof o[k] === 'number' ? o[k] : 0);
   o.mb = v('fat') - v('imp') - v('cmv');
@@ -22292,7 +22405,9 @@ function pcMedia(O, l){
 function pcDesenharB2B(){
   const alvo = document.getElementById('v-precificacao'); if(!alvo) return;
   const K = pcCalc();
-  const skus = Object.keys(K.skus || {}).filter(s => (K.skus[s] || {}).calc && !(K.skus[s] || {}).brinde)
+  /* 24/11/2026 (Igor): produto "so Marketplace" (quem ve = Marketplace, ex.: Whey) NAO entra no B2B */
+  const pcSoMkt = s => /^marketplace$/i.test(String((K.skus[s] || {}).ver || '').trim());
+  const skus = Object.keys(K.skus || {}).filter(s => (K.skus[s] || {}).calc && !(K.skus[s] || {}).brinde && !pcSoMkt(s))
     .sort((a, b) => ((K.skus[a] || {}).prod || a).localeCompare((K.skus[b] || {}).prod || b));
   if(!PC.sku && skus.length) PC.sku = skus[0];
   const ufs = Object.keys(K.frete_estado || {}).concat(Object.keys(K.imp_estado || {})).filter((x, i, a) => a.indexOf(x) === i).sort();
@@ -22412,6 +22527,13 @@ function mpCarregarRefs(){
         }
         MPD.ttApi = A;
       }
+      /* API da Amazon (24/11/2026): taxas medias REAIS de 120 dias sobre o total do pedido */
+      if(k === 'az' && d.api && Array.isArray(d.api.ped)){
+        const lim2 = new Date(Date.now() - 120 * 864e5).toLocaleDateString('sv'), r = {tl: 0, com: 0, a4a: 0, fba: 0, out: 0, post: 0, tot: 0};
+        d.api.ped.forEach(x => { if(String(x[0]) < lim2) return; r.tot += +x[3]; r.tl += +x[5]; r.com += +x[8]; r.a4a += +x[9]; r.fba += +x[10]; r.out += +x[11]; r.post += +x[12]; });
+        const ads = (d.api.aj || []).filter(x => String(x[0]) >= lim2 && x[1] === 'ProductAdsPayment').reduce((t, x) => t - (+x[3] || 0), 0);
+        if(r.tl > 0) MPD.azR = {com: (r.com + r.a4a) / r.tl, tx: (r.fba + r.out) / r.tl, fr: r.post / r.tl, ads: r.tot > 0 ? ads / r.tot : 0};
+      }
     }).catch(e => console.error('precificacao: ' + arq, e)).then(fim);
   });
 }
@@ -22446,7 +22568,8 @@ function mpRefPreco(c){
     let o = R[sku], n = 1;
     /* kit "10X30" sem venda propria: o canal vende o sache ("-30") - preco do sache x 10 */
     const m = sku.match(/^(.*)-(\d+)X(\d+(?:\.\d+)?)$/);
-    if(!o && m && R[m[1] + '-' + m[3]]){ o = R[m[1] + '-' + m[3]]; n = +m[2]; }
+    /* so no TikTok o sache e vendido avulso; na Amazon o codigo do sache ja e a caixa (24/11: dava R$ 691 no Nitrato Gel) */
+    if(!o && m && R[m[1] + '-' + m[3]]){ o = R[m[1] + '-' + m[3]]; n = k === 'tt' ? +m[2] : 1; }
     if(o){
       const desc = o.b ? Math.max(0, 1 - o.l / o.b) : 0, parte = k === 'tt' ? MP_TT_PARTE_DOBRO : 1;
       return {v: o.b / o.q * n, cup: desc * parte,
@@ -22477,6 +22600,7 @@ function mpSugestao(c, campo, P){
     case 'arm': { if(!mpEhML(c)) return 0; const H = mpHistML(); return H ? (H.armUn || 0) : 0; }
     case 'com': {
       if(mpArqDe(c) === 'tt' && MPD.ttR) return MPD.ttR.com;          /* real da API, 60 dias */
+      if(mpArqDe(c) === 'az' && MPD.azR) return MPD.azR.com;          /* comissao + Amazon for All, API 120 dias */
       if(c.comissao != null) return c.comissao;
       if(!mpEhML(c)) return null;
       const H = mpHistML(), t = mpTipoML();
@@ -22484,8 +22608,10 @@ function mpSugestao(c, campo, P){
       return (MP_FAIXA_ML[t] || MP_FAIXA_ML.gold_pro)[mpFaixa(P)][0];
     }
     case 'tx': if(mpArqDe(c) === 'tt' && MPD.ttR) return MPD.ttR.tx;   /* SFP + afiliado + taxa por item, reais */
+      if(mpArqDe(c) === 'az' && MPD.azR) return MPD.azR.tx;           /* taxa FBA, real */
       return c.taxa_extra != null ? c.taxa_extra : (c.novo ? null : 0);
     case 'frPct': if(mpArqDe(c) === 'tt' && MPD.ttR) return MPD.ttR.fr;
+      if(mpArqDe(c) === 'az' && MPD.azR) return MPD.azR.fr;          /* frete DBA (etiqueta da Amazon), real */
       return c.frete_pct != null ? c.frete_pct : (c.novo ? null : 0);
     case 'frUn': {
       if(c.frete_un != null) return c.frete_un;
@@ -22496,6 +22622,7 @@ function mpSugestao(c, campo, P){
     }
     case 'ads': {
       if(mpArqDe(c) === 'tt' && MPD.ttR) return MPD.ttR.ads;          /* GMV Max cobrado ÷ receita, 60 dias */
+      if(mpArqDe(c) === 'az' && MPD.azR) return MPD.azR.ads;          /* Product Ads ÷ vendas, 120 dias */
       if(c.ads != null) return c.ads;
       if(!mpEhML(c)) return null;
       const H = mpHistML(); if(H) return H.ads || 0;           /* Ads do proprio SKU 30 d (0 = nao anunciou) */
@@ -22574,7 +22701,9 @@ function mpDesenhar(){
   const alvo = document.getElementById('v-precificacao'); if(!alvo) return;
   const K = pcCalc(), C = mpCanais();
   mpCarregarRefs();
-  const skus = Object.keys(K.skus || {}).filter(s => (K.skus[s] || {}).calc && !(K.skus[s] || {}).brinde)
+  /* 24/11/2026 (Igor): os ativos + os "so Marketplace" (quem ve = Marketplace), mesmo inativos na Calculadora de pedido */
+  const mkSoMkt = s => /^marketplace$/i.test(String((K.skus[s] || {}).ver || '').trim());
+  const skus = Object.keys(K.skus || {}).filter(s => ((K.skus[s] || {}).calc || mkSoMkt(s)) && !(K.skus[s] || {}).brinde)
     .sort((a, b) => ((K.skus[a] || {}).prod || a).localeCompare((K.skus[b] || {}).prod || b));
   if(!PC.sku && skus.length) PC.sku = skus[0];
   const adm = pcAdmin();
