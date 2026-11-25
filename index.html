@@ -16620,6 +16620,8 @@ async function anoSubstituirBase(){
       CALC.frete_estado = Object.assign({}, CALC.frete_estado||{}, k.frete_estado||{});
       CALC.com_modelo = k.com_modelo || {};   /* tela Precificacao (18/11/2026) */
       CALC.mkt = Array.isArray(k.mkt) ? k.mkt : null;               /* Precificacao Marketplaces (23/11/2026) */
+      /* peso, caixa master e caixa mista da Matriz de Cubagem pelo banco (25/11/2026) */
+      if(k.pesos && Object.keys(k.pesos).length){ CALC.pesos = k.pesos; CALC.caixas = k.caixas || {}; CALC.cxgrupo = k.cxgrupo || {}; }
     }
     /* contatos (30/10/2026): os do arquivo do ano POR CIMA dos da rodada - a
        tabela e a mesma, so que agora alimentada tambem pelo banco */
@@ -22550,6 +22552,9 @@ try{ relRegistrar(); }catch(e){ console.error('relatorios: registrar', e); }
   }catch(e){ console.error('ver notas (banco):', e); }
 
   /* 2) MENSAGENS: botao Publicar no editor */
+  /* quem edita e publica: TODOS os admins (25/11/2026, Igor) - antes so o Igor (MSG_DONOS).
+     O servidor (relatorios-portal) tambem exige perfil admin. */
+  try{ if(typeof msgPodeEditar === 'function') msgPodeEditar = function(){ try{ return !!(SESSION && SESSION.isAdmin); }catch(e){ return false; } }; }catch(e){}
   try{
     if(typeof msgEditorHtml === 'function' && typeof msgLigarEditor === 'function'){
       const htmlOrig = msgEditorHtml, ligarOrig = msgLigarEditor;
@@ -24042,7 +24047,7 @@ function uxGruposAtuais(){
 function uxPerfil(){ return (SESSION && SESSION.isAdmin) ? 'admin' : (SESSION && SESSION.ehModerador) ? 'moderador' : 'vendedor'; }
 /* ABAS FORA DO AO VIVO (25/11/2026, Igor: "pode tirar as abas CRM de novos leads e SLA de entrega do portal novo"):
    as duas liam so o arquivo da extracao. Somem para todos, inclusive admin; o Portal normal segue com elas. */
-const UX_ABAS_FORA = ['crm', 'sla'];
+const UX_ABAS_FORA = ['crm', 'sla', 'orcamento'];   /* + Orcamento (25/11/2026, Igor) */
 function uxPodeVer(id){
   if(UX_ABAS_FORA.indexOf(id) >= 0) return false;
   const M = uxMenuBanco(); if(!M || !(SESSION && SESSION.user)) return true;
