@@ -20933,6 +20933,7 @@ function ttRegistrar(){
         const [a, v] = b.dataset.tt.split(':');
         if(a === 'aba'){ TTK.aba = v; ttDesenhar(); window.scrollTo(0, 0); }
         else if(a === 'atualizar') ttCarregar(true);
+        else if(a === 'proj'){ TTK.proj = !TTK.proj; ttDesenhar(true); if(TTK.proj){ const c = document.getElementById('mxpCard_tt'); if(c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); } }
         else if(a === 'sort'){ TTK.gs = {k: v, dir: TTK.gs.k === v ? -TTK.gs.dir : (v === 'd' || v === 'fam' ? 1 : -1)}; ttDesenhar(true); }
         else if(a === 'gsort'){ TTK.gg = {k: v, dir: TTK.gg.k === v ? -TTK.gg.dir : (['sk', 'd', 'fam', 'abc'].indexOf(v) >= 0 ? 1 : -1)}; ttDesenhar(true); } });
       div.addEventListener('change', ev => { const t = ev.target; if(t.id === 'ttFam'){ TTK.fam = t.value; ttDesenhar(true); } if(t.id === 'ttGFam'){ TTK.gFam = t.value; ttDesenhar(true); } });
@@ -21014,7 +21015,9 @@ function ttGeral(p){
     mkKpi('Vendas ontem', mkR(dia(ontem).lv), mkN(dia(ontem).pv) + ' pedidos · ' + mkVar(dia(ontem).lv, dia(mkDia(ontem, -7)).lv) + ' vs D-7') +
     mkKpi('Média por dia', mkR(t.lv / Math.max(1, nd)), 'líquido ÷ ' + nd + ' dias · antes ' + mkR(ta.lv / Math.max(1, nd))) +
     mkKpi('Amostras enviadas', mkN(t.na), 'notas de bonificação para criadores · ver a aba Amostras', t.na > t.pv ? 'atencao' : '') +
-    (t.nd ? mkKpi('Devoluções', mkN(t.nd), mkR(t.vd)) : '') + '</div>';
+    (t.nd ? mkKpi('Devoluções', mkN(t.nd), mkR(t.vd)) : '') +
+    (typeof mxpBotao === 'function' ? mxpBotao('data-tt="proj"', TTK.proj, '#111') : '') + '</div>';
+  if(TTK.proj && typeof mxpCard === 'function'){ MXP.redesenha.tt = () => ttDesenhar(true); h += mxpCard(TTK.d.D, 'tt', 'TikTok Shop', 'ttGProj'); }   /* projecao (25/11/2026) */
   h += mkCard('Faturamento líquido por dia', 'barras = valor das notas de venda · linha = média móvel de 7 dias', '<div style="padding:14px;height:260px"><canvas id="ttGDia"></canvas></div>');
   const mesesP = new Set(Object.keys(mkMesesFrac(p))), U = {}; let tu = 0;
   (TTK.d.uf || []).forEach(x => { if(!mesesP.has(x[0])) return; const o = U[x[1]] || (U[x[1]] = {n: 0, l: 0}); o.n += +x[2]; o.l += +x[3]; tu += +x[3]; });
@@ -21411,6 +21414,7 @@ function ttNotas(p){
 
 function ttGraficos(p){
   if(typeof Chart === 'undefined' || !TTK.d || !p) return;
+  if(TTK.proj && typeof mxpGrafico === 'function'){ const g = mxpGrafico('tt', 'ttGProj', '#111', 'rgba(254,44,85,.35)'); if(g) TTK.charts.proj = g; }
   const c = document.getElementById('ttGDia'); if(!c) return;
   const xs = [], ys = [], mm = []; for(let x = p.ini; x <= p.fim; x = mkDia(x, 1)){ xs.push(x); ys.push((TTK.d.D[x] || {}).lv || 0); }
   ys.forEach((v, i) => { let s = 0, n = 0; for(let j = Math.max(0, i - 6); j <= i; j++){ s += ys[j]; n++; } mm.push(s / n); });
@@ -21421,6 +21425,108 @@ function ttGraficos(p){
 }
 
 try{ ttRegistrar(); }catch(e){ console.error('tiktok: registrar', e); }
+</script>
+
+<script>
+/* ===================== PROJECAO DE FECHAMENTO - TIKTOK SHOP E AMAZON (25/11/2026) ===================== */
+const MXP = {ev: {}, tend: {}, jan: {}, redesenha: {}};
+const MXP_EVENTOS = [
+  {id: 'ss', nome: '11.11 (Dia dos Solteiros)', de: '-11-11', ate: '-11-13', ref: 1.55},
+  {id: 'bf', nome: 'Semana da Black Friday', de: '-11-23', ate: '-11-27', ref: 1.25},
+  {id: 'nt', nome: 'Natal: fim do prazo de entrega', de: '-12-20', ate: '-12-31', ref: 0.15}
+];
+/* multiplicador do evento medido no proprio canal no ano anterior: media diaria da janela / media diaria do mes */
+function mxpMedeEvento(D, e, ano){
+  const py = ano - 1, m = e.de.slice(1, 3), ini = py + '-' + m + '-01';
+  const fim = new Date(py, +m, 0).toLocaleDateString('sv');
+  const dias = Object.keys(D).filter(x => D[x] && D[x].lv > 0).sort();
+  if(!dias.length || dias[0] > ini) return {mult: e.ref, fonte: 'sem venda do canal em ' + py + ' — usa a referência medida no ML de 2025'};
+  let tw = 0, nw = 0, tm = 0, nm = 0;
+  for(let x = ini; x <= fim; x = mkDia(x, 1)){ const v = (D[x] || {}).lv || 0; tm += v; nm++; if(x >= py + e.de && x <= py + e.ate){ tw += v; nw++; } }
+  if(!(tm > 0) || !nw) return {mult: e.ref, fonte: 'sem venda do canal em ' + py + ' — usa a referência medida no ML de 2025'};
+  const mult = Math.round((tw / nw) / (tm / nm) * 100) / 100, dif = Math.round((mult - 1) * 100);
+  return {mult, fonte: py + ': ' + e.de.slice(4, 6) + ' a ' + e.ate.slice(4, 6) + '/' + m + ' venderam ' + Math.abs(dif) + '% ' + (dif >= 0 ? 'acima' : 'abaixo') + ' da média do mês no canal'};
+}
+function mxpCalc(D, canal){
+  const hoje = mkHoje(), ontem = mkDia(hoje, -1), ano = hoje.slice(0, 4), mes = hoje.slice(0, 7);
+  const v = x => (D[x] || {}).lv || 0;
+  const com = Object.keys(D).filter(x => x <= hoje && v(x) !== 0).sort();
+  const ult = com.length ? com[com.length - 1] : ontem;
+  const corte = ult < ontem ? ult : ontem;          /* ultimo dia "fechado" com nota */
+  const evs = MXP_EVENTOS.map(e => Object.assign({}, e, mxpMedeEvento(D, e, +ano)));
+  const mult = e => { const k = canal + '_' + e.id; return MXP.ev[k] != null ? MXP.ev[k] : e.mult; };
+  const evDe = x => { let f = 1, quem = null; const a = x.slice(0, 4); evs.forEach(e => { if(x >= a + e.de && x <= a + e.ate){ f *= mult(e); quem = e.nome; } }); return {f, quem}; };
+  const limpo = x => { const f = evDe(x).f; return f > 0.05 ? v(x) / f : v(x); };   /* dia comum equivalente */
+  const J = MXP.jan[canal] || 28;   /* janela do ritmo base: 28 dias (padrao, como no ML), 14 ou 7 */
+  let b = 0; for(let i = 0; i < J; i++) b += limpo(mkDia(corte, -i)); const base = b / J;
+  const W = [0, 0, 0, 0, 0, 0, 0], N = [0, 0, 0, 0, 0, 0, 0]; let tot = 0;
+  for(let i = 0; i < 84; i++){ const x = mkDia(corte, -i), w = new Date(x + 'T12:00:00').getDay(), q = limpo(x); W[w] += q; N[w]++; tot += q; }
+  const media84 = tot / 84, fdw = W.map((s, w) => (N[w] && media84) ? (s / N[w]) / media84 : 1);
+  let a14 = 0, p14 = 0; for(let i = 0; i < 14; i++){ a14 += limpo(mkDia(corte, -i)); p14 += limpo(mkDia(corte, -14 - i)); }
+  const tendRaw = p14 ? a14 / p14 : 1, tend = Math.min(1.2, Math.max(0.85, Math.sqrt(tendRaw)));
+  const prev = x => { const w = new Date(x + 'T12:00:00').getDay(); return base * fdw[w] * evDe(x).f * (MXP.tend[canal] ? tend : 1); };
+  const er = []; for(let i = 0; i < J; i++){ const x = mkDia(corte, -i), w = new Date(x + 'T12:00:00').getDay(), q = base * fdw[w]; if(q) er.push(limpo(x) / q - 1); }
+  const mu = er.reduce((a, c) => a + c, 0) / Math.max(1, er.length);
+  const sd = Math.sqrt(er.reduce((a, c) => a + (c - mu) * (c - mu), 0) / Math.max(1, er.length - 1));
+  const fim = new Date(+ano, +mes.slice(5, 7), 0).toLocaleDateString('sv');
+  const dias = []; let real = 0, proj = 0;
+  for(let x = mes + '-01'; x <= fim; x = mkDia(x, 1)){
+    if(x <= corte){ dias.push({x, real: v(x), proj: null}); real += v(x); }
+    else { const q = prev(x); dias.push({x, real: x <= hoje && v(x) ? v(x) : null, proj: q, ev: evDe(x).quem}); proj += q; }
+  }
+  const nRest = dias.filter(o => o.proj != null).length;
+  const faixa = 1.28 * sd * base * Math.sqrt(nRest);
+  const mesAnt = (() => { const m = new Date(mes + '-01T12:00:00'); m.setMonth(m.getMonth() - 1); return m.toLocaleDateString('sv').slice(0, 7); })();
+  let tAnt = 0; Object.keys(D).forEach(x => { if(x.slice(0, 7) === mesAnt) tAnt += v(x); });
+  return {J, mes, base, fdw, tendRaw, tend, real, proj, total: real + proj, faixa, nRest, dias, tAnt, mesAnt, corte, atrasado: ult < ontem, evs, mult};
+}
+/* botao do cartao (vai na linha de KPIs da Visao geral) */
+function mxpBotao(attr, aberto, cor){
+  return '<div class="kpi" style="display:flex;flex-direction:column;justify-content:center;gap:8px"><div class="lab">Projeção do mês</div>' +
+    '<button ' + attr + ' style="background:' + cor + ';color:#fff;border:none;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer">' +
+    (aberto ? 'Fechar projeção' : '📈 Ver projeção') + '</button></div>';
+}
+function mxpCard(D, canal, nomeCanal, canvasId){
+  const P = mxpCalc(D, canal), dn = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  MXP['calc_' + canal] = P;
+  let h = '<div id="mxpCard_' + canal + '"></div><div class="kpirow">' +
+    mkKpi('Realizado até ' + mkDD(P.corte), mkR(P.real), 'líquido das notas de ' + mkNomeMes(P.mes)) +
+    mkKpi('Projeção dos ' + P.nRest + ' dias restantes', mkR(P.proj), P.atrasado ? 'as notas vão só até ' + mkDD(P.corte) + ' — o resto é projetado' : 'a partir de hoje (o dia de hoje entra inteiro na projeção)') +
+    mkKpi('Fechamento projetado', mkR(P.total), 'faixa provável ' + mkR(Math.max(0, P.total - P.faixa)) + ' a ' + mkR(P.total + P.faixa) + ' (80%)', 'accent') +
+    mkKpi('vs ' + mkNomeMes(P.mesAnt), mkVar(P.total, P.tAnt), mkR(P.tAnt) + ' no mês passado') + '</div>';
+  h += mkCard('Projeção de ' + mkNomeMes(P.mes) + ' dia a dia — ' + nomeCanal, 'barras escuras = realizado · claras = projeção · amarelas = datas comemorativas',
+    '<div style="padding:14px;height:260px"><canvas id="' + canvasId + '"></canvas></div>');
+  h += mkCard('Premissas da projeção', 'mude os multiplicadores e a projeção refaz na hora',
+    '<table><tbody>' +
+    '<tr><td>Ritmo base</td><td>' + mkR(P.base) + ' por dia &nbsp;<select data-mxp="jan:' + canal + '">' + [28, 14, 7].map(n => '<option value="' + n + '"' + (P.J === n ? ' selected' : '') + '>' + n + ' dias</option>').join('') + '</select></td><td style="text-align:left">média do líquido dos ' + P.J + ' dias até ' + mkDD(P.corte) + ', sem o efeito das datas comemorativas</td></tr>' +
+    '<tr><td>Dia da semana</td><td>' + P.fdw.map((f, w) => dn[w] + ' ' + f.toFixed(2).replace('.', ',')).join(' · ') + '</td><td style="text-align:left">últimas 12 semanas, pela data da nota</td></tr>' +
+    '<tr><td><label><input type="checkbox" data-mxp="tend:' + canal + '"' + (MXP.tend[canal] ? ' checked' : '') + '> Aplicar tendência</label></td><td>últimos 14 dias ' + mkVar(P.tendRaw, 1).replace('vs', '') + ' sobre os 14 anteriores → fator ' + P.tend.toFixed(2).replace('.', ',') + '</td><td style="text-align:left">desligada por padrão</td></tr>' +
+    P.evs.map(e => '<tr><td>' + mkEsc(e.nome) + ' <small style="color:var(--muted)">(' + e.de.slice(4, 6) + '/' + e.de.slice(1, 3) + ' a ' + e.ate.slice(4, 6) + '/' + e.ate.slice(1, 3) + ')</small></td>' +
+      '<td>× <input data-mxp="ev:' + canal + '_' + e.id + '" value="' + String(P.mult(e)).replace('.', ',') + '" style="width:60px;border:1.5px solid var(--mk-line);border-radius:8px;padding:4px 6px;text-align:right"></td>' +
+      '<td style="text-align:left">' + mkEsc(e.fonte) + '</td></tr>').join('') +
+    '</tbody></table>' +
+    ((P.tendRaw > 1.5 || P.tendRaw < 0.67) ? '<div class="mk-note warn"><b>O ritmo mudou forte:</b> os últimos 14 dias venderam ' + mkVar(P.tendRaw, 1).replace('vs', '') + ' sobre os 14 anteriores. A base de ' + P.J + ' dias ainda carrega o ritmo antigo — veja a projeção com a base de 14 ou 7 dias.</div>' : '') +
+    '<div class="mk-note warn">A projeção é uma estimativa: usa só o histórico de notas do ' + mkEsc(nomeCanal) + '. Não sabe de campanha nova, mudança de preço, Ads, creator novo ou ruptura de estoque.</div>');
+  return h;
+}
+function mxpGrafico(canal, canvasId, cor, corClara){
+  const c = document.getElementById(canvasId), P = MXP['calc_' + canal]; if(!c || !P || typeof Chart === 'undefined') return null;
+  return new Chart(c, {type: 'bar', data: {labels: P.dias.map(o => mkDD(o.x)), datasets: [
+    {label: 'Realizado', data: P.dias.map(o => o.real), backgroundColor: cor, stack: 's'},
+    {label: 'Projeção', data: P.dias.map(o => o.proj != null ? Math.max(0, o.proj - (o.real || 0)) : null),
+     backgroundColor: P.dias.map(o => o.ev ? 'rgba(216,199,51,.75)' : corClara), borderColor: cor, borderWidth: 1, stack: 's'}]},
+    options: {maintainAspectRatio: false, plugins: {tooltip: {callbacks: {label: k => k.dataset.label + ': ' + mkR(k.raw),
+               afterLabel: k => (P.dias[k.dataIndex] || {}).ev || ''}}}, scales: {x: {stacked: true}, y: {stacked: true, ticks: {callback: v => mkR(v)}}}}});
+}
+document.addEventListener('change', ev => {
+  const t = ev.target; if(!t || !t.dataset || !t.dataset.mxp) return;
+  const [tipo, k] = t.dataset.mxp.split(':');
+  if(tipo === 'tend') MXP.tend[k] = t.checked;
+  else if(tipo === 'jan') MXP.jan[k] = +t.value || 28;
+  else if(tipo === 'ev') MXP.ev[k] = Math.max(0, +String(t.value).replace(',', '.') || 0);
+  const canal = tipo === 'tend' ? k : k.split('_')[0];
+  if(MXP.redesenha[canal]) MXP.redesenha[canal]();
+});
 </script>
 
 <script>
@@ -21442,6 +21548,7 @@ function azRegistrar(){
         const [a, v] = b.dataset.az.split(':');
         if(a === 'aba'){ AMZ.aba = v; azDesenhar(); window.scrollTo(0, 0); }
         else if(a === 'atualizar') azCarregar(true);
+        else if(a === 'proj'){ AMZ.proj = !AMZ.proj; azDesenhar(true); if(AMZ.proj){ const c = document.getElementById('mxpCard_az'); if(c) c.scrollIntoView({behavior: 'smooth', block: 'start'}); } }
         else if(a === 'sort'){ AMZ.gs = {k: v, dir: AMZ.gs.k === v ? -AMZ.gs.dir : (v === 'd' || v === 'fam' || v === 'c' ? 1 : -1)}; azDesenhar(true); }
         else if(a === 'gsort'){ AMZ.gg = {k: v, dir: AMZ.gg.k === v ? -AMZ.gg.dir : (['sk', 'd', 'fam', 'abc'].indexOf(v) >= 0 ? 1 : -1)}; azDesenhar(true); } });
       div.addEventListener('change', ev => { const t = ev.target; if(t.id === 'azFam'){ AMZ.fam = t.value; azDesenhar(true); } });
@@ -21523,7 +21630,9 @@ function azGeral(p){
     mkKpi('FBA no 3P', p.fim >= '2026-11-01' && !t.pf ? '—' : mkP(t.lv ? t.lf / t.lv : null), mkN(t.pf) + ' pedidos com estoque na Amazon' + (p.fim >= '2026-11-01' ? '<br>as notas do OMIE (desde nov/26) não dizem se é FBA ou DBA' : '')) + '</div>';
   h += '<div class="mk-cmp">' +
     mkKpi('Média por dia (3P)', mkR(t.lv / Math.max(1, nd)), 'líquido ÷ ' + nd + ' dias · antes ' + mkR(ta.lv / Math.max(1, nd))) +
-    mkKpi('Devoluções', mkN(t.nd), mkR(t.vd) + (t.lv ? ' · ' + mkP(t.vd / t.lv) + ' do líquido' : '')) + '</div>';
+    mkKpi('Devoluções', mkN(t.nd), mkR(t.vd) + (t.lv ? ' · ' + mkP(t.vd / t.lv) + ' do líquido' : '')) +
+    (typeof mxpBotao === 'function' ? mxpBotao('data-az="proj"', AMZ.proj, '#232F3E') : '') + '</div>';
+  if(AMZ.proj && typeof mxpCard === 'function'){ MXP.redesenha.az = () => azDesenhar(true); h += mxpCard(AMZ.d.D, 'az', 'Amazon 3P', 'azGProj'); }   /* projecao (25/11/2026) */
   h += mkCard('Faturamento líquido 3P por dia', 'barras = valor das notas de venda · linha = média móvel de 7 dias', '<div style="padding:14px;height:260px"><canvas id="azGDia"></canvas></div>');
   /* por mes: 3P (FBA x DBA) x 1P x remessas ao deposito FBA */
   const M = {}; Object.keys(AMZ.d.D).forEach(x => { const m = x.slice(0, 7), o = M[m] || (M[m] = {lv: 0, lf: 0, pv: 0, p1: 0, rem: 0, remq: 0}); o.lv += AMZ.d.D[x].lv; o.lf += AMZ.d.D[x].lf; o.pv += AMZ.d.D[x].pv; });
@@ -21765,6 +21874,7 @@ function azDre(p){
 
 function azGraficos(p){
   if(typeof Chart === 'undefined' || !AMZ.d || !p) return;
+  if(AMZ.proj && typeof mxpGrafico === 'function'){ const g = mxpGrafico('az', 'azGProj', '#232F3E', 'rgba(255,153,0,.4)'); if(g) AMZ.charts.proj = g; }
   const c = document.getElementById('azGDia'); if(!c) return;
   const xs = [], ys = [], mm = []; for(let x = p.ini; x <= p.fim; x = mkDia(x, 1)){ xs.push(x); ys.push((AMZ.d.D[x] || {}).lv || 0); }
   ys.forEach((v, i) => { let s = 0, n = 0; for(let j = Math.max(0, i - 6); j <= i; j++){ s += ys[j]; n++; } mm.push(s / n); });
@@ -21996,7 +22106,7 @@ function mgCorpo(p){
 const REL_URL = 'https://ovvtdzpbmdtipeoewnle.supabase.co/functions/v1/relatorios-portal';
 const REL = {d: null, erro: '', msg: '', mes: null, timer: null, enviando: {}, patch: false, salvando: false, ordem: null, liga: null, metas: true, ed: null};
 /* ordem de sempre das secoes (= email_fechamento.ORDEM_PADRAO); 'metas' nao e secao, e um liga/desliga */
-const REL_ORDEM_PADRAO = ['resumo','equipes','margem_equipe','frete_equipe','devol_bonif','skus','marketplace','atendimento_ml','estoque_full','crm','degustacoes','acessos'];
+const REL_ORDEM_PADRAO = ['resumo','equipes','por_canal','por_vendedor','margem_equipe','frete_equipe','devol_bonif','skus','marketplace','atendimento_ml','estoque_full','crm','degustacoes','acessos'];
 const REL_TIPOS = [
   ['word', 'Fechamento em Word', 'O relatório completo do mês (.docx)'],
   ['ppt', 'Fechamento em PPT', 'A apresentação de vendas para o time (.pptx)'],
@@ -22008,6 +22118,8 @@ const REL_BLOCOS = [
   ['resumo', 'Resumo do mês', 'faturamento bruto, devoluções, líquido, bonificado, margem bruta, ticket, novos clientes'],
   ['metas', 'Metas e atingimento', 'meta do mês e por equipe'],
   ['equipes', 'Faturamento por equipe', 'quebra por modelo/supervisão'],
+  ['por_canal', 'Vendas por canal', 'líquido, % do total, devoluções, bonificado e pedidos de cada canal'],
+  ['por_vendedor', 'Vendas e meta por vendedor', 'líquido, meta e atingimento de cada vendedor'],
   ['skus', 'SKUs críticos', 'M acima de 50%'],
   ['crm', 'CRM', 'leads do mês, ganhos, perdidos, conversão'],
   ['degustacoes', 'Degustações', 'realizadas, conversão, CPE, CAC'],
@@ -22253,7 +22365,7 @@ function relCardAutos(){
   const A = (REL.d && REL.d.autos) || [], info = {}; REL_BLOCOS.forEach(b => info[b[0]] = b);
   let h = '<div class="rl-card" id="relAutoCard"><h3>E-mails automáticos</h3><div class="rl-in">' +
     '<p class="rl-note" style="margin:0 0 10px">E-mails diários além do fechamento: escolha os blocos, os destinatários, o horário e, se quiser, um <b>recorte</b> (só um atendimento, vendedor ou canal). ' +
-    'O recorte vale para os blocos de vendas (resumo, metas, equipes, SKUs, margem, frete, devoluções); CRM, acessos, degustações e marketplace mostram a empresa toda.</p>';
+    'O recorte vale para os blocos de vendas (resumo, metas, equipes, por canal, por vendedor, SKUs, margem, frete, devoluções); CRM, acessos, degustações e marketplace mostram a empresa toda.</p>';
   if(!REL.ed) h += '<button class="rl-pri" data-rl="au_novo">+ Automatizar novo envio de e-mail</button>';
   if(REL.ed){
     const e = REL.ed;
