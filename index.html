@@ -16641,6 +16641,18 @@ async function anoSubstituirBase(){
       CART_DATAS = Object.assign({}, CART_DATAS||{}, d.CARTEIRA_ABA.CART_DATAS);
       CART_MET = Object.assign({}, CART_MET||{}, d.CARTEIRA_ABA.CART_MET||{});
     }
+    /* LISTA DA CARTEIRA (25/11/2026, Igor: "extrair a carteira"): do banco, no lugar da
+       da rodada. So troca se vier inteira (a carteira tem ~3 mil clientes) - lista curta
+       e arquivo com problema, e a da rodada fica. */
+    if(d && Array.isArray(d.CARTEIRA_LISTA) && d.CARTEIRA_LISTA.length >= 1000 && typeof CARTEIRA !== 'undefined'){
+      CARTEIRA = d.CARTEIRA_LISTA;
+      window.__CARTEIRA_FONTE = 'banco (' + d.CARTEIRA_LISTA.length + ' clientes)';
+    }
+    /* SEM A EXTRACAO (25/11/2026): numero das NFs do "ver notas" do DRE e textos da aba
+       Carteira, do banco - ver portal_sem_extracao_js.py */
+    if(d && d.NF_NUM && Object.keys(d.NF_NUM).length) window.AOVIVO_NF_NUM = d.NF_NUM;
+    if(d && d.MENSAGENS_CART && Object.keys(d.MENSAGENS_CART).length && typeof MSG_D !== 'undefined')
+      MSG_D = d.MENSAGENS_CART;
     if(!d || !d.LINHAS){
       ANO_INFO = {ligado: false, motivo: 'arquivo do ano ainda nao publicado'};
       return;
@@ -22106,7 +22118,7 @@ function mgCorpo(p){
 const REL_URL = 'https://ovvtdzpbmdtipeoewnle.supabase.co/functions/v1/relatorios-portal';
 const REL = {d: null, erro: '', msg: '', mes: null, timer: null, enviando: {}, patch: false, salvando: false, ordem: null, liga: null, metas: true, ed: null, fixo: null};
 /* ordem de sempre das secoes (= email_fechamento.ORDEM_PADRAO); 'metas' nao e secao, e um liga/desliga */
-const REL_ORDEM_PADRAO = ['resumo','equipes','por_canal','por_vendedor','margem_equipe','frete_equipe','devol_bonif','skus','marketplace','atendimento_ml','estoque_full','crm','degustacoes','acessos'];
+const REL_ORDEM_PADRAO = ['resumo','equipes','por_canal','por_vendedor','margem_equipe','frete_equipe','devol_bonif','skus','marketplace','atendimento_ml','estoque_full','degustacoes','acessos'];
 const REL_TIPOS = [
   ['word', 'Fechamento em Word', 'O relatório completo do mês (.docx)'],
   ['ppt', 'Fechamento em PPT', 'A apresentação de vendas para o time (.pptx)'],
@@ -22121,7 +22133,6 @@ const REL_BLOCOS = [
   ['por_canal', 'Vendas por canal', 'líquido, % do total, devoluções, bonificado e pedidos de cada canal'],
   ['por_vendedor', 'Vendas e meta por vendedor', 'líquido, meta e atingimento de cada vendedor'],
   ['skus', 'SKUs críticos', 'M acima de 50%'],
-  ['crm', 'CRM', 'leads do mês, ganhos, perdidos, conversão'],
   ['degustacoes', 'Degustações', 'realizadas, conversão, CPE, CAC'],
   ['acessos', 'Acessos ao Portal', 'quem entrou e quando'],
   ['margem_equipe', 'Margem por equipe', 'CMV, imposto, frete, comissão, contratos e lucro final', 1],
@@ -22514,6 +22525,78 @@ function relDesenhar(){
   relAgendar();
 }
 try{ relRegistrar(); }catch(e){ console.error('relatorios: registrar', e); }
+</script>
+
+<script>
+/* ===================== PORTAL SEM A EXTRACAO (25/11/2026) ===================== */
+(function(){
+  /* 1) VER NOTAS DO DRE pelas linhas do banco */
+  try{
+    if(typeof _carregarNotas === 'function' && typeof notasFiltradas === 'function'){
+      const carregarOrig = _carregarNotas, filtrarOrig = notasFiltradas;
+      const aoVivo = () => !!(window.AOVIVO_NF_NUM && typeof ANO_INFO === 'object' && ANO_INFO && ANO_INFO.ligado);
+      _carregarNotas = async function(){
+        if(aoVivo()){ if(!NOTAS || !NOTAS.aoVivo) NOTAS = {aoVivo: true}; return; }
+        return carregarOrig();
+      };
+      notasFiltradas = function(){
+        if(!(NOTAS && NOTAS.aoVivo)) return filtrarOrig();
+        const N = window.AOVIVO_NF_NUM || {};
+        return linhas().filter(l => l.nf !== undefined && l.nf !== null && l.nf !== '').map(l => ({
+          nf: N[l.nf] || String(l.nf), tipo: l.tipo, m: l.m, v: l.v, cn: l.cn, uf: l.uf, ca: l.ca,
+          merc: l.fat || 0, cmv: l.cmv || 0, imp: l.imp || 0, fr: l.fr || 0}));
+      };
+    }
+  }catch(e){ console.error('ver notas (banco):', e); }
+
+  /* 2) MENSAGENS: botao Publicar no editor */
+  try{
+    if(typeof msgEditorHtml === 'function' && typeof msgLigarEditor === 'function'){
+      const htmlOrig = msgEditorHtml, ligarOrig = msgLigarEditor;
+      msgEditorHtml = function(){
+        let h = htmlOrig.apply(this, arguments);
+        if(!h) return h;
+        h = h.replace('edite, veja a prévia com um cliente real e leve para a planilha',
+                      'edite, veja a prévia com um cliente real e publique para os vendedores');
+        h = h.replace(/<button id="msgCopiar"[\s\S]*?<\/span>/,
+          '<button id="msgPublicar" class="btn-nav" style="font-weight:700;background:#2A3E7E;color:#fff">Publicar no Portal</button>' +
+          '<button id="msgDescartar" class="btn-nav">Descartar rascunho</button>' +
+          (MSG_EDIT.publicado === MSG_EDIT.meio + '|' + MSG_EDIT.grupo
+            ? '<span id="msgPubInfo" style="font-size:11px;color:#1b7f3b;font-weight:700">Publicado. Os vendedores veem o texto novo em até 10 minutos.</span>'
+            : '<span id="msgPubInfo" style="font-size:11px;color:var(--muted)">Publica o texto deste grupo para todos os vendedores — ' +
+              'eles veem a versão nova em até 10 minutos. Para publicar, o Portal usa o login da aba Premissas.</span>'));
+        return h;
+      };
+      msgLigarEditor = function(){
+        ligarOrig.apply(this, arguments);
+        const rl = document.getElementById('msgReler'); if(rl) rl.style.display = 'none';   /* relia a planilha */
+        const b = document.getElementById('msgPublicar'); if(!b || b.dataset.ligado) return;
+        b.dataset.ligado = '1';
+        b.addEventListener('click', async () => {
+          MSG_EDIT.publicado = null;
+          const info = document.getElementById('msgPubInfo');
+          try{
+            if(typeof msgSalvarRascunho === 'function') msgSalvarRascunho();
+            const meio = MSG_EDIT.meio, g = MSG_EDIT.grupo, at = msgTextoAtual(meio, g);
+            if(!String(at.texto || '').trim()){ if(info) info.textContent = 'A mensagem está vazia.'; return; }
+            if(typeof relChamar !== 'function' || (typeof relToken === 'function' && !relToken()))
+              throw new Error('entre primeiro na aba Admin › Gerar relatórios (mesma senha da aba Premissas) e volte aqui');
+            b.disabled = true; b.textContent = 'Publicando…';
+            await relChamar({acao: 'msg_salvar', meio, grupo: g, assunto: at.assunto || '', texto: at.texto});
+            MSG_D = Object.assign({}, MSG_D || {}); MSG_D[meio] = Object.assign({}, MSG_D[meio] || {});
+            MSG_D[meio][g] = {'': {assunto: at.assunto || '', texto: at.texto}};
+            try{ localStorage.removeItem(msgRascunhoChave(meio, g)); }catch(e){}
+            MSG_EDIT.publicado = meio + '|' + g;
+            vCarteira();
+          }catch(err){
+            b.disabled = false; b.textContent = 'Publicar no Portal';
+            if(info){ info.style.color = '#C0392B'; info.textContent = 'Não publiquei: ' + (err.message || err); }
+          }
+        });
+      };
+    }
+  }catch(e){ console.error('mensagens (banco):', e); }
+})();
 </script>
 
 <style>
@@ -23929,9 +24012,9 @@ function uxTopo(){
    para "Outros" no fim - aba nova nunca some. Resumo fica solto no topo. */
 const UX_GRUPOS = [
   ['vendas',   'Vendas',   ['dre', 'canais', 'metas', 'orcamento', 'comparativos']],
-  ['clientes', 'Clientes', ['carteira', 'ranking', 'cnpj', 'penetracao', 'crm', 'geo']],
+  ['clientes', 'Clientes', ['carteira', 'ranking', 'cnpj', 'penetracao', 'geo']],
   ['produtos', 'Produtos', ['mix', 'gestcat', 'calc']],
-  ['operacao', 'Operação', ['sla', 'degustacoes', 'links']],
+  ['operacao', 'Operação', ['degustacoes', 'links']],
   ['marketplace', 'Marketplace', ['mkgeral', 'marketplace', 'tiktok', 'amazon', 'radar']],
   ['admin',    'Admin',    ['premissas', 'relatorios', 'precificacao', 'pendencias', 'acessos']],
 ];
@@ -23957,7 +24040,11 @@ function uxGruposAtuais(){
 /* quem ve a aba: perfil (admin / moderador / vendedor) e "esconder de" fulano. So
    RESTRINGE o que o codigo ja permite. Premissas nunca some para o Igor. */
 function uxPerfil(){ return (SESSION && SESSION.isAdmin) ? 'admin' : (SESSION && SESSION.ehModerador) ? 'moderador' : 'vendedor'; }
+/* ABAS FORA DO AO VIVO (25/11/2026, Igor: "pode tirar as abas CRM de novos leads e SLA de entrega do portal novo"):
+   as duas liam so o arquivo da extracao. Somem para todos, inclusive admin; o Portal normal segue com elas. */
+const UX_ABAS_FORA = ['crm', 'sla'];
 function uxPodeVer(id){
+  if(UX_ABAS_FORA.indexOf(id) >= 0) return false;
   const M = uxMenuBanco(); if(!M || !(SESSION && SESSION.user)) return true;
   if(id === 'premissas' && /^igor supino$/i.test(SESSION.user)) return true;
   const c = M.abas[id]; if(!c) return true;
