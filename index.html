@@ -22104,7 +22104,7 @@ function mgCorpo(p){
 <script>
 /* ===================== ADMIN > GERAR RELATORIOS (16/11/2026) ===================== */
 const REL_URL = 'https://ovvtdzpbmdtipeoewnle.supabase.co/functions/v1/relatorios-portal';
-const REL = {d: null, erro: '', msg: '', mes: null, timer: null, enviando: {}, patch: false, salvando: false, ordem: null, liga: null, metas: true, ed: null};
+const REL = {d: null, erro: '', msg: '', mes: null, timer: null, enviando: {}, patch: false, salvando: false, ordem: null, liga: null, metas: true, ed: null, fixo: null};
 /* ordem de sempre das secoes (= email_fechamento.ORDEM_PADRAO); 'metas' nao e secao, e um liga/desliga */
 const REL_ORDEM_PADRAO = ['resumo','equipes','por_canal','por_vendedor','margem_equipe','frete_equipe','devol_bonif','skus','marketplace','atendimento_ml','estoque_full','crm','degustacoes','acessos'];
 const REL_TIPOS = [
@@ -22342,7 +22342,7 @@ async function relAcaoAuto(acao, id){
   const a = ((REL.d && REL.d.autos) || []).find(x => x.id === +id); if(!a) return;
   REL.erro = ''; REL.msg = '';
   try{
-    if(acao === 'au_editar'){ relNovoAuto(a); relDesenhar(); window.scrollTo(0, (document.getElementById('relAutoCard') || {}).offsetTop || 0); return; }
+    if(acao === 'au_editar'){ REL.fixo = null; relNovoAuto(a); relDesenhar(); window.scrollTo(0, (document.getElementById('relAutoCard') || {}).offsetTop || 0); return; }
     if(acao === 'au_liga'){
       await relChamar({acao: 'auto_salvar', id: a.id, nome: a.nome, para: a.para, cc: a.cc, blocos: a.blocos, horario: a.horario, dias_uteis: a.dias_uteis,
         liberado: !a.liberado, filtro_modelo: a.filtro_modelo, filtro_vendedor: a.filtro_vendedor, filtro_canal: a.filtro_canal});
@@ -22361,12 +22361,19 @@ function relRecorteTxt(a){
   if((a.filtro_canal || []).length) p.push('canal: ' + a.filtro_canal.join(', '));
   return p.length ? p.join(' · ') : 'empresa toda';
 }
-function relCardAutos(){
+function relUltimoEnvio(tipo, por){
+  const p = ((REL.d && REL.d.pedidos) || []).find(x => x.tipo === tipo && x.status === 'pronto' && (!por || x.pedido_por === por));
+  return p ? relQuando(p.terminado_em || p.pedido_em) : '—';
+}
+function relCardAutos(fx){
+  fx = fx || {};
   const A = (REL.d && REL.d.autos) || [], info = {}; REL_BLOCOS.forEach(b => info[b[0]] = b);
   let h = '<div class="rl-card" id="relAutoCard"><h3>E-mails automáticos</h3><div class="rl-in">' +
-    '<p class="rl-note" style="margin:0 0 10px">E-mails diários além do fechamento: escolha os blocos, os destinatários, o horário e, se quiser, um <b>recorte</b> (só um atendimento, vendedor ou canal). ' +
+    '<p class="rl-note" style="margin:0 0 10px">Todos os e-mails que saem sozinhos. Os dois primeiros são o fechamento diário e a cobrança de Sell Out; os outros você cria: escolha os blocos, os destinatários, o horário e, se quiser, um <b>recorte</b> (só um atendimento, vendedor ou canal). ' +
     'O recorte vale para os blocos de vendas (resumo, metas, equipes, por canal, por vendedor, SKUs, margem, frete, devoluções); CRM, acessos, degustações e marketplace mostram a empresa toda.</p>';
-  if(!REL.ed) h += '<button class="rl-pri" data-rl="au_novo">+ Automatizar novo envio de e-mail</button>';
+  if(REL.fixo === 'diario' && fx.fDiario) h += fx.fDiario;
+  if(REL.fixo === 'sellout' && fx.fSellout) h += fx.fSellout;
+  if(!REL.ed && !REL.fixo) h += '<button class="rl-pri" data-rl="au_novo">+ Automatizar novo envio de e-mail</button>';
   if(REL.ed){
     const e = REL.ed;
     const grupo = (tit, pre, campo, sel) => { const ops = relOpcoes(campo);
@@ -22389,15 +22396,27 @@ function relCardAutos(){
       '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0 12px"><input type="checkbox" id="auLib"' + (e.lib ? ' checked' : '') + '> <span><b>Ligado</b> — sai sozinho todo dia no horário</span></label>' +
       '<button class="rl-pri" data-rl="au_salvar"' + (REL.salvando ? ' disabled' : '') + '>Salvar e-mail automático</button> <button class="rl-sec" data-rl="au_cancelar">Cancelar</button></div>';
   }
-  h += A.length ? '<div style="overflow-x:auto;margin-top:12px"><table><thead><tr><th>E-mail</th><th>Recorte</th><th>Quando</th><th>Destinatários</th><th>Situação</th><th>Último envio</th><th></th></tr></thead><tbody>' +
+  const c = fx.c || {}, so = fx.so || {}, nRedes = String(so.redes || '').split('\n').filter(x => x.trim()).length;
+  const fixos = '<tr style="background:#F7F8FC"><td><b>Fechamento diário</b><div class="rl-note">' + (c.blocos || []).filter(k => k !== 'metas').map(k => (info[k] || [k, k])[1]).join(', ') + '</div></td>' +
+      '<td class="rl-note">empresa toda</td><td>' + relEsc(c.horario || '07:00') + '<div class="rl-note">todo dia · acorda o PC</div></td>' +
+      '<td class="rl-note" style="max-width:260px">' + relEsc((c.para || []).concat(c.cc || []).join(', ')) + '</td>' +
+      '<td><span class="rl-st ' + (c.liberado ? 'pronto' : 'pendente') + '">' + (c.liberado ? 'ligado' : 'em ensaio') + '</span></td>' +
+      '<td>' + relUltimoEnvio('email', 'disparo diário') + '</td>' +
+      '<td style="white-space:nowrap"><button class="rl-mini" data-rl="fx_editar:diario">Editar</button></td></tr>' +
+    '<tr style="background:#F7F8FC"><td><b>Cobrança de Sell Out</b><div class="rl-note">' + nRedes + ' rede(s) a cobrar</div></td>' +
+      '<td class="rl-note">—</td><td>' + relEsc(fx.hrEmail || '07:00') + '<div class="rl-note">dias ' + relEsc((so.dias || [1, 5]).join(' e ')) + ' (dia útil)</div></td>' +
+      '<td class="rl-note" style="max-width:260px">' + relEsc((so.para || []).concat(so.cc || []).join(', ')) + '</td>' +
+      '<td><span class="rl-st ' + (so.liberado ? 'pronto' : 'pendente') + '">' + (so.liberado ? 'ligado' : 'pausado') + '</span></td>' +
+      '<td>' + relUltimoEnvio('sellout', 'disparo automático') + '</td>' +
+      '<td style="white-space:nowrap"><button class="rl-mini" data-rl="fx_editar:sellout">Editar</button><button class="rl-mini" data-rl="so_teste">Teste p/ mim</button></td></tr>';
+  h += '<div style="overflow-x:auto;margin-top:12px"><table><thead><tr><th>E-mail</th><th>Recorte</th><th>Quando</th><th>Destinatários</th><th>Situação</th><th>Último envio</th><th></th></tr></thead><tbody>' + fixos +
     A.map(a => '<tr><td><b>' + relEsc(a.nome) + '</b><div class="rl-note">' + (a.blocos || []).filter(k => k !== 'metas').map(k => (info[k] || [k, k])[1]).join(', ') + '</div></td>' +
       '<td class="rl-note">' + relEsc(relRecorteTxt(a)) + '</td><td>' + relEsc(String(a.horario).slice(0, 5)) + '<div class="rl-note">' + (a.dias_uteis ? 'dias úteis' : 'todo dia') + '</div></td>' +
       '<td class="rl-note" style="max-width:260px">' + relEsc((a.para || []).concat(a.cc || []).join(', ')) + '</td>' +
       '<td><span class="rl-st ' + (a.liberado ? 'pronto' : 'pendente') + '">' + (a.liberado ? 'ligado' : 'pausado') + '</span></td>' +
       '<td>' + (a.ultimo_envio ? a.ultimo_envio.split('-').reverse().join('/') : '—') + '</td>' +
       '<td style="white-space:nowrap"><button class="rl-mini" data-rl="au_editar:' + a.id + '">Editar</button><button class="rl-mini" data-rl="au_liga:' + a.id + '">' + (a.liberado ? 'Pausar' : 'Ligar') + '</button>' +
-      '<button class="rl-mini" data-rl="au_teste:' + a.id + '">Teste p/ mim</button><button class="rl-mini" data-rl="au_apagar:' + a.id + '">Apagar</button></td></tr>').join('') + '</tbody></table></div>'
-    : (REL.ed ? '' : '<p class="rl-note" style="margin:10px 0 0">Nenhum e-mail automático ainda.</p>');
+      '<button class="rl-mini" data-rl="au_teste:' + a.id + '">Teste p/ mim</button><button class="rl-mini" data-rl="au_apagar:' + a.id + '">Apagar</button></td></tr>').join('') + '</tbody></table></div>';
   return h + '</div></div>';
 }
 
@@ -22413,7 +22432,9 @@ function relClique(ev){
   else if(acao === 'so_teste') relTesteSellout();
   else if(acao === 'sobe') relMover(val, -1);
   else if(acao === 'desce') relMover(val, 1);
-  else if(acao === 'au_novo'){ relNovoAuto(); REL.msg = ''; REL.erro = ''; relDesenhar(); }
+  else if(acao === 'fx_editar'){ REL.fixo = val; REL.ed = null; REL.msg = ''; REL.erro = ''; relDesenhar(); const c = document.getElementById('relAutoCard'); if(c) c.scrollIntoView({block: 'start'}); }
+  else if(acao === 'fx_fechar'){ REL.fixo = null; relDesenhar(); }
+  else if(acao === 'au_novo'){ REL.fixo = null; relNovoAuto(); REL.msg = ''; REL.erro = ''; relDesenhar(); }
   else if(acao === 'au_cancelar'){ REL.ed = null; relDesenhar(); }
   else if(acao === 'au_salvar') relSalvarAuto();
   else if(acao === 'au_sobe') relMoverAuto(val, -1);
@@ -22437,7 +22458,9 @@ function relDesenhar(){
   const c = (REL.d && REL.d.email) || {para: [], cc: [], blocos: [], liberado: false};
   if(!REL.ordem) relIniciarOrdem();
   const info = {}; REL_BLOCOS.forEach(b => info[b[0]] = b);
-  h += '<div class="rl-card"><h3>E-mail de fechamento diário</h3><div class="rl-in">' +
+  /* 25/11/2026 (Igor): o fechamento diario e a cobranca de Sell Out entraram na lista de E-mails automaticos -
+     os formularios sao os mesmos de antes e so aparecem quando se clica Editar na linha deles */
+  const fDiario = '<div class="rl-auto-form"><b style="color:#2A3E7E;font-size:15px">E-mail de fechamento diário</b><div style="margin-top:10px">' +
     (c.liberado ? '' : '<div class="rl-aviso"><b>Em ensaio.</b> O disparo diário continua como antes (mesmos destinatários e blocos de sempre) e o "Forçar disparo" vai só para você. ' +
       'Depois de conferir o ensaio, marque "Liberar" abaixo: aí o diário passa a usar esta configuração e os números do Ao Vivo.</div>') +
     '<div class="rl-bar" style="align-items:flex-start"><div style="flex:1;min-width:260px"><label for="relPara">Para</label><br><textarea id="relPara" rows="3" style="width:100%;box-sizing:border-box">' + relEsc((c.para || []).join(', ')) + '</textarea></div>' +
@@ -22455,12 +22478,13 @@ function relDesenhar(){
     '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:6px 0 14px"><input type="checkbox" id="relLib"' + (c.liberado ? ' checked' : '') + '> ' +
     '<span><b>Liberar</b> — o disparo diário passa a usar esta configuração (destinatários, blocos, horário e números do Ao Vivo)</span></label>' +
     '<button class="rl-pri" data-rl="salvar"' + (REL.salvando ? ' disabled' : '') + '>Salvar e-mail</button>' +
+    ' <button class="rl-sec" data-rl="fx_fechar">Fechar</button>' +
     (c.alterado_em ? '<span class="rl-note" style="margin-left:12px">última alteração: ' + relEsc(c.alterado_por || '') + ' em ' + relQuando(c.alterado_em) + '</span>' : '') +
     '</div></div>';
   /* cobranca de Sell Out */
   const so = (REL.d && REL.d.sellout) || {para: [], cc: [], redes: '', obs: '', dias: [1, 5], liberado: true};
   const hrEmail = (c && c.horario) || '07:00';
-  h += '<div class="rl-card"><h3>Cobrança de Sell Out</h3><div class="rl-in">' +
+  const fSellout = '<div class="rl-auto-form"><b style="color:#2A3E7E;font-size:15px">Cobrança de Sell Out</b><div style="margin-top:10px">' +
     '<p class="rl-note" style="margin:0 0 12px">E-mail para o time cobrar o Sell Out do mês que fechou: no <b>1º dia útil</b> e lembrete no <b>dia 5</b> ' +
     '(fim de semana e feriado nacional passam para o próximo dia útil), às <b>' + relEsc(hrEmail) + '</b> — o mesmo horário do e-mail diário.</p>' +
     '<div class="rl-bar" style="align-items:flex-start"><div style="flex:1;min-width:240px"><label for="soPara">Para</label><br><textarea id="soPara" rows="3" style="width:100%;box-sizing:border-box">' + relEsc((so.para || []).join(', ')) + '</textarea></div>' +
@@ -22472,10 +22496,10 @@ function relDesenhar(){
     '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:6px 0 14px"><input type="checkbox" id="soLib"' + (so.liberado ? ' checked' : '') + '> ' +
     '<span><b>Ligada</b> — sai sozinha nos dias acima</span></label>' +
     '<button class="rl-pri" data-rl="so_salvar"' + (REL.salvando ? ' disabled' : '') + '>Salvar cobrança</button> ' +
-    '<button class="rl-sec" data-rl="so_teste">Enviar teste só para mim</button>' +
+    '<button class="rl-sec" data-rl="so_teste">Enviar teste só para mim</button> <button class="rl-sec" data-rl="fx_fechar">Fechar</button>' +
     (so.alterado_em ? '<span class="rl-note" style="margin-left:12px">última alteração: ' + relEsc(so.alterado_por || '') + ' em ' + relQuando(so.alterado_em) + '</span>' : '') +
     '</div></div>';
-  h += relCardAutos();
+  h += relCardAutos({c, so, hrEmail, fDiario, fSellout});
   const P = (REL.d && REL.d.pedidos) || [];
   h += '<div class="rl-card"><h3>Histórico</h3><div class="rl-in" style="padding:0;overflow-x:auto"><table><thead><tr><th>Quando</th><th>Relatório</th><th>Mês</th><th>Situação</th><th>Por</th><th>Detalhe</th><th></th></tr></thead><tbody>' +
     (P.length ? P.map(p => '<tr><td>' + relQuando(p.pedido_em) + '</td><td><b>' + (REL_ROT[p.tipo] || p.tipo) + '</b>' + (p.auto_id ? '<div class="rl-note">' + relEsc((((REL.d && REL.d.autos) || []).find(x => x.id === p.auto_id) || {}).nome || '(apagado)') + '</div>' : '') + '</td><td>' + relNomeMes(p.mes) + '</td>' +
