@@ -21094,7 +21094,7 @@ function ttAmostras(p){
 }
 
 /* ===================== API DO TIKTOK (24/11/2026) ===================== */
-const TT_API_INI = '2026-10-01';   /* o acerto financeiro (extrato) da API comeca em 09/10/2026 - antes disso, estimativa */
+const TT_API_INI = '2025-05-01';   /* 25/11/2026 (Igor: 'Sim, liga'): o historico financeiro da API terminou de carregar (extrato desde 05/06/2025) - DRE real desde o 1o pedido. Antes era 2026-10-01 */
 function ttPrepApi(d){
   const a = d.api, P = {};
   (a.ped || []).forEach(x => { const o = P[x[0]] || (P[x[0]] = {});
@@ -21196,7 +21196,7 @@ function ttDre(p){
   }
   const R = TTK.d.api && TTK.d.api.R;
   const aviso = !R ? '<div class="mk-note warn">⚠ Sem os dados da API do TikTok neste arquivo: taxas, repasse, frete das amostras e anúncios são ESTIMADOS com os % do extrato de out/26.</div>'
-    : '<div class="mk-note">' + (p.ini < TT_API_INI ? '⚠ Antes de ' + mkDD(TT_API_INI) + ' as taxas são ESTIMADAS (o acerto financeiro da API começa em out/26). ' : '') +
+    : '<div class="mk-note">' + (p.ini < TT_API_INI ? '⚠ Antes de ' + mkDD(TT_API_INI) + ' as taxas são ESTIMADAS (o acerto financeiro da API começa em mai/25). ' : '') +
       (T.real ? '<b>Valores reais da API do TikTok</b>: repasse do desconto, comissão, SFP, afiliado, taxa por item, frete e anúncios GMV Max. ' +
         mkP(T.pctLiq) + ' do período já foi liquidado pelo TikTok; o resto usa a taxa média real dos últimos 60 dias (comissão ' + mkP(R.com) + ', SFP ' + mkP(R.sfp) +
         ', afiliado ' + mkP(R.afil) + ', taxa por item ' + mkP(R.item + R.out) + ' do preço cheio). Os anúncios entram pela data da cobrança. Pedidos atualizados às ' +
@@ -22601,6 +22601,35 @@ try{ relRegistrar(); }catch(e){ console.error('relatorios: registrar', e); }
       };
     }
   }catch(e){ console.error('mensagens (banco):', e); }
+
+  /* 3) FAIXA DO RESUMO SO COM O "HOJE ATE AGORA" (25/11/2026, Igor). O mes, o lucro e a
+     linha de detalhe sairam: os cartoes logo abaixo ja trazem o mes inteiro (com hoje).
+     Fica a hora da ultima leitura e o aviso de atrasada. */
+  try{
+    if(typeof faixaHtml === 'function'){
+      faixaHtml = function(d, corte){
+        const h = (corte && corte.hoje) || {};
+        const ger = d && d.gerado_em ? new Date(d.gerado_em) : null;
+        const idade = ger ? Math.max(0, Math.round((Date.now() - ger.getTime()) / 60000)) : null;
+        const velha = idade !== null && idade > FAIXA_VELHA_MIN;
+        const hora = ger ? ger.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : '—';
+        const valor = h.pedidos ? brl(h.receita)
+          : '<span style="font-size:15px;font-weight:600;color:var(--muted)">nenhum pedido ainda</span>';
+        const sub = h.pedidos
+          ? (h.pedidos + (h.pedidos === 1 ? ' pedido' : ' pedidos') + ' · ' + h.clientes + (h.clientes === 1 ? ' cliente' : ' clientes'))
+          : 'desde a meia-noite';
+        return '<div class="card" id="cardFaixaHoje" style="display:flex;align-items:center;gap:28px;padding:13px 17px;' +
+          'margin-bottom:14px;border-left:4px solid var(--yellow);flex-wrap:wrap">' +
+          '<div style="min-width:150px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700">Hoje até agora</div>' +
+          '<div style="font-size:21px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums;line-height:1.15">' + valor + '</div>' +
+          '<div style="font-size:11px;color:var(--muted)">' + sub + '</div></div>' +
+          '<div style="margin-left:auto;text-align:right;font-size:11px;color:' + (velha ? '#C0392B' : 'var(--muted)') + '">' +
+          (velha ? '<b>atrasada</b> — ' : '') + 'atualizado às ' + hora + (idade !== null ? ' (há ' + idade + ' min)' : '') +
+          '<br><span style="opacity:.8">' + ((corte && corte.quem) ? corte.quem + ' · ' : 'comercial PJ, sem o site · ') +
+          'notas emitidas hoje, direto do OMIE</span></div></div>';
+      };
+    }
+  }catch(e){ console.error('faixa (so hoje):', e); }
 })();
 </script>
 
