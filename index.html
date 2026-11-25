@@ -18047,7 +18047,7 @@ function premUrgCount(id){
 function premPaneHtml(id){
   const parte = (PREM_ABAS.find(a => a.id === id) || {}).parte;
   if(parte && !PREM.partes[parte]) return '<p class="pm-hint" style="padding:24px 4px">Carregando do banco…</p>';
-  if(id === 'vend') return premVendedores() + premUsuarios() + premSupervisao();
+  if(id === 'vend') return premVendedores() + premComModelo() + premUsuarios() + premSupervisao();
   if(id === 'com') return premComercial();
   if(id === 'calc') return premCalc();
   if(id === 'cmv') return premCmv();
@@ -18599,6 +18599,49 @@ function premItensMenu(){
   });
   /* ordem certa no banco: secao nova antes das abas que vao para ela; secao apagada por ultimo */
   return {itens: secUp.concat(abaUp, secDel), txt};
+}
+
+/* ---------- COMISSAO POR ATENDIMENTO (Igor, 25/11/2026: "coloca as 4 linhas na aba Premissas,
+   acima de usuarios sem modelo"). Saiu da Parametros do V8 (R:S). Vale para quem NAO tem comissao
+   propria no cadastro (vendedor novo, "A definir") e para a calculadora da Precificacao B2B.
+   Grava pelo servidor de relatorios (com_modelo_salvar), com o mesmo login desta aba. */
+function premComModelo(){
+  const L = PREM.comMod;
+  if(!L){
+    if(!PREM.comModBusca && typeof relChamar === 'function'){
+      PREM.comModBusca = true;
+      relChamar({acao: 'com_modelo_ler'}).then(j => { PREM.comMod = j.itens || []; })
+        .catch(e => { PREM.comMod = []; PREM.comModErro = e.message; })
+        .finally(() => { PREM.comModBusca = false; const el = document.getElementById('pmComMod'); if(el) el.outerHTML = premComModelo(); });
+    }
+    return premCard('Comissão por atendimento', 'carregando…', '', 'pmComMod');
+  }
+  const linhas = L.map((x, j) => '<tr' + premB(x.modelo) + '><td><b>' + premEsc(x.modelo) + '</b></td>' +
+    '<td style="width:110px"><input id="pcmP' + j + '" class="pm-in pm-num" value="' + premPct(x.pct) + '" placeholder="%"></td></tr>').join('');
+  return premCard('Comissão por atendimento', 'vale para quem não tem comissão própria no cadastro acima e para a Precificação B2B',
+    (PREM.comModErro ? '<div class="pm-hint" style="color:var(--neg)">' + premEsc(PREM.comModErro) + '</div>' : '') +
+    '<table class="pm-tab" id="pcmTab"><tr><th>Atendimento</th><th>Comissão %</th></tr>' + linhas + '</table>' +
+    '<div class="pm-foot"><span class="pm-hint" id="pcmMsg">A comissão de cada vendedor (lista de cima) vale antes desta. ' +
+    'O Portal e a Precificação usam o valor novo em até 10 minutos.</span>' +
+    '<button class="pm-btn pm-pri" onclick="premComModeloSalvar()">Salvar comissões</button></div>', 'pmComMod');
+}
+async function premComModeloSalvar(){
+  const msg = document.getElementById('pcmMsg');
+  try{
+    const itens = [];
+    (PREM.comMod || []).forEach((x, j) => {
+      const el = document.getElementById('pcmP' + j); if(!el) return;
+      const n = premNum(el.value);
+      if(n === null || n < 0 || n > 50) throw new Error(x.modelo + ': comissão inválida (' + el.value + ')');
+      itens.push({modelo: x.modelo, pct: Math.round(n * 10000) / 1000000});
+    });
+    const r = await relChamar({acao: 'com_modelo_salvar', itens});
+    PREM.comMod = null; PREM.comModErro = null;
+    const el = document.getElementById('pmComMod'); if(el) el.outerHTML = premComModelo();
+    const n = (r.alterados || []).length;
+    setTimeout(() => { const m = document.getElementById('pcmMsg'); if(m){ m.style.color = '#1b7f3b';
+      m.textContent = n ? n + ' comissão(ões) salva(s). O Portal e a Precificação atualizam em até 10 minutos.' : 'Nada mudou.'; } }, 600);
+  }catch(e){ if(msg){ msg.style.color = 'var(--neg)'; msg.textContent = 'Não salvei: ' + e.message; } }
 }
 
 /* ---------- USUARIOS SEM MODELO (Igor, 07/11/2026): quem entra no Portal mas nao e
