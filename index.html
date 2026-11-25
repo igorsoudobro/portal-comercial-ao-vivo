@@ -20918,7 +20918,7 @@ try{ mkRegistrar(); }catch(e){ console.error('marketplace: registrar', e); }
 /* ===================== ABA TIKTOK SHOP (notas do Bling) ===================== */
 const TTK = {d: null, carregando: false, erro: null, aba: 'geral', fam: '', busca: '', gs: {k: 'liq', dir: -1}, charts: {}, patch: false,
              gFam: '', gBusca: '', gg: {k: 'rec', dir: -1}};
-const TTK_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['gerencial', 'Tabela gerencial por SKU'], ['amostras', 'Creators & amostras'], ['dre', 'DRE'], ['envios', 'Envios & cancelamentos'], ['devol', 'Devoluções'], ['anuncios', 'Anúncios & estoque'], ['notas', 'Notas (conferir OMIE)']];
+const TTK_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['gerencial', 'Tabela gerencial por SKU'], ['amostras', 'Creators & amostras'], ['dre', 'DRE'], ['envios', 'Envios & cancelamentos'], ['devol', 'Devoluções'], ['anuncios', 'Anúncios & estoque'], ['receb', 'Recebimentos & pedidos'], ['notas', 'Notas (conferir OMIE)']];
 
 function ttRegistrar(){
   if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
@@ -20989,7 +20989,7 @@ function ttDesenhar(manter){
   if(TTK.erro){ alvo.innerHTML = h + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(TTK.erro) + '</div>'); return; }
   if(!d){ alvo.innerHTML = h; return; }
   h += '<div class="mk-tabs">' + TTK_ABAS.map(a => '<button data-tt="aba:' + a[0] + '" class="' + (TTK.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
-  try{ h += ({geral: ttGeral, skus: ttSkus, gerencial: ttGerencial, amostras: ttAmostras, dre: ttDre, envios: ttEnvios, devol: ttDevol, anuncios: ttAnuncios, notas: ttNotas}[TTK.aba] || ttGeral)(pr); }
+  try{ h += ({geral: ttGeral, skus: ttSkus, gerencial: ttGerencial, amostras: ttAmostras, dre: ttDre, envios: ttEnvios, devol: ttDevol, anuncios: ttAnuncios, receb: ttReceb, notas: ttNotas}[TTK.aba] || ttGeral)(pr); }
   catch(e){ console.error('tiktok: tela', e); h += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
   h += '<div class="mk-note">Fonte: notas do Bling, canal Tiktok Shop. O OMIE recebe essas notas por importação manual e costuma ficar alguns dias atrás — confira na aba "Notas".</div>';
   alvo.innerHTML = h;
@@ -21146,7 +21146,7 @@ function ttDreCalc(ini, fim){
     T.ads += X.ads; T.aj = X.aj; T.ajTipos = X.ajTipos;
   }
   T.fatLiq = t.lv + T.rep - t.vd;
-  T.imp = t.lv ? imp * (t.lv - t.vd) / t.lv : 0;          /* imposto estimado sobre as notas, liquido das devolucoes */
+  T.imp = t.lv ? imp * (t.lv - t.vd) / t.lv : 0;          /* imposto DESTACADO nas notas (24/11/2026), liquido das devolucoes */
   T.mb = T.fatLiq - T.imp - cmv;
   T.taxas = T.com + T.sfp + T.afil + T.item + T.fr;
   T.liq = T.mb - T.taxas;
@@ -21155,7 +21155,7 @@ function ttDreCalc(ini, fim){
 }
 const TT_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos (vendedor + TikTok)', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
   ['+ Desconto pago pelo TikTok (repassado à Dobro)', T => T.rep], ['− Devoluções', T => -T.vd], ['= Faturamento líquido', T => T.fatLiq, 'tot'],
-  ['− Impostos (estimado: % real do ML por UF + PIS/COFINS 9,25%)', T => -T.imp], ['− CMV (líquido do crédito de insumos)', T => -T.cmv],
+  ['− Impostos (destacados nas notas: ICMS + FCP + DIFAL + PIS/COFINS)', T => -T.imp], ['− CMV (líquido do crédito de insumos)', T => -T.cmv],
   ['= Margem bruta', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
   ['− Comissão do TikTok', T => -T.com], ['− Taxa SFP', T => -T.sfp], ['− Comissão de afiliados (creators)', T => -T.afil], ['− Taxa por item vendido', T => -T.item], ['− Frete das vendas', T => -T.fr],
   ['= Margem depois das taxas', T => T.liq, 'tot'], ['% margem depois das taxas', T => T.fatLiq ? T.liq / T.fatLiq : null, 'pct'],
@@ -21191,7 +21191,7 @@ function ttDre(p){
     mkKpi('Resultado', mkR(T.res), mkP(T.fatLiq ? T.res / T.fatLiq : 0) + ' · depois dos anúncios' + (T.real ? '' : ' (est.)'), T.res >= 0 ? 'pos' : 'alerta') + '</div>' +
     mkCard('DRE do TikTok Shop · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), meses.length > 1 ? 'meses lado a lado · última coluna = total' : 'por pedido = valor ÷ pedidos',
       '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
-      '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(TTK.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real), sobre o valor das notas. ' +
+      '<div class="mk-note">Imposto: o <b>destacado em cada nota</b> (ICMS + FCP + DIFAL + PIS/COFINS), lido do XML do Bling' + (TTK.d.imposto_real != null && TTK.d.imposto_real < 0.999 ? ' (' + mkP(TTK.d.imposto_real) + ' das vendas; o resto, nota ainda sem XML, estimado pelo % do ML por UF + 9,25%)' : '') + '. ' +
       'O desconto pago pelo TikTok não está na nota: o TikTok repassa à Dobro no acerto — confirmar com o contábil como ele é tributado. A comissão é cobrada desde a primeira venda do mês (a isenção dos R$ 10 mil foi só no início da loja).</div>');
 }
 
@@ -21359,6 +21359,45 @@ function ttAnuncios(p){
   return h;
 }
 
+/* mapa dia da semana x hora (usado no TikTok e na Amazon) */
+function mxHeat(H, cor){
+  let mx = 0; Object.values(H).forEach(v => mx = Math.max(mx, v));
+  const dn = ['', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  let h = '<div class="mk-scroll"><table class="mk-heat"><thead><tr><th></th>' + [...Array(24).keys()].map(x => '<th>' + x + 'h</th>').join('') + '</tr></thead><tbody>';
+  for(let w = 1; w <= 7; w++) h += '<tr><th>' + dn[w] + '</th>' + [...Array(24).keys()].map(x => { const n = H[w + '|' + x] || 0, a = mx ? n / mx : 0;
+    return '<td style="background:rgba(' + cor + ',' + (0.05 + a * 0.8).toFixed(2) + ');color:' + (a > .5 ? '#fff' : 'var(--ink)') + '">' + (n || '') + '</td>'; }).join('') + '</tr>';
+  return h + '</tbody></table></div>';
+}
+
+/* ---------------- RECEBIMENTOS & PEDIDOS (24/11/2026) ----------------
+   extrato = o que o TikTok liquida por dia (API); estado, hora e forma de pagamento pelos PEDIDOS da API (hora real do pedido). */
+const TT_EXT_ST = {PAID: 'pago', PROCESSING: 'a receber', FAILED: 'falhou'};
+function ttReceb(p){
+  const a = TTK.d.api, e = a && a.extra; if(!e) return mkCard('Sem dados da API', '', '<div class="mk-note">O arquivo ainda não tem os extras da API do TikTok.</div>');
+  const E = (e.extrato || []).filter(x => x[0] >= p.ini && x[0] <= p.fim);
+  const pago = E.filter(x => x[1] === 'PAID').reduce((t, x) => t + (+x[5] || 0), 0);
+  const aRec = (e.extrato || []).filter(x => x[1] !== 'PAID').reduce((t, x) => t + (+x[5] || 0), 0);
+  const meses = Object.keys(mkMesesFrac(p));
+  const U = {}; let tu = 0; (e.uf || []).forEach(x => { if(meses.indexOf(x[0]) < 0) return; const o = U[x[1]] || (U[x[1]] = {n: 0, v: 0}); o.n += +x[2]; o.v += +x[3]; tu += +x[3]; });
+  const H = {}; (e.hora || []).forEach(x => H[x[0] + '|' + x[1]] = +x[2]);
+  const G = {}; (e.pgto || []).forEach(x => { if(meses.indexOf(x[0]) < 0) return; const o = G[x[1]] || (G[x[1]] = {n: 0, c: 0, np: 0}); o.n += +x[2]; o.c += +x[3]; o.np += +x[4]; });
+  const gt = Object.values(G).reduce((t, o) => t + o.n, 0), np = Object.values(G).reduce((t, o) => t + o.np, 0);
+  let h = '<div class="kpirow">' + mkKpi('Liquidado no período', mkR(E.reduce((t, x) => t + (+x[5] || 0), 0)), mkN(E.length) + ' extratos diários · ' + mkR(pago) + ' já pagos', 'accent') +
+    mkKpi('A receber (todos os extratos em aberto)', mkR(aRec), 'liquidado pelo TikTok e ainda não transferido') +
+    mkKpi('Taxas nos extratos do período', mkR(-E.reduce((t, x) => t + (+x[3] || 0), 0)), 'comissão, SFP, afiliados, taxa por item, frete') +
+    mkKpi('Pix/boleto não pagos', mkN(np), gt ? mkP(np / gt) + ' dos pedidos dos meses do período' : '', np ? 'atencao' : '') + '</div>';
+  h += mkCard('Extratos do TikTok', 'por dia do extrato · "a receber" = liquidado e ainda não transferido para o banco',
+    '<div class="mk-scroll"><table><thead><tr><th>Dia</th><th>Situação</th><th>Receita</th><th>Taxas</th><th>Ajustes</th><th>Liquidado</th></tr></thead><tbody>' +
+    E.slice().reverse().map(x => '<tr><td>' + mkDD(x[0]) + '</td><td><span class="mk-chip ' + (x[1] === 'PAID' ? 'up' : 'nt') + '">' + mkEsc(TT_EXT_ST[x[1]] || x[1]) + '</span></td><td>' + mkR2(+x[2]) +
+      '</td><td>' + mkR2(+x[3]) + '</td><td>' + mkR2(+x[4]) + '</td><td><b>' + mkR2(+x[5]) + '</b></td></tr>').join('') + '</tbody></table></div>');
+  h += '<div class="grid2">' + mkCard('Venda por estado', 'pedidos da API · meses do período', '<table><thead><tr><th>UF</th><th>Pedidos</th><th>Valor</th><th>%</th></tr></thead><tbody>' +
+      Object.entries(U).sort((x, y) => y[1].v - x[1].v).slice(0, 15).map(([k, o]) => '<tr><td>' + mkEsc(k) + '</td><td>' + mkN(o.n) + '</td><td>' + mkR(o.v) + '</td><td>' + mkP(tu ? o.v / tu : 0) + '</td></tr>').join('') + '</tbody></table>') +
+    mkCard('Forma de pagamento', 'meses do período · Pix/boleto não pago vira cancelamento automático', '<table><thead><tr><th>Forma</th><th>Pedidos</th><th>%</th><th>Cancelados</th><th>Não pagos</th></tr></thead><tbody>' +
+      Object.entries(G).sort((x, y) => y[1].n - x[1].n).map(([k, o]) => '<tr><td style="text-align:left">' + mkEsc(k === 'CCI' ? 'Cartão (parcelado)' : k) + '</td><td>' + mkN(o.n) + '</td><td>' + mkP(gt ? o.n / gt : 0) + '</td><td>' + mkN(o.c) + '</td><td>' + (o.np ? '<span class="mk-chip dn">' + mkN(o.np) + '</span>' : '0') + '</td></tr>').join('') + '</tbody></table>') + '</div>';
+  h += mkCard('Pedidos por dia da semana e hora', 'últimos 90 dias · hora REAL do pedido (não da nota)', mxHeat(H, '17,17,17'));
+  return h;
+}
+
 /* ---------------- notas (conferir a importacao no OMIE) ---------------- */
 function ttNotas(p){
   const N = (TTK.d.notas || []).filter(x => x[0] >= p.ini && x[0] <= p.fim);
@@ -21387,7 +21426,7 @@ try{ ttRegistrar(); }catch(e){ console.error('tiktok: registrar', e); }
 <script>
 /* ===================== ABA AMAZON (notas Bling + OMIE) ===================== */
 const AMZ = {d: null, carregando: false, erro: null, aba: 'geral', fam: '', busca: '', gs: {k: 'l', dir: -1}, charts: {}, patch: false, gg: {k: 'rec', dir: -1}};
-const AMZ_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['gerencial', 'Tabela gerencial por SKU'], ['dre', 'DRE'], ['financas', 'Finanças']];
+const AMZ_ABAS = [['geral', 'Visão geral'], ['skus', 'Venda por SKU'], ['gerencial', 'Tabela gerencial por SKU'], ['dre', 'DRE'], ['financas', 'Finanças'], ['receb', 'Recebimentos & FBA × DBA']];
 const AMZ_CANAL = {FBA: 'FBA · estoque na Amazon', DBA: 'DBA · a Dobro envia', OMIE: 'OMIE (desde nov/26)'};
 
 function azRegistrar(){
@@ -21462,7 +21501,7 @@ function azDesenhar(manter){
   if(AMZ.erro){ alvo.innerHTML = h + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(AMZ.erro) + '</div>'); return; }
   if(!d){ alvo.innerHTML = h; return; }
   h += '<div class="mk-tabs">' + AMZ_ABAS.map(a => '<button data-az="aba:' + a[0] + '" class="' + (AMZ.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
-  try{ h += ({geral: azGeral, skus: azSkus, gerencial: azGerencial, dre: azDre, financas: azFinancas}[AMZ.aba] || azGeral)(pr); }
+  try{ h += ({geral: azGeral, skus: azSkus, gerencial: azGerencial, dre: azDre, financas: azFinancas, receb: azReceb}[AMZ.aba] || azGeral)(pr); }
   catch(e){ console.error('amazon: tela', e); h += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
   h += '<div class="mk-note">Amazon 3P = venda ao consumidor no marketplace (FBA: estoque na Amazon; DBA: a Dobro envia). Fonte: notas do Bling até out/26 e do OMIE (categoria Amazon 3P) desde nov/26. ' +
        'A Amazon 1P (venda para a própria Amazon) é B2B e fica no DRE comercial, não nesta aba.</div>';
@@ -21526,7 +21565,7 @@ function azSkus(p){
 }
 
 /* ===================== API DA AMAZON (24/11/2026) ===================== */
-const AZ_API_INI = '2026-01-01';     /* o financeiro da API comeca em jan/26 - antes, estimativa */
+const AZ_API_INI = '2025-05-01';     /* 24/11: o Luca trouxe o financeiro desde mai/25 (antes comecava em jan/26) - antes disso, estimativa */
 const AZ_AJ_NOME = {ProductAdsPayment: 'Anúncios (Product Ads)', FBAStorageBilling: 'Armazenagem FBA', FBALongTermStorageBilling: 'Armazenagem FBA de longo prazo',
   FBARemoval: 'Remoção de estoque FBA', Subscription: 'Assinatura da conta', FBAPostInboundTransportation: 'Transporte de entrada FBA', DIFALEasyShip: 'DIFAL do frete (EasyShip)',
   DIFALSellerFlex: 'DIFAL do frete (Seller Flex)', Commission: 'Ajuste de comissão', WAREHOUSE_DAMAGE: 'Reembolso: avaria no armazém', WAREHOUSE_LOST: 'Reembolso: perda no armazém',
@@ -21614,6 +21653,41 @@ function azFinancas(p){
     '</tbody></table></div><div class="mk-note">A Amazon lança cada venda duas vezes no financeiro (retida e depois liberada); aqui entra uma vez só. "Promoções pagas pela Dobro" é informativo — não entra na DRE, que parte do valor das notas.</div>');
 }
 
+/* ---------------- RECEBIMENTOS & FBA x DBA (24/11/2026) ----------------
+   repasses = transferencias da Amazon para o banco; FBA x DBA pelas taxas REAIS de cada pedido (API), antes de imposto e CMV;
+   cancelamentos e estados pelos pedidos da API. */
+function azReceb(p){
+  const a = AMZ.d.api, e = a && a.extra; if(!e) return mkCard('Sem dados da API', '', '<div class="mk-note">O arquivo ainda não tem os extras da API da Amazon.</div>');
+  const R = (e.repasse || []).filter(x => x[0] >= p.ini && x[0] <= p.fim);
+  const meses = Object.keys(mkMesesFrac(p));
+  const M = {AFN: {}, MFN: {}}; ['AFN', 'MFN'].forEach(k => ['n', 'tot', 'nl', 'tl', 'com', 'a4a', 'fba', 'out', 'post', 'liq'].forEach(c => M[k][c] = 0));
+  (a.ped || []).forEach(x => { if(x[0] < p.ini || x[0] > p.fim || !M[x[1]]) return; const o = M[x[1]];
+    o.n += +x[2]; o.tot += +x[3]; o.nl += +x[4]; o.tl += +x[5]; o.com += +x[8]; o.a4a += +x[9]; o.fba += +x[10]; o.out += +x[11]; o.post += +x[12]; o.liq += +x[13]; });
+  const C = {AFN: {t: 0, c: 0}, MFN: {t: 0, c: 0}};
+  (e.status || []).forEach(x => { if(meses.indexOf(x[0]) < 0 || !C[x[1]]) return; C[x[1]].t += +x[3]; if(/cancel/i.test(x[2])) C[x[1]].c += +x[3]; });
+  const U = {}; let tu = 0; (e.uf || []).forEach(x => { if(meses.indexOf(x[0]) < 0) return; const o = U[x[1]] || (U[x[1]] = {n: 0, v: 0}); o.n += +x[2]; o.v += +x[3]; tu += +x[3]; });
+  const pct = (v, b) => b ? mkP(v / b) : '—';
+  const col = k => { const o = M[k], tx = o.com + o.a4a + o.fba + o.out + o.post; return {o, tx}; };
+  const F = col('AFN'), B = col('MFN');
+  let h = '<div class="kpirow">' + mkKpi('Repasses ao banco no período', mkR(R.reduce((t, x) => t + (+x[1] || 0), 0)), mkN(R.length) + ' transferências', 'accent') +
+    mkKpi('Taxas FBA (Amazon envia)', pct(F.tx, F.o.tl), mkN(F.o.n) + ' pedidos · comissão, A4A e taxa FBA sobre o valor') +
+    mkKpi('Taxas DBA (Dobro envia)', pct(B.tx, B.o.tl), mkN(B.o.n) + ' pedidos · comissão, A4A e frete da etiqueta') +
+    mkKpi('Cancelamento FBA × DBA', pct(C.AFN.c, C.AFN.t) + ' × ' + pct(C.MFN.c, C.MFN.t), 'meses do período') + '</div>';
+  const lin = [['Pedidos (não cancelados)', o => mkN(o.n)], ['Valor dos pedidos', o => mkR(o.tot)], ['Já liquidados', o => mkN(o.nl) + ' · ' + mkR(o.tl)],
+    ['− Comissão', o => mkR(o.com) + ' <small class="mk-sub">' + pct(o.com, o.tl) + '</small>'], ['− Amazon for All', o => mkR(o.a4a) + ' <small class="mk-sub">' + pct(o.a4a, o.tl) + '</small>'],
+    ['− Taxa FBA', o => mkR(o.fba + o.out) + ' <small class="mk-sub">' + pct(o.fba + o.out, o.tl) + '</small>'], ['− Frete da etiqueta (DBA)', o => mkR(o.post) + ' <small class="mk-sub">' + pct(o.post, o.tl) + '</small>'],
+    ['= Taxas da Amazon', o => '<b>' + pct(o.com + o.a4a + o.fba + o.out + o.post, o.tl) + '</b>'], ['Ticket médio', o => mkR2(o.n ? o.tot / o.n : 0)]];
+  h += mkCard('FBA × DBA', 'pedidos do período pela API · taxas sobre o valor dos pedidos já liquidados · antes de imposto, CMV e anúncios',
+    '<table class="mk-dre"><thead><tr><th></th><th>FBA · Amazon envia</th><th>DBA · Dobro envia</th></tr></thead><tbody>' +
+    lin.map(l => '<tr><td>' + l[0] + '</td><td>' + l[1](F.o) + '</td><td>' + l[1](B.o) + '</td></tr>').join('') + '</tbody></table>' +
+    '<div class="mk-note">No FBA o custo de envio é a taxa FBA; no DBA é a etiqueta que a Amazon cobra. A armazenagem do FBA (mensal) está na aba Finanças.</div>');
+  h += '<div class="grid2">' + mkCard('Repasses ao banco', 'transferências da Amazon no período', '<table><thead><tr><th>Dia</th><th>Valor</th></tr></thead><tbody>' +
+      R.slice().reverse().map(x => '<tr><td>' + mkDD(x[0]) + '</td><td>' + mkR2(+x[1]) + '</td></tr>').join('') + '</tbody></table>') +
+    mkCard('Venda por estado', 'pedidos da API · meses do período', '<table><thead><tr><th>UF</th><th>Pedidos</th><th>Valor</th><th>%</th></tr></thead><tbody>' +
+      Object.entries(U).sort((x, y) => y[1].v - x[1].v).slice(0, 15).map(([k, o]) => '<tr><td>' + mkEsc(k) + '</td><td>' + mkN(o.n) + '</td><td>' + mkR(o.v) + '</td><td>' + mkP(tu ? o.v / tu : 0) + '</td></tr>').join('') + '</tbody></table>') + '</div>';
+  return h;
+}
+
 /* ---------------- DRE 3P (antes das taxas da Amazon) - mesma estrutura do DRE do ML ---------------- */
 function azDreCalc(ini, fim){
   const t = azTot(ini, fim), V = azPorSku(ini, fim);
@@ -21622,7 +21696,7 @@ function azDreCalc(ini, fim){
   const impV = V.reduce((a, o) => a + o.imp, 0), cm = V.reduce((a, o) => a + o.cmv, 0), cb = V.reduce((a, o) => a + o.cmvb, 0);
   const devCm = R.reduce((a, r) => a + r.cmv, 0), devCb = cm ? devCm * cb / cm : devCm;
   T.fatLiq = t.lv - t.vd;
-  T.imp = t.lv ? impV * T.fatLiq / t.lv : 0;          /* imposto estimado sobre o liquido das devolucoes */
+  T.imp = t.lv ? impV * T.fatLiq / t.lv : 0;          /* imposto DESTACADO nas notas (24/11/2026), liquido das devolucoes */
   T.cmvb = cb; T.cmvDev = devCb; T.cred = (cb - cm) - (devCb - devCm); T.cmv = cm - devCm;
   T.mb = T.fatLiq - T.imp - T.cmv;
   /* 11/11 (Igor): comissao da Amazon 12% (Saude e Bem-Estar) sobre o faturamento liquido. O frete por conta
@@ -21646,7 +21720,7 @@ function azDreCalc(ini, fim){
 const AZ_COMISSAO = 0.12;
 const AZ_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
   ['− Devoluções (notas de devolução)', T => -T.dev], ['= Faturamento líquido', T => T.fatLiq, 'tot'],
-  ['− Impostos (estimado: % real do ML por UF + PIS/COFINS 9,25%)', T => -T.imp],
+  ['− Impostos (destacados nas notas: ICMS + FCP + DIFAL + PIS/COFINS)', T => -T.imp],
   ['CMV bruto', T => -T.cmvb, 'sub'], ['CMV devolvido', T => T.cmvDev, 'sub'], ['Crédito de insumos', T => T.cred, 'sub'],
   ['− CMV líquido', T => -T.cmv],
   ['= Margem bruta', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
@@ -21673,7 +21747,7 @@ function azDre(p){
   }
   const R = AMZ.d.api && AMZ.d.api.R;
   const aviso = !R ? '<div class="mk-note warn">⚠ Sem os dados da API da Amazon neste arquivo: comissão ESTIMADA em 12%, sem frete, FBA e anúncios.</div>'
-    : '<div class="mk-note">' + (p.ini < AZ_API_INI ? '⚠ Antes de ' + mkDD(AZ_API_INI) + ' a comissão é ESTIMADA em 12% (o financeiro da API começa em jan/26). ' : '') +
+    : '<div class="mk-note">' + (p.ini < AZ_API_INI ? '⚠ Antes de ' + mkDD(AZ_API_INI) + ' a comissão é ESTIMADA em 12% (o financeiro da API começa em mai/25). ' : '') +
       '<b>Valores reais da API da Amazon</b>: comissão, Amazon for All, taxa FBA, frete DBA, anúncios e outras cobranças. ' + (T.pctLiq != null ? mkP(T.pctLiq) + ' do período já foi liquidado; ' : '') +
       'o resto usa a taxa média real de 120 dias (comissão ' + mkP(R.com) + ', Amazon for All ' + mkP(R.a4a) + ', frete DBA ' + mkP(R.post) + ' do total do pedido). Anúncios e outras cobranças entram pela data do lançamento.</div>';
   return aviso +
@@ -21684,7 +21758,7 @@ function azDre(p){
     mkKpi('CMV líquido', mkR(T.cmv), mkP(T.fatLiq ? T.cmv / T.fatLiq : 0) + ' do faturamento') + '</div>' +
     mkCard('DRE da Amazon 3P · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), meses.length > 1 ? 'meses lado a lado · última coluna = total' : 'por pedido = valor ÷ pedidos',
       '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
-      '<div class="mk-note">Imposto estimado: % real de ICMS + FCP + DIFAL das notas do Mercado Livre no OMIE, por UF (' + mkP(AMZ.d.taxa_imposto) + ' na média), + PIS/COFINS 9,25% (Lucro Real). As notas do Bling não trazem o imposto. ' +
+      '<div class="mk-note">Imposto: o <b>destacado em cada nota</b> (ICMS + FCP + DIFAL + PIS/COFINS), lido do XML do Bling (até out/26) e do OMIE (desde nov/26)' + (AMZ.d.imposto_real != null && AMZ.d.imposto_real < 0.999 ? ' (' + mkP(AMZ.d.imposto_real) + ' das vendas; o resto, nota ainda sem XML, estimado pelo % do ML por UF + 9,25%)' : '') + '. ' +
       'CMV pelo de-para da planilha "SKU por canal" e da conversão de SKU, líquido do crédito de insumos.</div>' +
       (T.semCmv ? '<div class="mk-note warn">⚠ ' + mkR(T.semCmv) + ' de venda em SKUs sem CMV (entram com custo zero) — ver a aba Venda por SKU.</div>' : ''));
 }
@@ -21903,6 +21977,14 @@ function mgCorpo(p){
 #v-relatorios .rl-note{font-size:12px;color:#5b6475;line-height:1.5}
 #v-relatorios .rl-pri{background:#2A3E7E;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
 #v-relatorios .rl-sec{background:#fff;color:#2A3E7E;border:1px solid #2A3E7E;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer}
+#v-relatorios .rl-auto-form{border:2px solid #D8C733;border-radius:12px;padding:14px 16px;margin:12px 0;background:#FFFDF2}
+#v-relatorios .rl-filtros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:8px 0 12px}
+#v-relatorios .rl-filtros details{border:1px solid #e3e7f0;border-radius:10px;background:#fff;padding:8px 10px}
+#v-relatorios .rl-filtros summary{cursor:pointer;font-weight:700;color:#2A3E7E;font-size:13px}
+#v-relatorios .rl-filtros .rl-ops{max-height:180px;overflow:auto;margin-top:6px}
+#v-relatorios .rl-filtros label{display:flex;gap:6px;align-items:center;font-size:12.5px;padding:2px 0}
+#v-relatorios .rl-mini{background:#fff;border:1px solid #d5dae5;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:700;color:#2A3E7E;cursor:pointer;margin:0 2px 2px 0}
+@media (max-width:900px){#v-relatorios .rl-filtros{grid-template-columns:1fr}}
 #v-relatorios .rl-login{max-width:380px;margin:30px auto;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(42,62,126,.12);padding:22px}
 #v-relatorios .rl-login label{display:block;font-size:12px;font-weight:700;color:#5b6475;margin:12px 0 4px}
 #v-relatorios .rl-login input{width:100%;box-sizing:border-box}
@@ -21912,7 +21994,7 @@ function mgCorpo(p){
 <script>
 /* ===================== ADMIN > GERAR RELATORIOS (16/11/2026) ===================== */
 const REL_URL = 'https://ovvtdzpbmdtipeoewnle.supabase.co/functions/v1/relatorios-portal';
-const REL = {d: null, erro: '', msg: '', mes: null, timer: null, enviando: {}, patch: false, salvando: false, ordem: null, liga: null, metas: true};
+const REL = {d: null, erro: '', msg: '', mes: null, timer: null, enviando: {}, patch: false, salvando: false, ordem: null, liga: null, metas: true, ed: null};
 /* ordem de sempre das secoes (= email_fechamento.ORDEM_PADRAO); 'metas' nao e secao, e um liga/desliga */
 const REL_ORDEM_PADRAO = ['resumo','equipes','margem_equipe','frete_equipe','devol_bonif','skus','marketplace','atendimento_ml','estoque_full','crm','degustacoes','acessos'];
 const REL_TIPOS = [
@@ -21921,7 +22003,7 @@ const REL_TIPOS = [
   ['onepage', 'One Page', 'A página única para os sócios (PDF)'],
   ['email', 'Forçar disparo do e-mail', 'Manda agora, com os blocos e destinatários abaixo'],
 ];
-const REL_ROT = {word: 'Word', ppt: 'PPT', onepage: 'One Page', email: 'E-mail', sellout: 'Cobrança de Sell Out'};
+const REL_ROT = {word: 'Word', ppt: 'PPT', onepage: 'One Page', email: 'E-mail', sellout: 'Cobrança de Sell Out', auto: 'E-mail automático'};
 const REL_BLOCOS = [
   ['resumo', 'Resumo do mês', 'faturamento bruto, devoluções, líquido, bonificado, margem bruta, ticket, novos clientes'],
   ['metas', 'Metas e atingimento', 'meta do mês e por equipe'],
@@ -22100,6 +22182,113 @@ async function relSalvarEmail(){
   }catch(e){ REL.erro = e.message; }
   REL.salvando = false; relDesenhar();
 }
+
+/* ===================== E-MAILS AUTOMATICOS NOVOS (25/11/2026) ===================== */
+function relOpcoes(campo){   /* atendimento (mo), vendedor (v) e canal (ca) que existem nas vendas do Portal */
+  const S = new Set(); try{ (typeof ROWS !== 'undefined' ? ROWS : []).forEach(r => { if(r[campo]) S.add(r[campo]); }); }catch(e){}
+  return [...S].sort((a, b) => String(a).localeCompare(String(b)));
+}
+function relNovoAuto(a){
+  a = a || {};
+  const bl = a.blocos || ['resumo', 'equipes', 'skus', 'metas'];
+  const secs = bl.filter(k => REL_ORDEM_PADRAO.includes(k));
+  const liga = {}; secs.forEach(k => liga[k] = true);
+  REL.ed = {id: a.id || 0, nome: a.nome || '', para: (a.para || []).join(', '), cc: (a.cc || []).join(', '), horario: a.horario || '07:00',
+            du: a.dias_uteis !== false, lib: !!a.liberado, ordem: secs.concat(REL_ORDEM_PADRAO.filter(k => !secs.includes(k))), liga, metas: bl.includes('metas'),
+            fm: new Set(a.filtro_modelo || []), fv: new Set(a.filtro_vendedor || []), fc: new Set(a.filtro_canal || [])};
+}
+function relLerAuto(){   /* o que esta digitado/marcado no formulario volta para REL.ed antes de redesenhar */
+  const e = REL.ed; if(!e) return;
+  const v = id => { const x = document.getElementById(id); return x ? x.value : null; };
+  const c = id => { const x = document.getElementById(id); return x ? x.checked : null; };
+  if(v('auNome') != null){ e.nome = v('auNome'); e.para = v('auPara'); e.cc = v('auCc'); e.horario = v('auHora'); e.du = c('auDu'); e.lib = c('auLib'); e.metas = c('auB_metas'); }
+  REL_ORDEM_PADRAO.forEach(k => { const x = document.getElementById('auB_' + k); if(x) e.liga[k] = x.checked; });
+  [['fm', 'aufm'], ['fv', 'aufv'], ['fc', 'aufc']].forEach(([k, pre]) => {
+    const marc = [...document.querySelectorAll('input[data-' + pre + ']')]; if(!marc.length) return;
+    e[k] = new Set(marc.filter(x => x.checked).map(x => x.dataset[pre]));
+  });
+}
+function relMoverAuto(k, d){
+  relLerAuto(); const o = REL.ed.ordem, i = o.indexOf(k), j = i + d;
+  if(i < 0 || j < 0 || j >= o.length) return;
+  [o[i], o[j]] = [o[j], o[i]]; relDesenhar();
+}
+async function relSalvarAuto(){
+  if(REL.salvando || !REL.ed) return;
+  relLerAuto(); const e = REL.ed;
+  const blocos = e.ordem.filter(k => e.liga[k]); if(e.metas) blocos.push('metas');
+  REL.salvando = true; REL.erro = ''; REL.msg = '';
+  try{
+    const j = await relChamar({acao: 'auto_salvar', id: e.id || undefined, nome: e.nome, para: e.para, cc: e.cc, blocos, horario: e.horario,
+      dias_uteis: e.du, liberado: e.lib, filtro_modelo: [...e.fm], filtro_vendedor: [...e.fv], filtro_canal: [...e.fc]});
+    REL.msg = 'E-mail automático "' + j.auto.nome + '" salvo' + (j.auto.liberado ? ' — sai todo ' + (j.auto.dias_uteis ? 'dia útil' : 'dia') + ' às ' + String(j.auto.horario).slice(0, 5) + '.' : ' — pausado (marque "Ligado" para sair sozinho).');
+    REL.ed = null; await relCarregar();
+  }catch(err){ REL.erro = err.message; }
+  REL.salvando = false; relDesenhar();
+}
+async function relAcaoAuto(acao, id){
+  const a = ((REL.d && REL.d.autos) || []).find(x => x.id === +id); if(!a) return;
+  REL.erro = ''; REL.msg = '';
+  try{
+    if(acao === 'au_editar'){ relNovoAuto(a); relDesenhar(); window.scrollTo(0, (document.getElementById('relAutoCard') || {}).offsetTop || 0); return; }
+    if(acao === 'au_liga'){
+      await relChamar({acao: 'auto_salvar', id: a.id, nome: a.nome, para: a.para, cc: a.cc, blocos: a.blocos, horario: a.horario, dias_uteis: a.dias_uteis,
+        liberado: !a.liberado, filtro_modelo: a.filtro_modelo, filtro_vendedor: a.filtro_vendedor, filtro_canal: a.filtro_canal});
+      REL.msg = '"' + a.nome + '" ' + (a.liberado ? 'pausado.' : 'ligado — sai no próximo horário.');
+    }
+    if(acao === 'au_teste'){ await relChamar({acao: 'auto_testar', id: a.id}); REL.msg = 'Teste de "' + a.nome + '" pedido: chega só para você em 1 a 3 minutos.'; }
+    if(acao === 'au_apagar'){ if(!confirm('Apagar o e-mail automático "' + a.nome + '"? Ele para de sair.')) return; await relChamar({acao: 'auto_apagar', id: a.id}); REL.msg = '"' + a.nome + '" apagado.'; }
+    await relCarregar();
+  }catch(err){ REL.erro = err.message; }
+  relDesenhar();
+}
+function relRecorteTxt(a){
+  const p = [];
+  if((a.filtro_modelo || []).length) p.push('atendimento: ' + a.filtro_modelo.join(', '));
+  if((a.filtro_vendedor || []).length) p.push('vendedor: ' + a.filtro_vendedor.join(', '));
+  if((a.filtro_canal || []).length) p.push('canal: ' + a.filtro_canal.join(', '));
+  return p.length ? p.join(' · ') : 'empresa toda';
+}
+function relCardAutos(){
+  const A = (REL.d && REL.d.autos) || [], info = {}; REL_BLOCOS.forEach(b => info[b[0]] = b);
+  let h = '<div class="rl-card" id="relAutoCard"><h3>E-mails automáticos</h3><div class="rl-in">' +
+    '<p class="rl-note" style="margin:0 0 10px">E-mails diários além do fechamento: escolha os blocos, os destinatários, o horário e, se quiser, um <b>recorte</b> (só um atendimento, vendedor ou canal). ' +
+    'O recorte vale para os blocos de vendas (resumo, metas, equipes, SKUs, margem, frete, devoluções); CRM, acessos, degustações e marketplace mostram a empresa toda.</p>';
+  if(!REL.ed) h += '<button class="rl-pri" data-rl="au_novo">+ Automatizar novo envio de e-mail</button>';
+  if(REL.ed){
+    const e = REL.ed;
+    const grupo = (tit, pre, campo, sel) => { const ops = relOpcoes(campo);
+      return '<details' + (sel.size ? ' open' : '') + '><summary>' + tit + (sel.size ? ' (' + sel.size + ')' : ' — todos') + '</summary><div class="rl-ops">' +
+        ops.map(o => '<label><input type="checkbox" data-' + pre + '="' + relEsc(o) + '"' + (sel.has(o) ? ' checked' : '') + '> ' + relEsc(o) + '</label>').join('') + '</div></details>'; };
+    h += '<div class="rl-auto-form"><b style="color:#2A3E7E;font-size:15px">' + (e.id ? 'Editar e-mail automático' : 'Novo e-mail automático') + '</b>' +
+      '<div class="rl-bar" style="align-items:flex-start;margin-top:10px"><div style="flex:1;min-width:220px"><label for="auNome">Nome (vai na frente do assunto)</label><br>' +
+      '<input type="text" id="auNome" value="' + relEsc(e.nome) + '" placeholder="ex.: Diário Key Account" style="width:100%;box-sizing:border-box"></div>' +
+      '<div style="min-width:150px"><label for="auHora">Horário</label><br><input type="time" id="auHora" value="' + relEsc(e.horario) + '" style="font-size:16px;padding:8px 10px"></div></div>' +
+      '<div class="rl-bar" style="align-items:flex-start"><div style="flex:1;min-width:240px"><label for="auPara">Para</label><br><textarea id="auPara" rows="2" style="width:100%;box-sizing:border-box">' + relEsc(e.para) + '</textarea></div>' +
+      '<div style="flex:1;min-width:240px"><label for="auCc">Cópia</label><br><textarea id="auCc" rows="2" style="width:100%;box-sizing:border-box">' + relEsc(e.cc) + '</textarea></div></div>' +
+      '<label style="font-size:12px;font-weight:700;color:#5b6475;text-transform:uppercase;letter-spacing:.4px">Recorte (opcional — vazio = empresa toda)</label>' +
+      '<div class="rl-filtros">' + grupo('Atendimento', 'aufm', 'mo', e.fm) + grupo('Vendedor', 'aufv', 'v', e.fv) + grupo('Canal', 'aufc', 'ca', e.fc) + '</div>' +
+      '<label style="font-size:12px;font-weight:700;color:#5b6475;text-transform:uppercase;letter-spacing:.4px">Blocos — marque e use ↑ ↓ para a ordem</label>' +
+      '<ol class="rl-ordem">' + e.ordem.map((k, i) => { const b = info[k]; if(!b) return '';
+        return '<li><span class="rl-pos">' + (i + 1) + '</span><label><input type="checkbox" id="auB_' + k + '"' + (e.liga[k] ? ' checked' : '') + '><span><b>' + b[1] + '</b><small>' + b[2] + '</small></span></label>' +
+          '<span class="rl-setas"><button data-rl="au_sobe:' + k + '"' + (i === 0 ? ' disabled' : '') + '>↑</button><button data-rl="au_desce:' + k + '"' + (i === e.ordem.length - 1 ? ' disabled' : '') + '>↓</button></span></li>'; }).join('') + '</ol>' +
+      '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0"><input type="checkbox" id="auB_metas"' + (e.metas ? ' checked' : '') + '> <span><b>Metas e atingimento</b> <small style="color:#5b6475">— meta no Resumo e em cada equipe</small></span></label>' +
+      '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0"><input type="checkbox" id="auDu"' + (e.du ? ' checked' : '') + '> <span><b>Só em dias úteis</b> <small style="color:#5b6475">— pula sábado, domingo e feriado nacional</small></span></label>' +
+      '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0 12px"><input type="checkbox" id="auLib"' + (e.lib ? ' checked' : '') + '> <span><b>Ligado</b> — sai sozinho todo dia no horário</span></label>' +
+      '<button class="rl-pri" data-rl="au_salvar"' + (REL.salvando ? ' disabled' : '') + '>Salvar e-mail automático</button> <button class="rl-sec" data-rl="au_cancelar">Cancelar</button></div>';
+  }
+  h += A.length ? '<div style="overflow-x:auto;margin-top:12px"><table><thead><tr><th>E-mail</th><th>Recorte</th><th>Quando</th><th>Destinatários</th><th>Situação</th><th>Último envio</th><th></th></tr></thead><tbody>' +
+    A.map(a => '<tr><td><b>' + relEsc(a.nome) + '</b><div class="rl-note">' + (a.blocos || []).filter(k => k !== 'metas').map(k => (info[k] || [k, k])[1]).join(', ') + '</div></td>' +
+      '<td class="rl-note">' + relEsc(relRecorteTxt(a)) + '</td><td>' + relEsc(String(a.horario).slice(0, 5)) + '<div class="rl-note">' + (a.dias_uteis ? 'dias úteis' : 'todo dia') + '</div></td>' +
+      '<td class="rl-note" style="max-width:260px">' + relEsc((a.para || []).concat(a.cc || []).join(', ')) + '</td>' +
+      '<td><span class="rl-st ' + (a.liberado ? 'pronto' : 'pendente') + '">' + (a.liberado ? 'ligado' : 'pausado') + '</span></td>' +
+      '<td>' + (a.ultimo_envio ? a.ultimo_envio.split('-').reverse().join('/') : '—') + '</td>' +
+      '<td style="white-space:nowrap"><button class="rl-mini" data-rl="au_editar:' + a.id + '">Editar</button><button class="rl-mini" data-rl="au_liga:' + a.id + '">' + (a.liberado ? 'Pausar' : 'Ligar') + '</button>' +
+      '<button class="rl-mini" data-rl="au_teste:' + a.id + '">Teste p/ mim</button><button class="rl-mini" data-rl="au_apagar:' + a.id + '">Apagar</button></td></tr>').join('') + '</tbody></table></div>'
+    : (REL.ed ? '' : '<p class="rl-note" style="margin:10px 0 0">Nenhum e-mail automático ainda.</p>');
+  return h + '</div></div>';
+}
+
 function relClique(ev){
   const b = ev.target.closest('[data-rl]'); if(!b) return;
   const [acao, val] = b.dataset.rl.split(':');
@@ -22112,6 +22301,12 @@ function relClique(ev){
   else if(acao === 'so_teste') relTesteSellout();
   else if(acao === 'sobe') relMover(val, -1);
   else if(acao === 'desce') relMover(val, 1);
+  else if(acao === 'au_novo'){ relNovoAuto(); REL.msg = ''; REL.erro = ''; relDesenhar(); }
+  else if(acao === 'au_cancelar'){ REL.ed = null; relDesenhar(); }
+  else if(acao === 'au_salvar') relSalvarAuto();
+  else if(acao === 'au_sobe') relMoverAuto(val, -1);
+  else if(acao === 'au_desce') relMoverAuto(val, 1);
+  else if(['au_editar', 'au_liga', 'au_teste', 'au_apagar'].includes(acao)) relAcaoAuto(acao, val);
 }
 function relDesenhar(){
   const alvo = document.getElementById('v-relatorios'); if(!alvo) return;
@@ -22126,13 +22321,6 @@ function relDesenhar(){
     '</select><button class="rl-sec" data-rl="atualizar">↻ Atualizar</button></div>';
   h += '<div class="rl-grid">' + REL_TIPOS.map(t => '<button class="rl-btn' + (t[0] === 'email' ? ' email' : '') + '" data-rl="pedir:' + t[0] + '"' + (REL.enviando[t[0]] ? ' disabled' : '') + '>' +
     '<b>' + t[1] + '</b><span>' + t[2] + ' · ' + relNomeMes(REL.mes) + '</span></button>').join('') + '</div>';
-  const P = (REL.d && REL.d.pedidos) || [];
-  h += '<div class="rl-card"><h3>Pedidos</h3><div class="rl-in" style="padding:0;overflow-x:auto"><table><thead><tr><th>Pedido</th><th>Relatório</th><th>Mês</th><th>Situação</th><th>Por</th><th>Detalhe</th><th></th></tr></thead><tbody>' +
-    (P.length ? P.map(p => '<tr><td>' + relQuando(p.pedido_em) + '</td><td><b>' + (REL_ROT[p.tipo] || p.tipo) + '</b></td><td>' + relNomeMes(p.mes) + '</td>' +
-      '<td><span class="rl-st ' + p.status + '">' + ({pendente: 'na fila', gerando: 'gerando…', pronto: 'pronto', erro: 'erro'}[p.status] || p.status) + '</span></td>' +
-      '<td>' + relEsc(p.pedido_por) + '</td><td class="rl-note" style="max-width:420px">' + relEsc(p.detalhe || '') + '</td>' +
-      '<td>' + (p.status === 'pronto' && p.arquivo ? '<button class="rl-baixar" data-rl="baixar" data-arq="' + relEsc(p.arquivo) + '">' + (p.tipo === 'email' ? 'Ver e-mail' : 'Baixar') + '</button>' : '') + '</td></tr>').join('')
-      : '<tr><td colspan="7" class="rl-note">Nenhum pedido ainda.</td></tr>') + '</tbody></table></div></div>';
   /* e-mail diario */
   const c = (REL.d && REL.d.email) || {para: [], cc: [], blocos: [], liberado: false};
   if(!REL.ordem) relIniciarOrdem();
@@ -22175,6 +22363,14 @@ function relDesenhar(){
     '<button class="rl-sec" data-rl="so_teste">Enviar teste só para mim</button>' +
     (so.alterado_em ? '<span class="rl-note" style="margin-left:12px">última alteração: ' + relEsc(so.alterado_por || '') + ' em ' + relQuando(so.alterado_em) + '</span>' : '') +
     '</div></div>';
+  h += relCardAutos();
+  const P = (REL.d && REL.d.pedidos) || [];
+  h += '<div class="rl-card"><h3>Histórico</h3><div class="rl-in" style="padding:0;overflow-x:auto"><table><thead><tr><th>Quando</th><th>Relatório</th><th>Mês</th><th>Situação</th><th>Por</th><th>Detalhe</th><th></th></tr></thead><tbody>' +
+    (P.length ? P.map(p => '<tr><td>' + relQuando(p.pedido_em) + '</td><td><b>' + (REL_ROT[p.tipo] || p.tipo) + '</b>' + (p.auto_id ? '<div class="rl-note">' + relEsc((((REL.d && REL.d.autos) || []).find(x => x.id === p.auto_id) || {}).nome || '(apagado)') + '</div>' : '') + '</td><td>' + relNomeMes(p.mes) + '</td>' +
+      '<td><span class="rl-st ' + p.status + '">' + ({pendente: 'na fila', gerando: 'gerando…', pronto: 'pronto', erro: 'erro'}[p.status] || p.status) + '</span></td>' +
+      '<td>' + relEsc(p.pedido_por) + '</td><td class="rl-note" style="max-width:420px">' + relEsc(p.detalhe || '') + '</td>' +
+      '<td>' + (p.status === 'pronto' && p.arquivo ? '<button class="rl-baixar" data-rl="baixar" data-arq="' + relEsc(p.arquivo) + '">' + (p.tipo === 'email' || p.tipo === 'auto' ? 'Ver e-mail' : 'Baixar') + '</button>' : '') + '</td></tr>').join('')
+      : '<tr><td colspan="7" class="rl-note">Nenhum pedido ainda.</td></tr>') + '</tbody></table></div></div>';
   h += '<p class="rl-note">Como funciona: o botão grava o pedido no banco; uma rotina no computador do Igor confere a fila a cada minuto, gera pelo Ao Vivo e salva na pasta do Portal no SharePoint (subpasta relatorios). ' +
     'A One Page gera junto um Word novo do mesmo mês, porque ela confere os números contra ele. ' +
     'O e-mail diário sai uma vez por dia no horário escolhido; se o computador estiver desligado nesse horário, sai assim que ele ligar.</p>';
