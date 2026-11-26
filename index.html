@@ -21224,7 +21224,10 @@ function ttDreCalc(ini, fim){
     T.frA += am.fr + Math.max(0, am.n - am.nl) * R.frA;
     T.ads += X.ads; T.aj = X.aj; T.ajTipos = X.ajTipos;
   }
-  T.fatLiq = t.lv + T.rep - t.vd;
+  /* 26/11/2026 (Igor): Faturamento liquido = o das NOTAS (sem devolucoes); Receita liquida = + reembolso do desconto
+     pago pelo TikTok. T.fatLiq continua sendo a RECEITA (base dos % e da aba Geral); T.fatNota e o fiscal. */
+  T.fatNota = t.lv - t.vd;
+  T.fatLiq = T.fatNota + T.rep;
   T.imp = t.lv ? imp * (t.lv - t.vd) / t.lv : 0;          /* imposto DESTACADO nas notas (24/11/2026), liquido das devolucoes */
   T.mb = T.fatLiq - T.imp - cmv;
   T.taxas = T.com + T.sfp + T.afil + T.item + T.fr;
@@ -21233,7 +21236,8 @@ function ttDreCalc(ini, fim){
   return T;
 }
 const TT_DRE = [['Faturamento bruto (tabela)', T => T.bv], ['− Descontos (vendedor + TikTok)', T => -T.dv], ['= Faturamento das notas', T => T.lv, 'tot'],
-  ['+ Desconto pago pelo TikTok (repassado à Dobro)', T => T.rep], ['− Devoluções', T => -T.vd], ['= Faturamento líquido', T => T.fatLiq, 'tot'],
+  ['− Devoluções', T => -T.vd], ['= Faturamento líquido (notas)', T => T.fatNota, 'tot'],
+  ['+ Reembolso de descontos do TikTok (desconto que ele pagou e repassa à Dobro)', T => T.rep], ['= Receita líquida', T => T.fatLiq, 'tot'],
   ['− Impostos (destacados nas notas: ICMS + FCP + DIFAL + PIS/COFINS)', T => -T.imp], ['− CMV (líquido do crédito de insumos)', T => -T.cmv],
   ['= Margem bruta', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
   ['− Comissão do TikTok', T => -T.com], ['− Taxa SFP', T => -T.sfp], ['− Comissão de afiliados (creators)', T => -T.afil], ['− Taxa por item vendido', T => -T.item], ['− Frete das vendas', T => -T.fr],
@@ -21248,11 +21252,11 @@ function ttDre(p){
   let cab, corpo;
   if(meses.length > 1){
     const C = meses.map(m => { const a = (m + '-01') < p.ini ? p.ini : m + '-01', u = mkDia(mkDia(m + '-01', 32).slice(0, 8) + '01', -1); return {m, T: ttDreCalc(a, u > p.fim ? p.fim : u)}; });
-    cab = '<th>DRE · TikTok Shop</th>' + C.map(c => '<th>' + mkNomeMes(c.m) + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% fat. líquido</th>';
+    cab = '<th>DRE · TikTok Shop</th>' + C.map(c => '<th>' + mkNomeMes(c.m) + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% receita líquida</th>';
     corpo = TT_DRE.map(l => '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td>' + C.map(c => '<td>' + fmt(l[1](c.T), l[2]) + '</td>').join('') +
       '<td class="mk-col-tot">' + fmt(l[1](T), l[2]) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.fatLiq ? l[1](T) / T.fatLiq : 0)) + '</td></tr>').join('');
   } else {
-    cab = '<th>DRE · TikTok Shop</th><th>R$</th><th>% fat. líquido</th><th>Por pedido</th>';
+    cab = '<th>DRE · TikTok Shop</th><th>R$</th><th>% receita líquida</th><th>Por pedido</th>';
     corpo = TT_DRE.map(l => { const v = l[1](T); return '<tr class="' + cls(l[2]) + '"><td>' + l[0] + '</td><td>' + fmt(v, l[2]) + '</td><td>' +
       (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkP(T.fatLiq ? v / T.fatLiq : 0)) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : mkR2(T.pv ? v / T.pv : 0)) + '</td></tr>'; }).join('');
   }
@@ -21264,7 +21268,9 @@ function ttDre(p){
         ', afiliado ' + mkP(R.afil) + ', taxa por item ' + mkP(R.item + R.out) + ' do preço cheio). Os anúncios entram pela data da cobrança. Pedidos atualizados às ' +
         new Date(TTK.d.api.sync.pedidos).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) + '.' : '') + '</div>';
   return aviso +
-    '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.fatLiq), mkN(T.pv) + ' pedidos · com o repasse do TikTok', 'accent') +
+    '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.fatNota), mkN(T.pv) + ' pedidos · valor das notas, sem devoluções') +
+    mkKpi('Reembolsos TikTok', mkR(T.rep), 'desconto pago pelo TikTok, repassado no acerto · ' + mkP(T.fatLiq ? T.rep / T.fatLiq : 0) + ' da receita') +
+    mkKpi('Receita total', mkR(T.fatLiq), 'faturamento líquido + reembolsos · base dos %', 'accent') + '</div><div class="kpirow">' +
     mkKpi('Margem depois das taxas', mkR(T.liq), mkP(T.fatLiq ? T.liq / T.fatLiq : 0) + ' · taxas do TikTok ' + mkR(T.taxas)) +
     mkKpi('Amostras (CMV + frete)', mkR(T.cmvA + T.frA), mkN(T.na) + ' envios · ' + mkP(T.fatLiq ? (T.cmvA + T.frA) / T.fatLiq : 0) + ' do faturamento', (T.cmvA + T.frA) > 0.3 * T.fatLiq ? 'alerta' : '') +
     mkKpi('Resultado', mkR(T.res), mkP(T.fatLiq ? T.res / T.fatLiq : 0) + ' · depois dos anúncios' + (T.real ? '' : ' (est.)'), T.res >= 0 ? 'pos' : 'alerta') + '</div>' +
@@ -21352,7 +21358,7 @@ function ttCreators(p){
     mkKpi('Amostras canceladas', mkN(canc), 'meses do período') +
     mkKpi('Custo das amostras', mkR(T.cmvA + T.frA), 'produto ' + mkR(T.cmvA) + ' + frete ' + mkR(T.frA), (T.cmvA + T.frA) > 0.3 * T.fatLiq ? 'alerta' : '') +
     mkKpi('Vendas que vieram de creator', v.nl ? mkP(v.cri / v.nl) : '—', mkN(v.cri) + ' de ' + mkN(v.nl) + ' vendas já liquidadas pagaram comissão de afiliado') +
-    mkKpi('Comissão paga aos creators', mkR(T.afil), mkP(T.fatLiq ? T.afil / T.fatLiq : 0) + ' do faturamento líquido') +
+    mkKpi('Comissão paga aos creators', mkR(T.afil), mkP(T.fatLiq ? T.afil / T.fatLiq : 0) + ' da receita líquida') +
     mkKpi('Amostras reembolsáveis', mkN(reemb), 'creator cumpriu a meta e o TikTok devolveu a amostra') + '</div>';
   const M = {}; Object.keys(a.P).forEach(d => { const m = d.slice(0, 7), o = M[m] || (M[m] = {am: 0, frA: 0, nlA: 0, v: 0, nl: 0, cri: 0, afil: 0});
     const V = a.P[d].V, A = a.P[d].A; if(A){ o.am += A.n; o.frA += A.fr; o.nlA += A.nl; } if(V){ o.v += V.n; o.nl += V.nl; o.cri += V.cri; o.afil += V.afil; } });
@@ -22030,15 +22036,15 @@ function mgCanal(c, ini, fim){
   if(c === 'ml'){
     const b = MKT.base; MKT.base = 'meli';                 /* a Geral usa sempre a base MELI (a padrao da aba do ML) */
     let T; try{ T = mkDreCalc(ini, fim).T; } finally { MKT.base = b; }
-    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.tar, fr: T.env, arm: T.armaz, out: T.outras, ads: T.adsTot, amo: null, antec: T.antec, ped: T.ped};
+    o = {nota: T.fatLiq, reemb: null, fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.tar, fr: T.env, arm: T.armaz, out: T.outras, ads: T.adsTot, amo: null, antec: T.antec, ped: T.ped};
   } else if(c === 'tt'){
     const T = ttDreCalc(ini, fim);
-    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.sfp + T.afil + (T.item || 0), fr: T.fr, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv,
+    o = {nota: T.fatNota != null ? T.fatNota : T.fatLiq - (T.rep || 0), reemb: T.rep || 0, fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.sfp + T.afil + (T.item || 0), fr: T.fr, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv,
          real: !!T.real, pctLiq: T.pctLiq};   /* 24/11: API do TikTok */
   } else {
     const T = azDreCalc(ini, fim);
-    o = T.real ? {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.a4a, fr: T.fba + T.post, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: null, antec: null, ped: T.pv, real: true, pctLiq: T.pctLiq}   /* 24/11: API da Amazon */
-               : {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com, fr: MKG_FALTA, arm: MKG_FALTA, out: null, ads: MKG_FALTA, amo: null, antec: null, ped: T.pv};
+    o = T.real ? {nota: T.fatLiq, reemb: null, fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.a4a, fr: T.fba + T.post, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: null, antec: null, ped: T.pv, real: true, pctLiq: T.pctLiq}   /* 24/11: API da Amazon */
+               : {nota: T.fatLiq, reemb: null, fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com, fr: MKG_FALTA, arm: MKG_FALTA, out: null, ads: MKG_FALTA, amo: null, antec: null, ped: T.pv};
   }
   const v = k => (typeof o[k] === 'number' ? o[k] : 0);
   o.mb = v('fat') - v('imp') - v('cmv');
@@ -22051,13 +22057,16 @@ function mgCanal(c, ini, fim){
 function mgCalc(ini, fim){
   const C = {}; MKG_CANAIS.forEach(x => C[x[0]] = mgCanal(x[0], ini, fim));
   const T = {};
-  ['fat', 'imp', 'cmv', 'tax', 'fr', 'arm', 'out', 'ads', 'amo', 'antec', 'ped', 'mb', 'mc', 'inv', 'res', 'resF'].forEach(k =>
+  ['nota', 'reemb', 'fat', 'imp', 'cmv', 'tax', 'fr', 'arm', 'out', 'ads', 'amo', 'antec', 'ped', 'mb', 'mc', 'inv', 'res', 'resF'].forEach(k =>
     T[k] = MKG_CANAIS.reduce((a, x) => a + (typeof C[x[0]][k] === 'number' ? C[x[0]][k] : 0), 0));
   C.tot = T; return C;
 }
-/* [rotulo, campo, tipo, sinal]: tipo tot = subtotal; pct = % do faturamento liquido do proprio canal */
+/* [rotulo, campo, tipo, sinal]: tipo tot = subtotal; pct = % da RECEITA liquida do proprio canal
+   26/11/2026 (Igor): Faturamento liquido = notas; + reembolso do TikTok = Receita liquida (base dos %) */
 const MKG_LINHAS = [
-  ['Faturamento líquido', 'fat', 'tot', 1],
+  ['Faturamento líquido (notas)', 'nota', 'tot', 1],
+  ['+ Reembolso de descontos do TikTok', 'reemb', '', 1],
+  ['= Receita líquida', 'fat', 'tot', 1],
   ['− Impostos', 'imp', '', -1], ['− CMV líquido', 'cmv', '', -1],
   ['= Margem bruta', 'mb', 'tot', 1], ['% margem bruta', 'mb', 'pct'],
   ['− Comissões e tarifas do canal', 'tax', '', -1], ['− Frete das vendas', 'fr', '', -1],
@@ -22225,7 +22234,7 @@ function mgProj(){
     return '<tr><td><i class="mg-dot" style="background:' + MKG_COR[c][0] + '"></i>' + MKG_NOME[c] + '</td><td>' + mkR(x.real) + '<small class="mk-sub">até ' + mkDD(corte) + (x.atrasado ? ' (notas atrasadas)' : '') + '</small></td>' +
       '<td>' + mkR(x.proj) + '<small class="mk-sub">' + x.nRest + ' dias · ' + mkR(x.base) + '/dia</small></td><td><b>' + mkR(x.total) + '</b><small class="mk-sub">' + mkR(Math.max(0, x.total - x.faixa)) + ' a ' + mkR(x.total + x.faixa) + '</small></td>' +
       '<td>' + mkP(T.total ? x.total / T.total : 0) + '</td><td>' + mkR(x.tAnt) + '</td><td>' + mkVar(x.total, x.tAnt) + '</td></tr>'; };
-  h += mkCard('Fechamento de ' + mkNomeMes(T.mes) + ' por canal', 'cada canal com a projeção (e as premissas) da própria aba',
+  h += mkCard('Fechamento de ' + mkNomeMes(T.mes) + ' por canal', 'faturamento líquido (notas; ML: receita dos pedidos) · sem o reembolso do TikTok · cada canal com a projeção (e as premissas) da própria aba',
     '<div class="mk-scroll"><table class="mk-dre mg-proj"><thead><tr><th>Canal</th><th>Realizado</th><th>Projeção restante</th><th>Fechamento projetado</th><th>% do total</th><th>' + mkNomeMes(T.mesAnt) + '</th><th>vs mês passado</th></tr></thead><tbody>' +
     ['ml', 'tt', 'az'].map(lin).join('') +
     '<tr class="mk-tot"><td>Total</td><td>' + mkR(T.real) + '</td><td>' + mkR(T.proj) + '</td><td>' + mkR(T.total) + '<small class="mk-sub">' + mkR(Math.max(0, T.total - T.faixa)) + ' a ' + mkR(T.total + T.faixa) + '</small></td><td>100%</td><td>' + mkR(T.tAnt) + '</td><td>' + mkVar(T.total, T.tAnt) + '</td></tr>' +
@@ -22252,20 +22261,23 @@ function mgGrafico(){
 function mgCorpo(p){
   const C = mgCalc(p.ini, p.fim), T = C.tot, pc = v => mkP(T.fat ? v / T.fat : 0);
   let h = mgAviso(p, C);
-  h += '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.fat), mkN(T.ped) + ' pedidos · ' + MKG_CANAIS.map(x => x[2] + ' ' + pc(C[x[0]].fat)).join(' · '), 'accent') +
+  const pn = v => mkP(T.nota ? v / T.nota : 0);
+  h += '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.nota), mkN(T.ped) + ' pedidos · notas · ' + MKG_CANAIS.map(x => x[2] + ' ' + pn(C[x[0]].nota)).join(' · ')) +
+    mkKpi('Receita líquida', mkR(T.fat), 'faturamento + ' + mkR(T.reemb) + ' de reembolso de descontos do TikTok · base dos %', 'accent') + '</div><div class="kpirow">' +
     mkKpi('Margem de contribuição', mkR(T.mc), pc(T.mc) + ' · antes dos investimentos', T.mc >= 0 ? 'pos' : 'alerta') +
     mkKpi('Investimentos', mkR(T.inv), pc(T.inv) + ' · anúncios ' + mkR(T.ads) + ' · amostras ' + mkR(T.amo)) +
-    mkKpi('Resultado após custo financeiro', mkR(T.resF), pc(T.resF) + ' do faturamento líquido', T.resF >= 0 ? 'pos' : 'alerta') + '</div>';
-  const cab = '<th>DRE · Marketplace</th>' + MKG_CANAIS.map(x => '<th>' + x[1] + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% fat. líquido</th>';
+    mkKpi('Resultado após custo financeiro', mkR(T.resF), pc(T.resF) + ' da receita líquida', T.resF >= 0 ? 'pos' : 'alerta') + '</div>';
+  const cab = '<th>DRE · Marketplace</th>' + MKG_CANAIS.map(x => '<th>' + x[1] + '</th>').join('') + '<th class="mk-col-tot">Total</th><th>% receita líquida</th>';
   const corpo = MKG_LINHAS.map(l => {
     if(l[2] === 'sec') return '<tr class="mg-sec"><td colspan="' + (MKG_CANAIS.length + 3) + '">' + l[0] + ' <small>— o que a Dobro escolhe gastar para crescer</small></td></tr>';
     const cls = l[2] === 'tot' ? 'mk-tot' : (l[2] === 'pct' ? 'mk-pct' : '');
     return '<tr class="' + cls + '"><td>' + l[0] + '</td>' + MKG_CANAIS.map(x => '<td>' + mgCel(C[x[0]], l) + '</td>').join('') +
       '<td class="mk-col-tot">' + mgCel(T, l) + '</td><td>' + (['pct', 'n'].indexOf(l[2]) >= 0 ? '' : pc(T[l[1]] * (l[3] || 1))) + '</td></tr>';
   }).join('');
-  h += mkCard('DRE do Marketplace · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), 'canais lado a lado · % de cada canal = sobre o faturamento dele; última coluna = sobre o total',
+  h += mkCard('DRE do Marketplace · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), 'canais lado a lado · % de cada canal = sobre a receita líquida dele; última coluna = sobre a receita total',
     '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
-    '<div class="mk-note">"—" = não se aplica ao canal · "falta" = o custo existe, mas ainda não temos o dado (entra como zero no total). ' +
+    '<div class="mk-note"><b>Faturamento líquido</b> = valor das notas, sem devoluções. <b>Receita líquida</b> = faturamento + o desconto que o TikTok pagou ao comprador e repassa à Dobro no acerto (não está na nota). ' +
+    '"—" = não se aplica ao canal · "falta" = o custo existe, mas ainda não temos o dado (entra como zero no total). ' +
     'Comissões e tarifas: ML = tarifa de venda; TikTok = comissão + SFP + afiliados + taxa por item; Amazon = comissão + Amazon for All. Frete: TikTok = frete das vendas; Amazon = taxa FBA + etiqueta DBA. ' +
     'Mercado Livre na base MELI, igual à aba dele (Ads, Full e outras cobranças vêm por mês na fatura; num período parcial entram proporcionais aos dias).</div>');
   /* varios meses: resultado de cada canal por mes */
@@ -22273,13 +22285,13 @@ function mgCorpo(p){
   if(meses.length > 1){
     const M = meses.map(m => { const a = (m + '-01') < p.ini ? p.ini : m + '-01', u = mkDia(mkDia(m + '-01', 32).slice(0, 8) + '01', -1); return {m, C: mgCalc(a, u > p.fim ? p.fim : u)}; });
     const lin = (rot, f, k) => '<tr class="' + (k || '') + '"><td>' + rot + '</td>' + M.map(x => '<td>' + f(x.C) + '</td>').join('') + '<td class="mk-col-tot">' + f(C) + '</td></tr>';
-    h += mkCard('Mês a mês', 'faturamento líquido e resultado após custo financeiro de cada canal',
+    h += mkCard('Mês a mês', 'receita líquida e resultado após custo financeiro de cada canal',
       '<div class="mk-scroll"><table class="mk-dre"><thead><tr><th></th>' + M.map(x => '<th>' + mkNomeMes(x.m) + '</th>').join('') + '<th class="mk-col-tot">Total</th></tr></thead><tbody>' +
-      '<tr class="mg-sec"><td colspan="' + (M.length + 2) + '">Faturamento líquido</td></tr>' +
+      '<tr class="mg-sec"><td colspan="' + (M.length + 2) + '">Receita líquida</td></tr>' +
       MKG_CANAIS.map(x => lin(x[1], c => mkR(c[x[0]].fat))).join('') + lin('Total', c => mkR(c.tot.fat), 'mk-tot') +
       '<tr class="mg-sec"><td colspan="' + (M.length + 2) + '">Resultado após custo financeiro</td></tr>' +
       MKG_CANAIS.map(x => lin(x[1], c => mkR(c[x[0]].resF))).join('') + lin('Total', c => mkR(c.tot.resF), 'mk-tot') +
-      lin('% do faturamento líquido', c => mkP(c.tot.fat ? c.tot.resF / c.tot.fat : null), 'mk-pct') +
+      lin('% da receita líquida', c => mkP(c.tot.fat ? c.tot.resF / c.tot.fat : null), 'mk-pct') +
       '</tbody></table></div>');
   }
   return h;
