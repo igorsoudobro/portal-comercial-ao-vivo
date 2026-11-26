@@ -22740,6 +22740,42 @@ try{ relRegistrar(); }catch(e){ console.error('relatorios: registrar', e); }
 #v-precificacao .mp-aba:hover{border-color:#2A3E7E}
 #v-precificacao .mp-canal table.pc{min-width:0 !important;width:auto}#v-precificacao .mp-canal table.pc td:not(:first-child),#v-precificacao .mp-canal table.pc th:not(:first-child){min-width:200px}
 #v-precificacao .mp-aba.on{background:#2A3E7E;color:#fff;border-color:#2A3E7E}
+/* 26/11/2026: design */
+#v-precificacao .pc-hero{position:relative;overflow:hidden;box-shadow:0 6px 20px rgba(42,62,126,.18)}
+#v-precificacao .pc-hero::after{content:'';position:absolute;right:-60px;top:-80px;width:240px;height:240px;border-radius:50%;background:rgba(216,199,51,.13);pointer-events:none}
+#v-precificacao .pc-hero p{max-width:820px;line-height:1.5}
+#v-precificacao input:focus,#v-precificacao select:focus{outline:none;border-color:#2A3E7E;box-shadow:0 0 0 3px rgba(42,62,126,.12)}
+#v-precificacao select{cursor:pointer}
+#v-precificacao .pc-top{border:1px solid #eef1f7}
+#v-precificacao .mp-abas{display:inline-flex;flex-wrap:wrap;gap:4px;background:#fff;border-radius:14px;padding:5px;box-shadow:0 2px 10px rgba(42,62,126,.08);margin:0 0 14px}
+#v-precificacao .mp-aba{display:inline-flex;align-items:center;gap:7px;background:transparent;color:#2A3E7E;border:none;border-radius:10px;padding:8px 16px;font:inherit;font-weight:700;cursor:pointer;transition:.15s}
+#v-precificacao .mp-aba:hover{background:#EEF2FB}
+#v-precificacao .mp-aba.on{background:#2A3E7E;color:#fff;box-shadow:0 2px 8px rgba(42,62,126,.25)}
+#v-precificacao .mp-dot{display:inline-block;width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+#v-precificacao .mp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px;width:100%}
+#v-precificacao .mp-kpi{background:#fff;border-radius:14px;padding:12px 16px;box-shadow:0 2px 10px rgba(42,62,126,.08);border:none;border-top:4px solid #2A3E7E;text-align:left;font:inherit}
+#v-precificacao button.mp-kpi{cursor:pointer;transition:.15s}
+#v-precificacao button.mp-kpi:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(42,62,126,.14)}
+#v-precificacao .mp-kpi span{display:block;font-size:10.5px;font-weight:800;color:#5b6475;text-transform:uppercase;letter-spacing:.4px}
+#v-precificacao .mp-kpi b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:28px;line-height:1.15;color:#2A3E7E;margin:2px 0}
+#v-precificacao .mp-kpi small{display:block;font-size:11.5px;color:#8a93a6}
+#v-precificacao .mp-kpi.ok{border-top-color:#1F9D6B}
+#v-precificacao .mp-kpi.ok b{color:#1F9D6B}
+#v-precificacao .mp-kpi.ruim{border-top-color:#D9534F}
+#v-precificacao .mp-kpi.ruim b{color:#D9534F}
+#v-precificacao .mp-canal{display:flex;flex-direction:column;align-items:center;width:100%}
+#v-precificacao .mp-canal > .mp-kpis{max-width:900px}
+#v-precificacao .mp-canal > .pc-wrap{display:inline-block;max-width:100%}
+#v-precificacao table.pc tbody tr:not(.pc-sec):hover td{background:#F7F9FD}
+#v-precificacao table.pc tbody tr:not(.pc-sec):hover td.mp-hist{background:#EDEFF3}
+#v-precificacao tr.pc-sec td{padding-top:9px;padding-bottom:6px;border-bottom:none;box-shadow:inset 3px 0 0 #D8C733}
+#v-precificacao tr.pc-tot td{background:#FAFBFE}
+#v-precificacao table.pc td.mp-hist{background:#F3F4F7;color:#7d8597}
+#v-precificacao table.pc td.mp-hist input{background:#ECEEF2;color:#6b7385;border-color:#dcdfe6}
+#v-precificacao table.pc td.mp-hist .pc-rs{color:#a3a9b6}
+#v-precificacao table.pc td.mp-hist.pc-pos,#v-precificacao table.pc td.mp-hist.pc-neg{opacity:.75}
+#v-precificacao table.pc thead th.mp-hist-h{background:#8a93a6;color:#fff}
+#v-precificacao > p.pc-note{background:#fff;border-radius:12px;border-left:4px solid #D8C733;padding:10px 14px;box-shadow:0 2px 10px rgba(42,62,126,.06)}
 </style>
 <script>
 /* ===================== ADMIN > PRECIFICACAO (18/11/2026) ===================== */
@@ -22756,7 +22792,7 @@ const PC_COLS = [
   {id: 'rca_dis', a: 'RCA', b: 'Distribuidor', mo: PC_RCA, ca: ['Distribuidor'], tab: 'Distribuidores', modCom: 'RCA', mk: 1.30, mk2: 1.85, desc: 0.05, share: 0.077, dist: true},
   {id: 'clt_dis', a: 'CLT', b: 'Distribuidor', mo: ['Time interno'], ca: ['Distribuidor'], tab: 'Distribuidores', modCom: 'Time interno', mk: 1.30, mk2: 1.85, desc: 0.05, share: 0.072, dist: true},
 ];
-const PC = {modo: null, sku: '', novo: false, nome: '', uf: 'SP', alvo: 0.28, ov: {}, hist: null, cens: null, patch: false, msg: '', erro: ''};
+const PC = {modo: null, fam: '', sku: '', novo: false, nome: '', uf: 'SP', alvo: 0.28, ov: {}, hist: null, cens: null, patch: false, msg: '', erro: ''};
 function pcEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function pcR(v){ return (v < 0 ? '-' : '') + 'R$ ' + Math.abs(v || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
 function pcP(v, d){ return (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(d == null ? 1 : d).replace('.', ',') + '%'; }
@@ -22918,6 +22954,19 @@ function pcMedia(O, l){
   return '<td class="pc-med">' + (fmt === 'p' ? pcP(v) : pcR(v)) + '</td>';
 }
 
+/* 26/11/2026 (Igor): filtro de FAMILIA antes do SKU, nas duas precificacoes (familia = CALC.skus[s].cat) */
+function pcFam(s){ return String((pcCalc().skus[s] || {}).cat || '').trim() || 'Outros'; }
+function pcFiltraFam(skus){
+  if(PC.fam && !skus.some(s => pcFam(s) === PC.fam)) PC.fam = '';
+  const L = PC.fam ? skus.filter(s => pcFam(s) === PC.fam) : skus;
+  if(L.length && !L.includes(PC.sku)) PC.sku = L[0];
+  return L;
+}
+function pcFamSel(skus, id){
+  const fams = [...new Set(skus.map(pcFam))].sort((a, b) => a.localeCompare(b));
+  return '<div><label>Família</label><select id="' + id + '"><option value="">Todas (' + skus.length + ')</option>' +
+    fams.map(f => '<option value="' + pcEsc(f) + '"' + (f === PC.fam ? ' selected' : '') + '>' + pcEsc(f) + ' (' + skus.filter(s => pcFam(s) === f).length + ')</option>').join('') + '</select></div>';
+}
 function pcDesenharB2B(){
   const alvo = document.getElementById('v-precificacao'); if(!alvo) return;
   const K = pcCalc();
@@ -22926,6 +22975,7 @@ function pcDesenharB2B(){
   const skus = Object.keys(K.skus || {}).filter(s => (K.skus[s] || {}).calc && !(K.skus[s] || {}).brinde && !pcSoMkt(s))
     .sort((a, b) => ((K.skus[a] || {}).prod || a).localeCompare((K.skus[b] || {}).prod || b));
   if(!PC.sku && skus.length) PC.sku = skus[0];
+  const skusF = pcFiltraFam(skus);
   const ufs = Object.keys(K.frete_estado || {}).concat(Object.keys(K.imp_estado || {})).filter((x, i, a) => a.indexOf(x) === i).sort();
   let h = '<div class="pc-hero"><button class="pc-voltar" data-pca="modo:">← B2B | Marketplaces</button><span class="pc-chip">Admin · B2B</span><h2>Precificação B2B</h2>' +
     '<p>Os canais lado a lado, como a planilha. As sugestões vêm do banco e do histórico real (últimos 6 meses); tudo é editável — o que você mexer fica amarelo e ganha um ↺ para voltar à sugestão.</p></div>';
@@ -22934,7 +22984,7 @@ function pcDesenharB2B(){
   h += '<div class="pc-top">' +
     '<div><label>Produto</label><select id="pcModo"><option value="atual"' + (!PC.novo ? ' selected' : '') + '>Produto do portfólio</option><option value="novo"' + (PC.novo ? ' selected' : '') + '>Produto novo</option></select></div>' +
     (PC.novo ? '<div><label>Nome do produto novo</label><input id="pcNome" value="' + pcEsc(PC.nome) + '" placeholder="ex.: Jelly Protein" style="width:220px"></div>'
-             : '<div><label>SKU</label><select id="pcSku" style="max-width:380px">' + skus.map(s => '<option value="' + pcEsc(s) + '"' + (s === PC.sku ? ' selected' : '') + '>' + pcEsc((K.skus[s] || {}).prod || s) + ' · ' + pcEsc(s) + '</option>').join('') + '</select></div>') +
+             : pcFamSel(skus, 'pcFam') + '<div><label>SKU</label><select id="pcSku" style="max-width:380px">' + skusF.map(s => '<option value="' + pcEsc(s) + '"' + (s === PC.sku ? ' selected' : '') + '>' + pcEsc((K.skus[s] || {}).prod || s) + ' · ' + pcEsc(s) + '</option>').join('') + '</select></div>') +
     '<div><label>Estado</label><select id="pcUf">' + ufs.map(u => '<option' + (u === PC.uf ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></div>' +
     '<div><label>Margem alvo</label><input id="pcAlvo" value="' + (PC.alvo * 100).toFixed(1).replace('.', ',') + '" style="width:70px">%</div>' +
     '<div style="margin-left:auto;display:flex;gap:8px"><button class="pc-btn2" data-pca="limpar">Voltar tudo às sugestões</button></div></div>';
@@ -23277,6 +23327,7 @@ function mpLinhas(k){
 }
 function mpCelula(c, o, l){
   const [rot, campo, fmt, fn] = l;
+  const hc = c._det && c._m === 'hi' ? ' mp-hist' : '';
   if(campo){
     const val = mpVal(c, campo, o.P), mex = mpOv(c, campo) != null, falta = mpFalta(c, campo, o.P);
     const shown = falta ? '' : (fmt === 'p' ? (val * 100).toFixed(2).replace('.', ',') : (+val).toFixed(2).replace('.', ','));
@@ -23285,15 +23336,24 @@ function mpCelula(c, o, l){
     const ref = (campo === 'preco' || campo === 'cup') && !mex ? mpRefPreco(c) : null;
     const txt = ref ? (campo === 'preco' ? ref.fonte : (mpArqDe(c) === 'ml' ? null : ref.fdesc)) : null;
     const extra = (fn ? '<span class="pc-rs">' + pcR(fn(o)) + '</span>' : '') + (txt ? '<span class="pc-rs">' + pcEsc(txt) + '</span>' : '');
-    return '<td><input data-mp="' + pcEsc(c._k || c.canal) + '|' + campo + '" value="' + pcEsc(shown) + '" placeholder="a preencher" class="' + (mex ? 'pc-mx' : (falta ? 'mp-falta' : '')) + '" title="' + pcEsc(tip) + '">' +
+    return '<td class="' + hc + '"><input data-mp="' + pcEsc(c._k || c.canal) + '|' + campo + '" value="' + pcEsc(shown) + '" placeholder="a preencher" class="' + (mex ? 'pc-mx' : (falta ? 'mp-falta' : '')) + '" title="' + pcEsc(tip) + '">' +
       (fmt === 'p' ? '%' : '') + (mex ? '<button class="pc-reset" data-mpr="' + pcEsc(c._k || c.canal) + '|' + campo + '" title="voltar à sugestão (' + pcEsc(tip) + ')">↺</button>' : '') + extra + '</td>';
   }
   const v = fn(o);
   let cls = '';
   if(rot === 'Contribuição') cls = v >= 0 ? 'pc-pos' : 'pc-neg';
   if(rot === 'Margem de contribuição') cls = (v != null && v >= MP.alvo) ? 'pc-pos' : 'pc-neg';
-  return '<td class="' + cls + '">' + (fmt === 'p' ? pcP(v) : pcR(v)) + '</td>';
+  return '<td class="' + cls + hc + '">' + (fmt === 'p' ? pcP(v) : pcR(v)) + '</td>';
 }
+/* cartoes de resumo: [rotulo, valor, sub, margem (p/ cor), acao] */
+function mpKpis(L){
+  return '<div class="mp-kpis">' + L.map(x => {
+    const cor = x[3] === undefined ? '' : (x[3] != null && x[3] >= MP.alvo ? ' ok' : ' ruim');
+    const tag = x[4] ? 'button' : 'div';
+    return '<' + tag + ' class="mp-kpi' + cor + '"' + (x[4] ? ' data-pca="' + pcEsc(x[4]) + '"' : '') + '><span>' + x[0] + '</span><b>' + x[1] + '</b>' + (x[2] ? '<small>' + x[2] + '</small>' : '') + '</' + tag + '>';
+  }).join('') + '</div>';
+}
+function mpCor(c){ const k = mpArqDe(c); return k === 'ml' ? '#FFE600' : (k === 'tt' ? '#111111' : (k === 'az' ? '#FF9900' : '#8a93a6')); }
 function mpTabela(cols, L, head, colHead){
   const O = cols.map(c => ({c, o: mpConta(c)}));
   return '<div class="pc-wrap"><table class="pc" style="min-width:' + (300 + cols.length * 190) + 'px"><thead><tr><th>' + head + '</th>' +
@@ -23311,6 +23371,7 @@ function mpDesenhar(){
   const skus = Object.keys(K.skus || {}).filter(s => ((K.skus[s] || {}).calc || mkSoMkt(s)) && !(K.skus[s] || {}).brinde)
     .sort((a, b) => ((K.skus[a] || {}).prod || a).localeCompare((K.skus[b] || {}).prod || b));
   if(!PC.sku && skus.length) PC.sku = skus[0];
+  const skusF = pcFiltraFam(skus);
   const adm = pcAdmin();
   const can = MP.canal ? C.find(c => c.canal === MP.canal) : null;
   if(!can) MP.canal = null;
@@ -23323,12 +23384,12 @@ function mpDesenhar(){
   if(MP.erro) h += '<div class="pc-note" style="color:#a12f2b">' + pcEsc(MP.erro) + '</div>';
   if(MP.msg) h += '<div class="pc-note" style="color:#16714d">' + pcEsc(MP.msg) + '</div>';
   h += '<div class="mp-abas"><button class="mp-aba' + (can ? '' : ' on') + '" data-pca="mpcanal:">Visão geral</button>' +
-    C.map(c => '<button class="mp-aba' + (can === c ? ' on' : '') + '" data-pca="mpcanal:' + pcEsc(c.canal) + '">' + pcEsc(c.canal) + (c.novo ? ' <span class="mp-novo">NOVO</span>' : '') + '</button>').join('') + '</div>';
+    C.map(c => '<button class="mp-aba' + (can === c ? ' on' : '') + '" data-pca="mpcanal:' + pcEsc(c.canal) + '"><i class="mp-dot" style="background:' + mpCor(c) + '"></i>' + pcEsc(c.canal) + (c.novo ? ' <span class="mp-novo">NOVO</span>' : '') + '</button>').join('') + '</div>';
   const temML = can ? k === 'ml' : C.some(mpEhML);
   h += '<div class="pc-top">' +
     '<div><label>Produto</label><select id="mpModo"><option value="atual"' + (!MP.novo ? ' selected' : '') + '>Produto do portfólio</option><option value="novo"' + (MP.novo ? ' selected' : '') + '>Produto novo</option></select></div>' +
     (MP.novo ? '<div><label>Nome do produto novo</label><input id="mpNome" value="' + pcEsc(MP.nome) + '" placeholder="ex.: Jelly Protein" style="width:220px"></div>'
-             : '<div><label>SKU</label><select id="mpSku" style="max-width:380px">' + skus.map(s => '<option value="' + pcEsc(s) + '"' + (s === PC.sku ? ' selected' : '') + '>' + pcEsc((K.skus[s] || {}).prod || s) + ' · ' + pcEsc(s) + '</option>').join('') + '</select></div>') +
+             : pcFamSel(skus, 'mpFam') + '<div><label>SKU</label><select id="mpSku" style="max-width:380px">' + skusF.map(s => '<option value="' + pcEsc(s) + '"' + (s === PC.sku ? ' selected' : '') + '>' + pcEsc((K.skus[s] || {}).prod || s) + ' · ' + pcEsc(s) + '</option>').join('') + '</select></div>') +
     (temML ? '<div><label>Anúncio no Mercado Livre</label><select id="mpTipo"><option value=""' + (!MP.tipo ? ' selected' : '') + '>o do anúncio (' + (mpTipoML() === 'gold_special' ? 'Clássico' : 'Premium') + ')</option><option value="gold_pro"' + (MP.tipo === 'gold_pro' ? ' selected' : '') + '>Premium</option><option value="gold_special"' + (MP.tipo === 'gold_special' ? ' selected' : '') + '>Clássico</option></select></div>' : '') +
     '<div><label>Margem alvo</label><input id="mpAlvo" value="' + (MP.alvo * 100).toFixed(1).replace('.', ',') + '" style="width:70px">%</div>' +
     '<div style="margin-left:auto"><button class="pc-btn2" data-pca="mplimpar">Voltar tudo às sugestões</button></div></div>';
@@ -23344,11 +23405,18 @@ function mpDesenhar(){
     const txAt = k === 'az' ? 'taxas 30 d' : 'taxas 30 d', txHi = k === 'az' ? 'taxas 120 d' : 'taxas 60 d';
     const sub = {at: (k === 'az' ? 'preço da última venda' : (k ? 'anúncio de hoje' : 'cadastro')) + ' · desconto 7 d · ' + txAt,
                  hi: 'preço médio vendido 60 d · desconto 60 d · ' + txHi};
-    h += '<div class="mp-canal">' + mpTabela(cols, mpLinhas(k || null), prod,
-      c => '<th' + (c._m === 'hi' ? ' class="pc-med"' : '') + '>' + (c._m === 'at' ? 'Atual' : 'Média histórica') + '<small class="mp-ven">' + sub[c._m] + '</small></th>') + '</tbody></table></div>' + '</div>';
+    const oa = mpConta(cols[0]), oh = mpConta(cols[1]), hs = v => 'média histórica: ' + v;
+    h += '<div class="mp-canal">' + mpKpis([
+        ['Preço do anúncio', pcR(oa.P), hs(pcR(oh.P))],
+        ['Receita da Dobro / un', pcR(oa.rec), hs(pcR(oh.rec))],
+        ['Contribuição / un', pcR(oa.contrib), hs(pcR(oh.contrib))],
+        ['Margem de contribuição', pcP(oa.mc), hs(pcP(oh.mc)) + ' · alvo ' + pcP(MP.alvo), oa.mc]]) +
+      mpTabela(cols, mpLinhas(k || null), prod,
+      c => '<th' + (c._m === 'hi' ? ' class="mp-hist-h"' : '') + '>' + (c._m === 'at' ? 'Atual' : 'Média histórica') + '<small class="mp-ven">' + sub[c._m] + '</small></th>') + '</tbody></table></div>' + '</div>';
     h += '<p class="pc-note">' + mpNotaCanal(k) + '</p>';
   } else {
     const cols = C.map(c => mpCol(c, 'at', false));
+    h += mpKpis(cols.map(c => { const o = mpConta(c); return [pcEsc(c.canal), pcP(o.mc), 'margem · preço ' + pcR(o.P) + ' · abrir →', o.mc, 'mpcanal:' + c.canal]; }));
     h += mpTabela(cols, mpLinhas(), prod,
       c => '<th>' + pcEsc(c.canal) + (c.novo ? '<span class="mp-novo">NOVO</span>' : '') + '<small class="mp-ven">' + mil(c.vendas || 0) + ' em 60 d · última ' + dt(c.ultima) + '</small></th>');
     h += (adm ? '<tr><td>Taxas no banco</td>' + C.map(c => '<td><button class="pc-btn2" data-mps="' + pcEsc(c.canal) + '" title="grava comissão, outras taxas, frete, anúncios e imposto deste canal (o que está na tela)">Salvar taxas</button></td>').join('') + '</tr>' : '') +
@@ -23448,12 +23516,14 @@ function pcMudou(ev){
     if(n == null){ if(MP.ov[ch]) delete MP.ov[ch][campo]; } else (MP.ov[ch] || (MP.ov[ch] = {}))[campo] = n;
     mpDesenhar(); return;
   }
+  if(t.id === 'mpFam'){ PC.fam = t.value; MP.ov = {}; mpDesenhar(); return; }
   if(t.id === 'mpSku'){ PC.sku = t.value; MP.ov = {}; mpDesenhar(); return; }
   if(t.id === 'mpModo'){ MP.novo = t.value === 'novo'; MP.ov = {}; mpDesenhar(); return; }
   if(t.id === 'mpNome'){ MP.nome = t.value; mpDesenhar(); return; }
   if(t.id === 'mpTipo'){ MP.tipo = t.value || null; mpDesenhar(); return; }
   if(t.id === 'mpAlvo'){ const n = pcNum(t.value); if(n != null) MP.alvo = n / 100; mpDesenhar(); return; }
   if(t.id === 'pcModo'){ PC.novo = t.value === 'novo'; PC.ov = {}; }
+  else if(t.id === 'pcFam'){ PC.fam = t.value; PC.ov = {}; }
   else if(t.id === 'pcSku'){ PC.sku = t.value; PC.ov = {}; }
   else if(t.id === 'pcNome'){ PC.nome = t.value; }
   else if(t.id === 'pcUf'){ PC.uf = t.value; }
