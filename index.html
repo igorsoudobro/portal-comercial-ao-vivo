@@ -21965,7 +21965,9 @@ try{ azRegistrar(); }catch(e){ console.error('amazon: registrar', e); }
 
 <script>
 /* ===================== ABA GERAL DO MARKETPLACE (ML + TikTok + Amazon) ===================== */
-const MKG = {carregando: false, erro: null, patch: false};
+const MKG = {carregando: false, erro: null, patch: false, aba: 'dre', fam: '', busca: '', ord: 'v', chart: null};
+const MKG_ABAS = [['dre', 'DRE'], ['sku', 'Por SKU'], ['proj', 'Projeção de fechamento']];
+const MKG_COR = {ml: ['#E6C700', 'rgba(255,230,0,.45)'], tt: ['#111111', 'rgba(17,17,17,.25)'], az: ['#FF9900', 'rgba(255,153,0,.35)']};
 const MKG_CANAIS = [['ml', 'Mercado Livre', 'ML'], ['tt', 'TikTok Shop', 'TikTok'], ['az', 'Amazon 3P', 'Amazon']];
 /* valor null = nao se aplica ao canal ('—'); 'falta' = custo existe mas ainda nao temos o dado */
 const MKG_FALTA = 'falta';
@@ -21979,7 +21981,19 @@ function mgRegistrar(){
       const div = document.createElement('div'); div.className = 'view'; div.id = 'v-mkgeral';
       irmao.parentNode.appendChild(div);
       div.addEventListener('click', ev => { const b = ev.target.closest('[data-mg]'); if(!b) return;
-        if(b.dataset.mg === 'atualizar') mgCarregar(true); });
+        const [a, v] = b.dataset.mg.split(':');
+        if(a === 'atualizar') mgCarregar(true);
+        else if(a === 'aba'){ MKG.aba = v; mgDesenhar(); }
+        else if(a === 'ord'){ MKG.ord = v; mgDesenhar(); } });
+      div.addEventListener('change', ev => { const x = ev.target;
+        if(x.id === 'mgFam'){ MKG.fam = x.value; mgDesenhar(); }
+        if(x.id === 'mgBusca'){ MKG.busca = x.value; mgDesenhar(); } });
+      /* dica flutuante (giro por canal): o title do navegador demora e corta as linhas */
+      div.addEventListener('mouseover', ev => { const e = ev.target.closest('[data-tip]'); const tp = mgTip(); if(!e){ tp.style.display = 'none'; return; }
+        tp.innerHTML = e.dataset.tip; tp.style.display = 'block'; const r = e.getBoundingClientRect();
+        tp.style.left = Math.max(8, Math.min(window.innerWidth - tp.offsetWidth - 8, r.left + r.width / 2 - tp.offsetWidth / 2)) + 'px';
+        tp.style.top = (r.top - tp.offsetHeight - 8 < 8 ? r.bottom + 8 : r.top - tp.offsetHeight - 8) + 'px'; });
+      div.addEventListener('mouseleave', () => { mgTip().style.display = 'none'; });
     }
   }
   if(!MKG.patch && typeof abasPermitidas === 'function'){
@@ -22007,6 +22021,7 @@ async function mgCarregar(forcar){
   MKG.carregando = false;
   if(typeof CURRENT !== 'undefined' && CURRENT === 'mkgeral') mgDesenhar();
 }
+function mgTip(){ let e = document.getElementById('mgTip'); if(!e){ e = document.createElement('div'); e.id = 'mgTip'; document.body.appendChild(e); } return e; }
 function vMkGeral(){ if(!(MKT.d && TTK.d && AMZ.d) && !MKG.carregando && !MKG.erro){ mgCarregar(false); return; } mgDesenhar(); }
 
 /* um canal num intervalo -> linhas comuns */
@@ -22018,10 +22033,11 @@ function mgCanal(c, ini, fim){
     o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.tar, fr: T.env, arm: T.armaz, out: T.outras, ads: T.adsTot, amo: null, antec: T.antec, ped: T.ped};
   } else if(c === 'tt'){
     const T = ttDreCalc(ini, fim);
-    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.sfp + T.afil + (T.item || 0), fr: T.fr, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv};   /* 24/11: API do TikTok */
+    o = {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.sfp + T.afil + (T.item || 0), fr: T.fr, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv,
+         real: !!T.real, pctLiq: T.pctLiq};   /* 24/11: API do TikTok */
   } else {
     const T = azDreCalc(ini, fim);
-    o = T.real ? {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.a4a, fr: T.fba + T.post, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: null, antec: null, ped: T.pv}   /* 24/11: API da Amazon */
+    o = T.real ? {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.a4a, fr: T.fba + T.post, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: null, antec: null, ped: T.pv, real: true, pctLiq: T.pctLiq}   /* 24/11: API da Amazon */
                : {fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com, fr: MKG_FALTA, arm: MKG_FALTA, out: null, ads: MKG_FALTA, amo: null, antec: null, ped: T.pv};
   }
   const v = k => (typeof o[k] === 'number' ? o[k] : 0);
@@ -22071,14 +22087,171 @@ function mgDesenhar(){
     '<button data-mg="atualizar">↻ Atualizar</button></div></div>';
   if(MKG.erro && !pronto){ alvo.innerHTML = h + mkCard('Não consegui carregar', '', '<div class="mk-note">' + mkEsc(MKG.erro) + '</div>'); return; }
   if(!pronto){ alvo.innerHTML = h; return; }
-  try{ h += mgCorpo(p); }
+  if(MKG.chart){ try{ MKG.chart.destroy(); }catch(e){} MKG.chart = null; }
+  h += '<div class="mk-tabs">' + MKG_ABAS.map(a => '<button data-mg="aba:' + a[0] + '" class="' + (MKG.aba === a[0] ? 'on' : '') + '">' + a[1] + '</button>').join('') + '</div>';
+  try{ h += ({dre: mgCorpo, sku: mgSkus, proj: mgProj}[MKG.aba] || mgCorpo)(p); }
   catch(e){ console.error('mkgeral: tela', e); h += mkCard('Erro ao montar a tela', '', '<div class="mk-note">' + mkEsc(e.message) + '</div>'); }
+  const y = window.scrollY;
   alvo.innerHTML = h;
+  if(MKG.aba === 'proj') try{ mgGrafico(); }catch(e){ console.error('mkgeral: grafico', e); }
+  window.scrollTo(0, y);
+}
+/* aviso de origem dos custos (26/11/2026): TikTok e Amazon ja tem API - so o que nao foi liquidado usa media real */
+function mgAviso(p, C){
+  const li = [], est = [];
+  const tt = C.tt, az = C.az;
+  const pl = o => o.pctLiq != null ? mkP(o.pctLiq) + ' do período já liquidado; o resto pela taxa média real recente' : 'taxas reais da API';
+  if(tt.real) li.push('<b>TikTok</b>: ' + pl(tt) + ' (comissão, SFP, afiliado, taxa por item, frete, repasse do desconto e GMV Max)');
+  else est.push('TikTok (taxas pelo % do extrato de out/26)');
+  if(az.real) li.push('<b>Amazon</b>: ' + pl(az) + ' (comissão, Amazon for All, FBA, frete DBA e Product Ads)');
+  else est.push('Amazon (comissão 12%, sem frete, FBA e anúncios)');
+  if(typeof TT_API_INI === 'string' && p.ini < TT_API_INI && tt.real) est.push('TikTok antes de ' + mkDD(TT_API_INI));
+  if(typeof AZ_API_INI === 'string' && p.ini < AZ_API_INI && az.real) est.push('Amazon antes de ' + mkDD(AZ_API_INI));
+  return '<div class="mk-note' + (est.length ? ' warn' : '') + '">' + (est.length ? '⚠ Parte do período é ESTIMADA: ' + est.join('; ') + '. ' : '✓ ') +
+    '<b>Custos reais das APIs</b> — Mercado Livre: tarifas, frete, Full, Ads e antecipação; ' + li.join('; ') + '.</div>';
+}
+
+/* ---------------- POR SKU (26/11/2026) ---------------- */
+/* periodo: as mesmas contas das abas (mkPorSku / ttPorSku / azPorSku). Chave = codigo Dobro do SKU */
+function mgSkuPeriodo(ini, fim){
+  const R = {}, K = (typeof CALC === 'object' && CALC && CALC.skus) || {};
+  const add = (code, can, q, v, t, fam) => {
+    code = String(code || '?').toUpperCase();
+    const o = R[code] || (R[code] = {k: code, t: (K[code] || {}).prod || t || code, fam: (K[code] || {}).cat || fam || 'Outros',
+                                    q: 0, v: 0, ml: {q: 0, v: 0}, tt: {q: 0, v: 0}, az: {q: 0, v: 0}, d: null});
+    o[can].q += q || 0; o[can].v += v || 0; o.q += q || 0; o.v += v || 0;
+  };
+  const ag = MKT.agrupar; MKT.agrupar = false;
+  try{ mkPorSku(ini, fim).forEach(o => add(o.dob || o.k, 'ml', o.q, o.rec, o.t, o.cat)); } finally { MKT.agrupar = ag; }
+  ttPorSku(ini, fim, 'V').forEach(o => add(o.p || o.c, 'tt', o.q, o.l, o.d, o.fam));
+  azPorSku(ini, fim).forEach(o => add(o.c, 'az', o.q, o.l, o.d, o.fam));
+  return R;
+}
+/* unidades por dia nos ultimos 30 dias ate ontem, por SKU e canal */
+function mgSkuDias(fim){
+  const ini = mkDia(fim, -29), idx = x => Math.round((new Date(x + 'T12:00:00') - new Date(ini + 'T12:00:00')) / 864e5), R = {};
+  const add = (code, can, d, q) => { if(d < ini || d > fim || !q) return; code = String(code || '?').toUpperCase();
+    const o = R[code] || (R[code] = {ml: new Array(30).fill(0), tt: new Array(30).fill(0), az: new Array(30).fill(0)}); o[can][idx(d)] += q; };
+  (MKT.d.R || []).forEach(r => { const s = MKT.d.S[r.i] || {}; add((s.dob && s.dob !== s.s) ? s.dob : s.s, 'ml', r.d, r.q); });
+  (TTK.d.V || []).forEach(r => { const s = TTK.d.S[r.i] || {}; add(s.p || s.c, 'tt', r.d, r.q); });
+  (AMZ.d.V || []).forEach(r => { const s = AMZ.d.S[r.i] || {}; add(s.c, 'az', r.d, r.q); });
+  return {ini, fim, R};
+}
+function mgSpark(a){
+  const mx = Math.max(1, ...a), w = 96, hgt = 24, pts = a.map((v, i) => (i * w / 29).toFixed(1) + ',' + (hgt - 2 - v / mx * (hgt - 4)).toFixed(1)).join(' ');
+  return '<svg class="mg-spark" width="' + w + '" height="' + hgt + '" viewBox="0 0 ' + w + ' ' + hgt + '"><polyline points="0,' + hgt + ' ' + pts + ' ' + w + ',' + hgt + '" fill="rgba(42,62,126,.10)" stroke="none"/>' +
+    '<polyline points="' + pts + '" fill="none" stroke="#2A3E7E" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+}
+const MKG_NOME = {ml: 'Mercado Livre', tt: 'TikTok Shop', az: 'Amazon 3P'};
+function mgSkus(p){
+  const ontem = mkDia(mkHoje(), -1), P = mgSkuPeriodo(p.ini, p.fim), Dd = mgSkuDias(ontem);
+  /* entra quem vendeu no periodo OU nos ultimos 30 dias (giro sem venda no periodo tambem interessa) */
+  Object.keys(Dd.R).forEach(k => { if(!P[k]){ const K = (typeof CALC === 'object' && CALC && CALC.skus) || {};
+    P[k] = {k, t: (K[k] || {}).prod || k, fam: (K[k] || {}).cat || 'Outros', q: 0, v: 0, ml: {q: 0, v: 0}, tt: {q: 0, v: 0}, az: {q: 0, v: 0}}; } });
+  /* nome/familia vindos dos canais: completa pelo que aparecer nas janelas */
+  const L = Object.values(P), tot = L.reduce((a, o) => (a.v += o.v, a.q += o.q, a), {v: 0, q: 0});
+  const ord = MKG.ord === 'q' ? 'q' : (MKG.ord === 'g7' || MKG.ord === 'g30' ? MKG.ord : 'v');
+  const soma = (o, can, n) => o ? o[can].slice(30 - n).reduce((a, x) => a + x, 0) : 0;
+  L.forEach(o => { const d = Dd.R[o.k]; o.dias = d ? d.ml.map((x, i) => x + d.tt[i] + d.az[i]) : new Array(30).fill(0);
+    o.g = {}; [7, 15, 30].forEach(n => { o.g[n] = {tot: 0}; ['ml', 'tt', 'az'].forEach(c => { const q = soma(d, c, n); o.g[n][c] = q; o.g[n].tot += q; }); });
+    o.g7 = o.g[7].tot / 7; o.g30 = o.g[30].tot / 30; });
+  /* curva ABC pelo faturamento do periodo (sobre todos, antes do filtro) */
+  const porV = L.slice().sort((a, b) => b.v - a.v); let ac = 0;
+  porV.forEach(o => { const ant = ac; ac += o.v; o.acum = tot.v ? ac / tot.v : 0; o.abc = !(o.v > 0) ? '—' : (ant / (tot.v || 1) < 0.8 ? 'A' : (ant / (tot.v || 1) < 0.95 ? 'B' : 'C')); });
+  const n = {A: 0, B: 0, C: 0}; L.forEach(o => { if(n[o.abc] != null) n[o.abc]++; });
+  L.sort((a, b) => (b[ord] - a[ord]) || (b.v - a.v));
+  const fams = [...new Set(L.map(o => o.fam))].sort((a, b) => a.localeCompare(b));
+  if(MKG.fam && fams.indexOf(MKG.fam) < 0) MKG.fam = '';
+  const bq = (MKG.busca || '').toLowerCase();
+  const vis = L.filter(o => (!MKG.fam || o.fam === MKG.fam) && (!bq || (o.k + ' ' + o.t).toLowerCase().indexOf(bq) >= 0));
+  const g = (o, nd) => {
+    const x = o.g[nd], de = mkDD(mkDia(ontem, -(nd - 1))), ate = mkDD(ontem);
+    const tip = '<b>Giro ' + nd + ' dias</b> = unidades vendidas por dia, em média, de ' + de + ' a ' + ate + '<table>' +
+      ['ml', 'tt', 'az'].map(c => '<tr><td><i style="background:' + MKG_COR[c][0] + '"></i>' + MKG_NOME[c] + '</td><td>' + mkN1(x[c] / nd) + '/dia</td><td>' + mkN(x[c]) + ' un</td></tr>').join('') +
+      '<tr class="t"><td>Total</td><td>' + mkN1(x.tot / nd) + '/dia</td><td>' + mkN(x.tot) + ' un</td></tr></table>';
+    return '<td><span class="mg-giro" data-tip="' + mkEsc(tip) + '">' + (x.tot ? mkN1(x.tot / nd) : '<span class="mg-na">0</span>') + '</span></td>';
+  };
+  const tend = o => { if(!(o.g30 > 0)) return o.g7 > 0 ? '<span class="mg-up">novo</span>' : '<span class="mg-na">—</span>';
+    const r = o.g7 / o.g30 - 1; return '<span class="' + (r > 0.1 ? 'mg-up' : (r < -0.1 ? 'mg-down' : 'mg-flat')) + '">' + (r > 0.1 ? '▲ ' : (r < -0.1 ? '▼ ' : '● ')) + mkP(Math.abs(r)) + '</span>'; };
+  const mix = o => { if(!(o.v > 0)) return '<span class="mg-na">—</span>';
+    return '<div class="mg-mix" data-tip="' + mkEsc(['ml', 'tt', 'az'].map(c => MKG_NOME[c] + ': ' + mkR(o[c].v) + ' · ' + mkN(o[c].q) + ' un (' + mkP(o[c].v / o.v) + ')').join('<br>')) + '">' +
+      ['ml', 'tt', 'az'].map(c => o[c].v > 0 ? '<i style="width:' + (o[c].v / o.v * 100).toFixed(1) + '%;background:' + MKG_COR[c][0] + '"></i>' : '').join('') + '</div>'; };
+  const parados = L.filter(o => o.g[30].tot > 0 && !o.g[7].tot).length;
+  const th = (c, lab, tip) => '<th style="cursor:pointer"' + (tip ? ' title="' + tip + '"' : '') + ' data-mg="ord:' + c + '">' + lab + (ord === c ? ' ▼' : '') + '</th>';
+  let h = '<div class="mg-filtros"><label>Família <select id="mgFam"><option value="">Todas (' + L.length + ')</option>' +
+    fams.map(f => '<option value="' + mkEsc(f) + '"' + (f === MKG.fam ? ' selected' : '') + '>' + mkEsc(f) + ' (' + L.filter(o => o.fam === f).length + ')</option>').join('') + '</select></label>' +
+    '<input id="mgBusca" placeholder="buscar SKU ou nome" value="' + mkEsc(MKG.busca) + '">' +
+    '<span class="mg-leg">' + ['ml', 'tt', 'az'].map(c => '<i style="background:' + MKG_COR[c][0] + '"></i>' + MKG_NOME[c]).join('') + '</span></div>';
+  h += '<div class="kpirow kpi-mini">' + mkKpi('SKUs vendidos', mkN(L.filter(o => o.v > 0).length), 'no período · ' + mkN(L.length) + ' com venda em 30 dias') +
+    mkKpi('Curva A', mkN(n.A), '80% da venda') + mkKpi('Curva B', mkN(n.B), 'próximos 15%') + mkKpi('Curva C', mkN(n.C), 'últimos 5%') +
+    mkKpi('Giro total 7 dias', mkN1(L.reduce((a, o) => a + o.g7, 0)) + ' un/dia', 'vs ' + mkN1(L.reduce((a, o) => a + o.g30, 0)) + ' un/dia em 30 dias') +
+    mkKpi('Sem venda em 7 dias', mkN(parados), 'venderam nos últimos 30 dias e pararam', parados ? 'alerta' : '') + '</div>';
+  h += mkCard('Gerencial por SKU · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), 'os 3 canais somados · passe o mouse no giro e na barra de canais para ver cada canal · clique no cabeçalho para ordenar',
+    '<div class="mk-scroll"><table class="mg-sku"><thead><tr><th style="text-align:left">Produto</th><th>Família</th>' + th('v', 'Venda', 'valor vendido no período (ML: receita dos pedidos; TikTok e Amazon: valor líquido das notas)') + th('q', 'Unidades') +
+    '<th>Canais</th><th>Curva</th><th>% acum.</th><th title="unidades por dia nos últimos 30 dias, até ontem">Vendas 30 dias</th>' +
+    th('g7', 'Giro 7 d', 'unidades por dia nos últimos 7 dias') + '<th title="unidades por dia nos últimos 15 dias">Giro 15 d</th>' + th('g30', 'Giro 30 d', 'unidades por dia nos últimos 30 dias') +
+    '<th title="giro de 7 dias contra o de 30 dias">7 d × 30 d</th></tr></thead><tbody>' +
+    vis.map(o => '<tr><td class="mg-prod"><b>' + mkEsc(o.t) + '</b><small>' + mkEsc(o.k) + '</small></td><td>' + mkEsc(o.fam) + '</td><td>' + mkR(o.v) + '</td><td>' + mkN(o.q) + '</td>' +
+      '<td>' + mix(o) + '</td><td>' + (o.abc === '—' ? '<span class="mg-na">—</span>' : '<span class="mk-abc ' + o.abc + '">' + o.abc + '</span>') + '</td><td>' + (o.v > 0 ? mkP(o.acum) : '') + '</td>' +
+      '<td>' + mgSpark(o.dias) + '</td>' + g(o, 7) + g(o, 15) + g(o, 30) + '<td>' + tend(o) + '</td></tr>').join('') +
+    '<tr class="mk-tot"><td>Total' + (vis.length < L.length ? ' (filtro)' : '') + '</td><td></td><td>' + mkR(vis.reduce((a, o) => a + o.v, 0)) + '</td><td>' + mkN(vis.reduce((a, o) => a + o.q, 0)) + '</td><td></td><td></td><td></td><td></td>' +
+    [7, 15, 30].map(nd => '<td>' + mkN1(vis.reduce((a, o) => a + o.g[nd].tot, 0) / nd) + '</td>').join('') + '<td></td></tr>' +
+    '</tbody></table></div>' +
+    '<div class="mk-note"><b>Venda</b> = valor vendido de cada SKU: Mercado Livre = receita dos pedidos (base MELI); TikTok e Amazon = valor líquido das notas. Não desconta devoluções e, no TikTok, não inclui o repasse do desconto pago pelo TikTok — por isso a soma fica abaixo do faturamento líquido da DRE. ' +
+    '<b>Curva</b> ABC pela venda do período: A = SKUs que somam os primeiros 80%, B = os próximos 15%, C = o resto. ' +
+    '<b>Giro</b> = unidades vendidas por dia, em média, nos últimos 7, 15 e 30 dias até ontem (não segue o filtro de período). ' +
+    'O SKU é o código Dobro; o TikTok vende o gel por sachê (código "-30"), por isso aparece separado do display "10X30".</div>');
+  return h;
+}
+
+/* ---------------- PROJECAO DE FECHAMENTO (26/11/2026) ----------------
+   Soma das projecoes de cada aba, com as premissas de cada uma: ML = mkProjCalc (aba Mercado Livre),
+   TikTok e Amazon = mxpCalc (abas TikTok Shop e Amazon). Mudou premissa la, muda aqui. */
+function mgProjCalc(){
+  const P = {ml: mkProjCalc(), tt: mxpCalc(TTK.d.D, 'tt'), az: mxpCalc(AMZ.d.D, 'az')};
+  const T = {real: 0, proj: 0, total: 0, tAnt: 0, f2: 0};
+  ['ml', 'tt', 'az'].forEach(c => { const x = P[c]; T.real += x.real; T.proj += x.proj; T.total += x.total; T.tAnt += x.tAnt; T.f2 += x.faixa * x.faixa; });
+  T.faixa = Math.sqrt(T.f2); T.mes = P.ml.mes; T.mesAnt = P.ml.mesAnt;
+  MKG.proj = P; return {P, T};
+}
+function mgProj(){
+  const {P, T} = mgProjCalc(), hoje = mkHoje();
+  let h = '<div class="kpirow">' +
+    mkKpi('Realizado', mkR(T.real), 'líquido de ' + mkNomeMes(T.mes) + ' até ontem (TikTok e Amazon: até a última nota)') +
+    mkKpi('Projeção dos dias restantes', mkR(T.proj), 'a partir de hoje, ' + mkDD(hoje) + ' (o dia de hoje entra inteiro)') +
+    mkKpi('Fechamento projetado', mkR(T.total), 'faixa provável ' + mkR(Math.max(0, T.total - T.faixa)) + ' a ' + mkR(T.total + T.faixa) + ' (80%)', 'accent') +
+    mkKpi('vs ' + mkNomeMes(T.mesAnt), mkVar(T.total, T.tAnt), mkR(T.tAnt) + ' no mês passado') + '</div>';
+  const lin = c => { const x = P[c], corte = c === 'ml' ? mkDia(hoje, -1) : x.corte;
+    return '<tr><td><i class="mg-dot" style="background:' + MKG_COR[c][0] + '"></i>' + MKG_NOME[c] + '</td><td>' + mkR(x.real) + '<small class="mk-sub">até ' + mkDD(corte) + (x.atrasado ? ' (notas atrasadas)' : '') + '</small></td>' +
+      '<td>' + mkR(x.proj) + '<small class="mk-sub">' + x.nRest + ' dias · ' + mkR(x.base) + '/dia</small></td><td><b>' + mkR(x.total) + '</b><small class="mk-sub">' + mkR(Math.max(0, x.total - x.faixa)) + ' a ' + mkR(x.total + x.faixa) + '</small></td>' +
+      '<td>' + mkP(T.total ? x.total / T.total : 0) + '</td><td>' + mkR(x.tAnt) + '</td><td>' + mkVar(x.total, x.tAnt) + '</td></tr>'; };
+  h += mkCard('Fechamento de ' + mkNomeMes(T.mes) + ' por canal', 'cada canal com a projeção (e as premissas) da própria aba',
+    '<div class="mk-scroll"><table class="mk-dre mg-proj"><thead><tr><th>Canal</th><th>Realizado</th><th>Projeção restante</th><th>Fechamento projetado</th><th>% do total</th><th>' + mkNomeMes(T.mesAnt) + '</th><th>vs mês passado</th></tr></thead><tbody>' +
+    ['ml', 'tt', 'az'].map(lin).join('') +
+    '<tr class="mk-tot"><td>Total</td><td>' + mkR(T.real) + '</td><td>' + mkR(T.proj) + '</td><td>' + mkR(T.total) + '<small class="mk-sub">' + mkR(Math.max(0, T.total - T.faixa)) + ' a ' + mkR(T.total + T.faixa) + '</small></td><td>100%</td><td>' + mkR(T.tAnt) + '</td><td>' + mkVar(T.total, T.tAnt) + '</td></tr>' +
+    '</tbody></table></div>');
+  h += mkCard('Projeção de ' + mkNomeMes(T.mes) + ' dia a dia', 'barras cheias = realizado · claras = projeção · empilhado por canal',
+    '<div style="padding:14px;height:300px"><canvas id="mgGProj"></canvas></div>');
+  h += '<div class="mk-note warn">A projeção soma a de cada aba: Mercado Livre (ritmo dos últimos 28 dias, dia da semana e datas comemorativas da aba Mercado Livre); TikTok Shop e Amazon (mesmo modelo, com os multiplicadores medidos no próprio canal). ' +
+    'Para mudar uma premissa (janela do ritmo, tendência, multiplicador da Black Friday), abra a projeção na aba do canal — esta tela acompanha. Não sabe de campanha nova, mudança de preço, Ads ou ruptura de estoque.</div>';
+  return h;
+}
+function mgGrafico(){
+  const c = document.getElementById('mgGProj'), P = MKG.proj; if(!c || !P || typeof Chart === 'undefined') return;
+  const dias = P.ml.dias.map(o => o.x), pega = (x, c2) => (P[c2].dias.find(o => o.x === x) || {});
+  const ds = [];
+  ['ml', 'tt', 'az'].forEach(c2 => ds.push({label: MKG_NOME[c2] + ' · realizado', data: dias.map(x => { const o = pega(x, c2); return o.proj == null ? (o.real || 0) : (o.real || 0); }), backgroundColor: MKG_COR[c2][0], stack: 's'}));
+  ['ml', 'tt', 'az'].forEach(c2 => ds.push({label: MKG_NOME[c2] + ' · projeção', data: dias.map(x => { const o = pega(x, c2); return o.proj != null ? Math.max(0, o.proj - (o.real || 0)) : 0; }),
+    backgroundColor: MKG_COR[c2][1], borderColor: MKG_COR[c2][0], borderWidth: 1, stack: 's'}));
+  MKG.chart = new Chart(c, {type: 'bar', data: {labels: dias.map(mkDD), datasets: ds},
+    options: {maintainAspectRatio: false, plugins: {legend: {position: 'bottom', labels: {boxWidth: 12, font: {size: 11}}},
+      tooltip: {mode: 'index', filter: k => k.raw > 0, callbacks: {label: k => k.dataset.label + ': ' + mkR(k.raw),
+        footer: ks => 'Total do dia: ' + mkR(ks.reduce((a, k) => a + (k.raw || 0), 0))}}},
+      scales: {x: {stacked: true}, y: {stacked: true, ticks: {callback: v => mkR(v)}}}}});
 }
 function mgCorpo(p){
   const C = mgCalc(p.ini, p.fim), T = C.tot, pc = v => mkP(T.fat ? v / T.fat : 0);
-  let h = '<div class="mk-note warn">⚠ Parte dos custos é ESTIMADA: no TikTok, as taxas, o repasse do desconto, o frete das amostras e os anúncios (% do extrato de out/26); na Amazon, a comissão (12%). ' +
-    'Na Amazon ainda <b>faltam</b> o frete pago pela Dobro, as tarifas e a armazenagem do FBA e a publicidade — o resultado dela está melhor do que o real. Quando cada canal tiver API, entram os valores reais.</div>';
+  let h = mgAviso(p, C);
   h += '<div class="kpirow">' + mkKpi('Faturamento líquido', mkR(T.fat), mkN(T.ped) + ' pedidos · ' + MKG_CANAIS.map(x => x[2] + ' ' + pc(C[x[0]].fat)).join(' · '), 'accent') +
     mkKpi('Margem de contribuição', mkR(T.mc), pc(T.mc) + ' · antes dos investimentos', T.mc >= 0 ? 'pos' : 'alerta') +
     mkKpi('Investimentos', mkR(T.inv), pc(T.inv) + ' · anúncios ' + mkR(T.ads) + ' · amostras ' + mkR(T.amo)) +
@@ -22093,7 +22266,7 @@ function mgCorpo(p){
   h += mkCard('DRE do Marketplace · ' + mkDD(p.ini) + ' a ' + mkDD(p.fim), 'canais lado a lado · % de cada canal = sobre o faturamento dele; última coluna = sobre o total',
     '<div class="mk-scroll"><table class="mk-dre"><thead><tr>' + cab + '</tr></thead><tbody>' + corpo + '</tbody></table></div>' +
     '<div class="mk-note">"—" = não se aplica ao canal · "falta" = o custo existe, mas ainda não temos o dado (entra como zero no total). ' +
-    'Comissões e tarifas: ML = tarifa de venda; TikTok = comissão + SFP + afiliados (est.); Amazon = comissão 12% (est.). ' +
+    'Comissões e tarifas: ML = tarifa de venda; TikTok = comissão + SFP + afiliados + taxa por item; Amazon = comissão + Amazon for All. Frete: TikTok = frete das vendas; Amazon = taxa FBA + etiqueta DBA. ' +
     'Mercado Livre na base MELI, igual à aba dele (Ads, Full e outras cobranças vêm por mês na fatura; num período parcial entram proporcionais aos dias).</div>');
   /* varios meses: resultado de cada canal por mes */
   const meses = Object.keys(mkMesesFrac(p)).sort();
@@ -22117,6 +22290,26 @@ function mgCorpo(p){
 #v-mkgeral .mg-na{color:#B4BACB}
 #v-mkgeral tr.mg-sec td{background:var(--mk-soft);color:var(--mk-navy);font-weight:800;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;padding-top:12px}
 #v-mkgeral tr.mg-sec td small{text-transform:none;letter-spacing:0;font-weight:600;color:var(--mk-muted)}
+#v-mkgeral .mg-filtros{display:flex;flex-wrap:wrap;gap:12px;align-items:center;background:#fff;border-radius:14px;padding:10px 14px;margin:0 0 14px;box-shadow:0 2px 10px rgba(42,62,126,.06)}
+#v-mkgeral .mg-filtros label{font-size:11px;font-weight:800;color:var(--mk-muted);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+#v-mkgeral .mg-filtros select,#v-mkgeral .mg-filtros input{border:1.5px solid var(--mk-line);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink);background:#fff}
+#v-mkgeral .mg-filtros input{min-width:220px}
+#v-mkgeral .mg-leg{margin-left:auto;display:flex;gap:14px;font-size:12px;color:var(--mk-muted);align-items:center}
+#v-mkgeral .mg-leg i,#v-mkgeral .mg-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+#v-mkgeral table.mg-sku td.mg-prod{text-align:left;max-width:300px;white-space:normal}
+#v-mkgeral table.mg-sku td.mg-prod b{display:block;font-weight:700;color:var(--ink);font-size:12.5px;line-height:1.3}
+#v-mkgeral table.mg-sku td.mg-prod small{display:block;color:var(--mk-muted);font-size:11px}
+#v-mkgeral .mg-mix{display:flex;width:90px;height:10px;border-radius:5px;overflow:hidden;background:#EEF0F6;margin-left:auto;cursor:help}
+#v-mkgeral .mg-mix i{display:block;height:100%}
+#v-mkgeral .mg-giro{cursor:help;border-bottom:1px dashed #B4BACB;font-weight:700}
+#v-mkgeral .mg-spark{display:block;margin-left:auto}
+#v-mkgeral .mg-up{color:var(--mk-pos);font-weight:700}#v-mkgeral .mg-down{color:var(--mk-neg);font-weight:700}#v-mkgeral .mg-flat{color:var(--mk-muted);font-weight:600}
+#mgTip{position:fixed;z-index:9999;display:none;background:#1d2c5c;color:#fff;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.45;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.25);pointer-events:none}
+#mgTip table{border-collapse:collapse;margin-top:6px;width:100%}
+#mgTip td{padding:2px 6px;text-align:right;white-space:nowrap;border:none;color:#fff}
+#mgTip td:first-child{text-align:left}
+#mgTip tr.t td{border-top:1px solid rgba(255,255,255,.3);font-weight:800}
+#mgTip i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;box-shadow:0 0 0 1px rgba(255,255,255,.5)}
 </style>
 <script>try{ mgRegistrar(); }catch(e){ console.error('mkgeral: registrar', e); }</script>
 
