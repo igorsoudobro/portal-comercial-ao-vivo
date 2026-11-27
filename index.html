@@ -23431,12 +23431,25 @@ function mpMLH(dias){
   const L = mpCache('mlL' + dias, () => { try{ const fim = mkDia(mkHoje(), -1); return mkDreCalc(mkDia(fim, -(dias - 1)), fim).lista || []; }
                                           catch(e){ console.error('precificacao: ML ' + dias, e); return []; } });
   return mpCache('mlH' + dias + ':' + PC.sku, () => {
-    const o = L.find(x => x.k === PC.sku); if(!o || !(o.q > 0)) return null;
+    /* 27/11/2026: o anuncio do ML pode ter codigo proprio (SP_CARBSGEL, BTNITPINK) - soma todos os codigos
+       do ML que apontam para o SKU Dobro (o "dob" do marketplace_sku), nao so o identico */
+    const cods = new Set(mpMLcodigos()), V = L.filter(x => cods.has(String(x.k).toUpperCase()));
+    if(!V.length) return null;
+    const o = V.reduce((a, x) => { ['q', 'rec', 'cup', 'tar', 'env', 'imp', 'arm', 'ads'].forEach(k => a[k] += +x[k] || 0); return a; },
+                       {q: 0, rec: 0, cup: 0, tar: 0, env: 0, imp: 0, arm: 0, ads: 0});
+    if(!(o.q > 0)) return null;
     const cheio = o.rec + o.cup, q = o.q;
-    const it = Object.values(MKT.d.I || {}).find(i => String(i.s || '').toUpperCase() === String(PC.sku).toUpperCase());
+    const it = Object.values(MKT.d.I || {}).find(i => cods.has(String(i.s || '').toUpperCase()));
     return {dias, q, tipo: (it && it.tipo) || 'gold_pro', preco: cheio / q, cup: cheio ? o.cup / cheio : 0, fee: cheio ? o.tar / cheio : 0,
             envUn: o.env / q, imp: o.rec ? o.imp / o.rec : 0, armUn: o.arm / q, ads: o.rec ? o.ads / o.rec : 0};
   });
+}
+/* codigos do anuncio no ML que sao este SKU Dobro: o proprio + os que o de-para (marketplace_sku) liga a ele */
+function mpMLcodigos(){
+  const alvo = String(PC.sku || '').toUpperCase(), r = new Set([alvo]);
+  ((typeof MKT === 'object' && MKT && MKT.d && MKT.d.S) || []).forEach(s => {
+    if(s && String(s.dob || '').toUpperCase() === alvo) r.add(String(s.s).toUpperCase()); });
+  return [...r];
 }
 function mpMLtx(c){ return mpM(c) === 'hi' ? mpMLH(60) : (mpMLH(30) || mpMLH(60)); }
 function mpMLdesc(c){ return mpM(c) === 'hi' ? mpMLH(60) : (mpMLH(7) || mpMLH(30)); }
@@ -23462,7 +23475,7 @@ function mpRefPreco(c){
   const k = mpArqDe(c), m = mpM(c);
   const siteRef = site != null ? {v: site, fonte: 'preço do site (sem venda do SKU no canal)'} : null;
   if(k === 'ml'){
-    if(m === 'at' && typeof mkPrecoHoje === 'function' && MPD.ml){ try{ const ph = mkPrecoHoje([PC.sku]); if(ph) return {v: ph.v, fonte: 'anúncio ativo hoje' + (ph.max > ph.v + 0.005 ? ' (até ' + pcR(ph.max) + ')' : '')}; }catch(e){} }
+    if(m === 'at' && typeof mkPrecoHoje === 'function' && MPD.ml){ try{ const ph = mkPrecoHoje(mpMLcodigos()); if(ph) return {v: ph.v, fonte: 'anúncio ativo hoje' + (ph.max > ph.v + 0.005 ? ' (até ' + pcR(ph.max) + ')' : '')}; }catch(e){} }
     const H = m === 'hi' ? mpMLH(60) : (mpMLH(30) || mpMLH(60)); if(H && H.preco) return {v: H.preco, fonte: 'preço médio vendido ' + H.dias + ' d'};
     if(!MPD.ml && MPD.ok.ml) return site != null ? {v: site, fonte: 'carregando o ML…'} : null;
     return siteRef;
