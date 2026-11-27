@@ -1013,7 +1013,7 @@ function diaMostrarAviso(){
   box.style.display = '';
   box.textContent = 'Neste recorte entram ' + n + ' linha(s) de ' +
     (v < 0 ? 'devolução' : 'venda') + ' sem dia próprio do mês (' + brl(v) +
-    ') — o V8 data a devolução pelo dia da venda de origem. Por isso somar os ' +
+    '). Por isso somar os ' +
     'dias não fecha com o mês.';
 }
 
@@ -1916,8 +1916,7 @@ function cartQuadroGerencial(base){
         '<td class="mono" style="text-align:right;white-space:nowrap">' +
           cartDataBR(u) + '</td>' +
         '<td class="mono" style="text-align:right;white-space:nowrap"' +
-          (vUlt === null ? ' title="o último pedido é anterior ao FATO deste ' +
-            'ano, ou a nota não entrou na BaseTrabalho"' : '') + '>' +
+          (vUlt === null ? ' title="sem pedido neste ano"' : '') + '>' +
           (vUlt !== null ? brl(vUlt) : '<span style="color:var(--line)">—</span>') +
           '</td>' +
         '<td class="mono" style="text-align:right' +
@@ -2906,7 +2905,7 @@ function renderCalcItens(){
        semPreco++;
        return `<tr style="opacity:.55"><td class="rowlab">${prodName(sk)}</td>
        <td class="mono">${brl2(pcf)}</td>
-       <td class="mono" title="Sem preço nesta tabela — preencha a coluna no Excel (Parametros)">—</td>
+       <td class="mono" title="Sem preço nesta tabela — cadastre o preço em Premissas › Calculadora">—</td>
        <td class="mono">—</td><td class="mono">—</td>
        <td style="font-size:11px;color:var(--muted)">sem preço</td>
        <td class="mono">—</td></tr>`;
@@ -2934,7 +2933,7 @@ function renderCalcItens(){
        <td><input type="number" min="0" value="${q||''}" placeholder="0" data-sk="${sk}" data-campo="qtd" class="calc-in" style="width:70px"></td>
        <td class="mono" data-cel="sub">${q>0?brl2(sub):'—'}</td></tr>`;
    }).join('')}</tbody></table>
-   ${semPreco?`<div style="padding:8px 14px;font-size:11px;color:var(--muted)">${semPreco} item(ns) sem preço na tabela <b>${tab}</b> — para liberar, preencha a coluna &ldquo;Tabela ${tab}&rdquo; na aba Parametros do V8.</div>`:''}`;
+   ${semPreco?`<div style="padding:8px 14px;font-size:11px;color:var(--muted)">${semPreco} item(ns) sem preço na tabela <b>${tab}</b> — para liberar, cadastre o preço da tabela ${tab} em Premissas › Calculadora.</div>`:''}`;
   calcDevolverFoco(foco);
 }
 
@@ -4096,7 +4095,7 @@ function ajustarKpisResumo(){
     {lab: 'Comissão', val: brl(d.com), cls: '', sens: true,
      sub: d.fatLiq ? pct(d.com / d.fatLiq) + ' do líquido' : '—',
      dica: 'Comissão calculada pelo percentual do vendedor, com as exceções ' +
-           'por CNPJ de Parametros!U:V.'},
+           'por CNPJ cadastradas na aba Premissas.'},
     /* Contratos: sensível como Frete e Comissão, e só aparece quando existe.
        Um KPI 'R$ 0,00' fixo na tela ensina a ignorar a linha — foi exatamente
        o que o Igor apontou em 30/07 sobre a bonificação. */
@@ -4104,8 +4103,8 @@ function ajustarKpisResumo(){
      sens: true,
      sub: d.fatLiq ? pct(d.contrato / d.fatLiq) + ' do líquido' : '—',
      dica: 'Percentual de contrato combinado com clientes específicos, ' +
-           'aplicado sobre o faturamento líquido de cada CNPJ. Vem de ' +
-           'Parametros!BB:BD do V8. Mesmo critério do campo Contrato da ' +
+           'aplicado sobre o faturamento líquido de cada CNPJ, cadastrado em ' +
+           'Premissas › Contratos. Mesmo critério do campo Contrato da ' +
            'Calculadora de pedido.'}] : []),
     ...(d.promo ? [{lab: 'Promotoria', val: brl(d.promo), cls: '', sens: true,
      sub: d.fatLiq ? pct(d.promo / d.fatLiq) + ' do líquido' : '—',
@@ -4481,9 +4480,9 @@ function vResumoNovo(){
   const celulaDesc = (r) => {
     if(semBase(r.desc))
       return '<span title="nenhum SKU deste vendedor tem preço de tabela em ' +
-             'Parametros!AE:AG" style="color:var(--muted)">—</span>';
+             'Premissas › Calculadora" style="color:var(--muted)">—</span>';
     const cob = Math.round(100 * r.descCob);
-    const dica = 'desconto sobre o preço de consumidor (Parametros!AG), ' +
+    const dica = 'desconto sobre o preço de consumidor (Premissas › Calculadora), ' +
                  'ponderado por receita · ' + cob + '% do faturamento dele ' +
                  'tem preço de tabela cadastrado' +
                  (cob < 70 ? ' — cobertura baixa, leia com reserva' : '');
@@ -5326,7 +5325,7 @@ window.renderCalcBrindes = function(){
     'Brindes e materiais saem com receita zero — entram só como custo.' +
     (fora && adm
       ? ' <b>' + fora + ' item(ns)</b> não aparecem por estarem sem custo ' +
-        'cadastrado em <i>Parametros!J:L</i> do V8 — cadastre o CMV para ' +
+        'cadastrado — cadastre o CMV em <i>Premissas › CMV</i> para ' +
         'liberá-los.'
       : '') + '</div>';
 };
@@ -6737,8 +6736,8 @@ document.addEventListener('change', e => {
 function avisarSemUsuarios(){
   if(Object.keys(USERS).length || Object.keys(ADMINS).length) return;
   const e = document.getElementById('loginErr');
-  if(e) e.innerHTML = 'A tabela de usuários não veio no JSON. ' +
-    'Confira <b>Parametros!AM:AO</b> no V8 e rode <b>python rodar_json.py</b>.';
+  if(e) e.innerHTML = 'A lista de usuários não chegou. ' +
+    'Recarregue a página; se continuar, avise um administrador do Portal.';
   const b = document.getElementById('loginBtn');
   if(b) b.disabled = true;
 }
@@ -7209,8 +7208,8 @@ function montarVendaDiaria(){
       '<div class="card" id="cardVendaDiaria"><div class="card-h">' +
       '<h3>Venda diária</h3><span class="hint">indisponível</span></div>' +
       '<div style="padding:14px;color:var(--muted);font-size:13px">' +
-      'O JSON deste Portal não traz a data das notas. Rode ' +
-      '<b>python rodar_json.py</b> para gerar a versão com o dia.</div></div>');
+      'A base de vendas ainda não trouxe a data das notas. Recarregue a página; ' +
+      'se continuar, avise um administrador.</div></div>');
     return;
   }
   const comVenda = serie.filter(s => s.v > 0).length;
@@ -7408,7 +7407,7 @@ window.verContratos = function(){
              {k:'val',lab:'Custo do contrato',dir:'r',mono:1}], arr,
       arr.length + ' cliente(s) · líquido ' + brl(tl) +
       ' · custo ' + brl(tv) +
-      ' · percentual sobre o líquido de cada CNPJ, de Parametros!BB:BD' +
+      ' · percentual sobre o líquido de cada CNPJ, de Premissas › Contratos' +
       (neg ? ' · ' + neg + ' com líquido negativo (mais devolução que venda no '
            + 'recorte), então o contrato aparece como crédito' : '') +
       ' · mesmo recorte dos filtros da tela'));
@@ -11056,8 +11055,8 @@ function vMetas(){
   /* Sincrono: o METAS_D ja vem descompactado do _loadData, junto com o FATO.
      Enquanto era promessa, trocar de aba no meio deixava a tela em branco. */
   if(!METAS_D || !METAS_D.vend){
-    box.innerHTML = '<div class="empty">Este pacote de dados nao tem metas. ' +
-      'Preencha a planilha de metas e rode o gerador.</div>';
+    box.innerHTML = '<div class="empty">Ainda não há metas para este período. ' +
+      'Cadastre na aba Premissas › Metas.</div>';
     return;
   }
   metasLigar();
@@ -11390,9 +11389,8 @@ function metasRender(M){
     '<td class="r">' + metasPctTxt(metasPct(subReal, subTem ? subMeta : 0)) + '</td><td></td>' +
     '</tr></tfoot></table></div></div></div>';
 
-  const fonte = '<div class="fonte">Metas de <b>' + metasEsc(M.arquivo || 'metas.xlsx') +
-    '</b>, lidas em ' + metasEsc(String(M.lido_em || '').replace('T', ' ')) +
-    '. Meta = faturamento liquido (venda menos devolucao).</div>';
+  const fonte = '<div class="fonte">Metas cadastradas na aba <b>Premissas › Metas</b>. ' +
+    'Meta = faturamento líquido (venda menos devolução).</div>';
 
   /* Moderador ve a meta POR MODELO, nao por vendedor (pedido do Igor em
      23/09/2026). A tabela de cima ja e a do modelo - a de vendedor sai. */
@@ -11484,12 +11482,12 @@ function metasResumoItens(){
     {lab: 'Meta do período', val: (meta !== null ? brl(meta) : '—'), cls: '',
      sub: (bl ? bl.nome + ' · ' : '') + A.comMeta.join(', '),
      dica: bl
-       ? 'Meta do bloco "' + bl.nome + '", da planilha de metas: vale para o ' +
+       ? 'Meta do bloco "' + bl.nome + '", cadastrada em Premissas › Metas: vale para o ' +
          'conjunto e não tem divisão por vendedor. Some um filtro de vendedor, ' +
          'canal, UF ou região e este cartão volta a ficar sem número, porque o ' +
          'bloco deixa de descrever o que está na tela.'
        : 'Meta de faturamento líquido, somando os vendedores visíveis no ' +
-         'filtro. Vem da planilha de metas, preenchida à mão.'},
+         'filtro. Cadastrada na aba Premissas › Metas.'},
     /* metaparcial e o cinza do mes em aberto: no dia 18, agosto tinha so 14% do
        mes feito. Um percentual em destaque ali diria 'mes perdido' sobre um mes
        que fechou em 55%. */
@@ -13880,7 +13878,7 @@ function msgLigarEditor(){
   const ds = el('msgDescartar');
   if(ds) ds.addEventListener('click', () => {
     if(!confirm('Descartar o rascunho de todos os grupos e voltar ao que está ' +
-                'publicado na planilha?')) return;
+                'publicado no Portal?')) return;
     MSG_MEIOS.forEach(([m]) => MSG_GRUPOS.forEach(([k]) => {
       try{ localStorage.removeItem(msgRascunhoChave(m, k)); }catch(e){} }));
     vCarteira();
@@ -16296,7 +16294,7 @@ function anoFreteTexto(ano){
   const L = ANOS_ROWS[ano] || [];
   const reais = L.reduce((n, l) => n + (l.fe === 0 ? 1 : 0), 0);
   return (L.length && reais / L.length > 0.5)
-    ? 'o frete é o real do V8 (onde não havia, estimado pela média real de ' +
+    ? 'o frete é o real dos CT-es (onde não havia, estimado pela média real de ' +
       ANO_BASE + ' de cada estado)'
     : 'o frete é estimado pela média real de ' + ANO_BASE + ' de cada estado';
 }
@@ -16894,26 +16892,25 @@ function aovivoAplicar(){
           /* Duas frases, e as duas importam: de onde vem a BASE e se o dia de
              hoje entrou. Quem le precisa saber qual das duas falhou quando um
              numero parecer estranho. */
-          let texto;
-          if(!AOVIVO_JA_RODOU && !AOVIVO_RODANDO){
-            texto = 'O bloco ao vivo ainda não rodou — os números abaixo são ' +
-                    'os da macro. Se isto não mudar em alguns segundos, ' +
-                    'recarregue com Ctrl+Shift+R.';
-          }else{
-            const base = (ANO_INFO && ANO_INFO.ligado)
-              ? ('A base de vendas vem do banco do OMIE — ' +
-                 ANO_INFO.linhas.toLocaleString('pt-BR') + ' linhas, geradas em ' +
-                 ANO_INFO.hora.toLocaleDateString('pt-BR') + ' às ' +
-                 hhmm(ANO_INFO.hora) + ', sem passar pela macro.')
-              : ('A base de vendas ainda é a da macro: ' +
-                 ((ANO_INFO && ANO_INFO.motivo) || 'carregando') + '.');
-            const hoje = (AOVIVO_INFO && AOVIVO_INFO.ligado)
-              ? (' Hoje já está incluído — ' + AOVIVO_INFO.linhas +
-                 ' linha(s), lidas às ' + hhmm(AOVIVO_INFO.hora) + '.')
-              : (' Hoje ainda não entrou: ' +
-                 ((AOVIVO_INFO && AOVIVO_INFO.motivo) || 'carregando') + '.');
-            texto = base + hoje + ' Frete e imposto do dia são estimativa; o ' +
-                    'fechamento oficial continua no Portal de produção.';
+          /* 27/11/2026 (Igor): sem a tarja "Versao de teste" - o Ao Vivo e o Portal. So aparece
+             um ALERTA quando a base do ano nao carregou ou nao cobre ate ontem (o dia de hoje
+             tem o proprio aviso na faixa "Hoje ate agora"). */
+          let texto = null, alerta = false;
+          if(AOVIVO_JA_RODOU || AOVIVO_RODANDO){
+            const hojeISO = new Date().toLocaleDateString('sv');
+            const per = ANO_INFO && ANO_INFO.periodo;
+            const motivo = (ANO_INFO && ANO_INFO.motivo) || '';
+            if(!(ANO_INFO && ANO_INFO.ligado) && motivo && motivo !== 'carregando'){
+              texto = '<b>A base de vendas não carregou</b> (' + motivo + '). Recarregue com Ctrl+Shift+R; ' +
+                      'se continuar, avise um administrador.';
+              alerta = true;
+            }else if(ANO_INFO && ANO_INFO.ligado && per && per[1] && per[1] < hojeISO){
+              const ate = new Date(per[1] + 'T12:00:00'); ate.setDate(ate.getDate() - 1);
+              texto = '<b>Base de vendas atrasada:</b> vai até ' + ate.toLocaleDateString('pt-BR') +
+                      ' (atualizada em ' + ANO_INFO.hora.toLocaleDateString('pt-BR') + ' às ' + hhmm(ANO_INFO.hora) +
+                      '). Os dias depois disso ainda não entraram nos números.';
+              alerta = true;
+            }
           }
           /* num ano fechado a tarja fala DELE, e diz as duas estimativas que
              quem compara com o fechamento antigo precisa saber */
@@ -16921,12 +16918,14 @@ function aovivoAplicar(){
             const n = (ANOS_ROWS[ANO_ATIVO] || []).length;
             const fr = anoFreteTexto(ANO_ATIVO);
             texto = 'Você está vendo <b>' + ANO_ATIVO + '</b>: ' +
-                    n.toLocaleString('pt-BR') + ' linhas do banco do OMIE, ' +
-                    'sem passar pela macro. ' + fr.charAt(0).toUpperCase() + fr.slice(1) +
+                    n.toLocaleString('pt-BR') + ' linhas do banco do OMIE. ' +
+                    fr.charAt(0).toUpperCase() + fr.slice(1) +
                     ', e o custo é o da tabela de hoje. Vendedor e canal seguem a ' +
                     'carteira de hoje.';
+            alerta = false;
           }
-          const html = '<b>Versão de teste.</b> ' + texto;
+          if(!texto){ const velha = document.getElementById('aovivoNota'); if(velha) velha.remove(); return; }
+          const html = texto;
           let nota = document.getElementById('aovivoNota');
           if(!nota){
             v.insertAdjacentHTML('afterbegin',
@@ -16934,6 +16933,8 @@ function aovivoAplicar(){
             nota = document.getElementById('aovivoNota');
           }
           if(nota && nota.innerHTML !== html) nota.innerHTML = html;
+          if(nota) nota.style.cssText = 'margin-bottom:12px' + (alerta
+            ? ';background:#FDECEC;border-left:4px solid #D9534F;color:#7a2320' : '');
         }
       }
     }catch(e){}
@@ -18040,8 +18041,8 @@ function premTela(){
   const naPar = (d.fontes || []).filter(f => f.fonte === 'parametros').map(f => PREM_NOME_TAB[f.tabela] || f.tabela);
   const avisos = (PREM.msg ? '<div class="pm-alert ok">' + premEsc(PREM.msg) + '</div>' : '') +
     (PREM.erro ? '<div class="pm-alert err">' + premEsc(PREM.erro) + '</div>' : '') +
-    (naPar.length ? '<div class="pm-alert warn"><b>Ainda copiados da Parametros: ' + premEsc(naPar.join(', ')) + '.</b> ' +
-      'Uma edição deles feita aqui é sobrescrita na próxima vez que o V8 for salvo.</div>' : '');
+    (naPar.length ? '<div class="pm-alert warn"><b>Vêm das planilhas no SharePoint: ' + premEsc(naPar.join(', ')) + '.</b> ' +
+      'Para mudar, edite a planilha de origem (carteira, cubagem) — o Portal copia de hora em hora.</div>' : '');
   const barra = '<div class="pm-bar"><span id="pmPend">Edite o que quiser em qualquer aba — o "Salvar tudo" grava tudo de uma vez.</span>' +
     premSelDesde() +
     '<span style="display:flex;gap:8px"><button class="pm-btn pm-ghost" style="border-color:rgba(255,255,255,.55);color:#fff;background:transparent" onclick="premDescartar()">Descartar alterações</button>' +
