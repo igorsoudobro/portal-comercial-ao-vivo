@@ -24344,6 +24344,31 @@ try{ rdRegistrar(); }catch(e){ console.error('radar: registrar', e); }
 #v-dre table.dre-mod thead th.dm-tot{background:#D8C733;color:#2A3E7E}
 #v-dre table.dre-mod td.dm-zero{color:#a3abbb}
 #v-dre table.dre-mod th small{display:block;font-weight:500;opacity:.75;font-size:10.5px}
+/* 27/11/2026 (Igor): mesmo visual da DRE do Marketplace (mkDreHtml) */
+#v-dre table.dre-b2b{font-variant-numeric:tabular-nums;border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+#v-dre table.dre-b2b thead th{background:#2A3E7E;color:#fff;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:11px 14px;white-space:nowrap;text-align:right;position:sticky;top:0;z-index:2;border:none}
+#v-dre table.dre-b2b thead th:first-child{text-align:left}
+#v-dre table.dre-b2b thead th.dm-tot,#v-dre table.dre-b2b thead th.b2b-ytd{background:#1d2c5c;color:#fff;border:none}
+#v-dre table.dre-b2b thead th small{display:block;font-weight:600;opacity:.75;text-transform:none;letter-spacing:0}
+#v-dre table.dre-b2b td{padding:7px 14px;border-bottom:1px solid #F0F2F7;text-align:right;white-space:nowrap;background:#fff;font-weight:500}
+#v-dre table.dre-b2b td.rowlab{text-align:left;white-space:normal;min-width:240px;padding-left:26px;color:#1f2a44;font-weight:500}
+#v-dre table.dre-b2b td.dm-tot,#v-dre table.dre-b2b td.b2b-ytd{background:#F5F7FC;font-weight:700;border-left:none;border-right:none}
+#v-dre table.dre-b2b tbody tr:hover td{background:#F7F9FD}
+#v-dre table.dre-b2b tr.b2b-sec td{background:#F4F6FB;color:#2A3E7E;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;padding:14px 14px 6px;border-bottom:none;box-shadow:inset 4px 0 0 #D8C733;text-align:left}
+#v-dre table.dre-b2b tr.tot td{background:#EEF2FB;font-weight:800;color:#2A3E7E;border-top:1px solid #D5DCEF;font-size:13.5px}
+#v-dre table.dre-b2b tr.tot td.rowlab{padding-left:14px;color:#2A3E7E;font-weight:800}
+#v-dre table.dre-b2b tr.b2b-res td{font-weight:800;font-size:14.5px;border-top:2px solid #1F9D6B;background:#E7F6EF;color:#16714d}
+#v-dre table.dre-b2b tr.b2b-res.b2b-res-neg td{border-top-color:#D9534F;background:#FDECEC;color:#a12f2b}
+#v-dre table.dre-b2b tr.b2b-res td.rowlab{padding-left:14px;color:inherit}
+#v-dre table.dre-b2b tr.b2b-ind td{color:#6b7385}
+#v-dre table.dre-b2b tr.b2b-sub td{color:#6b7385;font-size:12px;background:#FBFCFE}
+#v-dre table.dre-b2b tr.b2b-sub td.rowlab{padding-left:44px;color:#6b7385}
+#v-dre table.dre-b2b td.b2b-neg{color:#8f4a46}
+#v-dre table.dre-b2b td.b2b-pc{min-width:128px;color:#6b7385;font-weight:600}
+#v-dre table.dre-b2b td.b2b-pc span{display:inline-block;min-width:50px}
+#v-dre table.dre-b2b tr.tot td.b2b-pc,#v-dre table.dre-b2b tr.b2b-res td.b2b-pc{color:inherit}
+#v-dre .b2b-bar{display:inline-block;width:56px;height:6px;border-radius:3px;background:#E9ECF4;margin-left:8px;vertical-align:middle;overflow:hidden}
+#v-dre .b2b-bar b{display:block;height:100%;background:#2A3E7E;opacity:.6;border-radius:3px}
 </style>
 <script>
 /* ===================== DRE POR ATENDIMENTO x CANAL (24/11/2026) ===================== */
@@ -24388,6 +24413,73 @@ try{ rdRegistrar(); }catch(e){ console.error('radar: registrar', e); }
     } finally { try{ PROMO_CTX = promoAntes === undefined ? null : promoAntes; }catch(e){} }
   };
   vw._porCanal = true;
+})();
+
+/* ===================== VISUAL DA DRE B2B = DRE DO MARKETPLACE (27/11/2026, Igor) =====================
+   So o desenho: depois que a aba (ou o DRE por canal acima) monta a tabela, este embrulho poe as faixas de
+   secao, destaca o resultado final, pinta os custos e acrescenta a coluna "% fat. liquido" com a barrinha
+   (lida dos proprios numeros da tabela - nenhuma conta nova). A conta da dre() nao muda. */
+(function(){
+  if(typeof VIEWS === 'undefined' || !Array.isArray(VIEWS)) return;
+  const vw = VIEWS.find(v => v.id === 'dre'); if(!vw || vw._visual) return;
+  const orig = vw.fn;
+  const SECOES = [
+    [['fat'], 'Receita'],
+    [['imp', 'cmvBruto', 'margem'], 'Impostos e produto'],
+    [['fr', 'com', 'contrato', 'promo', 'degust'], 'Custos de vender'],
+    [['lucroFin', 'rentFin'], 'Resultado financeiro'],
+    [['boni'], 'Bonificação e amostras'],
+    [['ticket', 'nfs'], 'Indicadores']];
+  const CUSTO = ['dev', 'imp', 'cmvBruto', 'cmv', 'fr', 'com', 'contrato', 'promo', 'degust', 'boni'];
+  const num = s => {
+    s = String(s || '').replace(/\s/g, '');
+    if(!/\d/.test(s) || s.indexOf('%') >= 0) return null;
+    const neg = s.charAt(0) === '-' || s.charAt(0) === '\u2212' || s.indexOf('R$-') >= 0;
+    const v = parseFloat(s.replace(/[^\d,]/g, '').replace(',', '.'));
+    return isFinite(v) ? (neg ? -v : v) : null;
+  };
+  function decorar(){
+    const tb = document.querySelector('#v-dre table'); if(!tb || tb.classList.contains('dre-b2b')) return;
+    const linhas = [...tb.querySelectorAll('tbody tr[data-dre]')]; if(!linhas.length) return;
+    tb.classList.add('dre-b2b');
+    const ncol = linhas[0].cells.length;
+    /* coluna de referencia do %: o Total do atendimento, o YTD ou a unica coluna */
+    const mod = tb.classList.contains('dre-mod'), men = tb.classList.contains('dre-mensal') && !mod;
+    const ref = mod ? 1 : (men ? ncol - 1 : 1);
+    if(men){
+      const th = tb.tHead && tb.tHead.rows[0];
+      if(th && th.lastElementChild){ th.lastElementChild.classList.add('b2b-ytd'); th.lastElementChild.removeAttribute('style'); }
+      linhas.forEach(r => { const c = r.cells[ncol - 1]; if(c){ c.classList.add('b2b-ytd'); c.removeAttribute('style'); } });
+    }
+    if(!tb.tHead){ const h = tb.createTHead().insertRow(); h.innerHTML = '<th>Linha</th><th>R$</th>'; }
+    tb.tHead.rows[0].insertAdjacentHTML('beforeend', '<th>% fat. líquido</th>');
+    const porK = {}; linhas.forEach(r => porK[r.dataset.dre] = r);
+    const base = porK.fatLiq && porK.fatLiq.cells[ref] ? num(porK.fatLiq.cells[ref].textContent) : null;
+    linhas.forEach(r => {
+      const k = r.dataset.dre, cel = r.cells[ref], v = cel ? num(cel.textContent) : null;
+      if(CUSTO.indexOf(k) >= 0) [...r.cells].slice(1).forEach(c => { const x = num(c.textContent); if(x) c.classList.add('b2b-neg'); });
+      if(k === 'ticket' || k === 'nfs') r.classList.add('b2b-ind');
+      const sub = ['cmvBruto', 'cmvDev', 'cred'].indexOf(k) >= 0; if(sub) r.classList.add('b2b-sub');
+      if(k === 'lucro' || (k === 'rent' && !porK.lucro)){
+        r.classList.add('b2b-res'); r.classList.remove('tot');
+        if(v != null && v < 0) r.classList.add('b2b-res-neg');
+      }
+      let pc = '';
+      if(v != null && base && k !== 'ticket' && k !== 'nfs'){
+        const p = (CUSTO.indexOf(k) >= 0 && k !== 'dev' && v > 0 ? -v : v) / base;
+        pc = '<span>' + pct(p) + '</span>' + (sub ? '' : '<i class="b2b-bar"><b style="width:' + Math.min(100, Math.abs(p) * 100).toFixed(1) + '%' +
+             (p < 0 ? ';background:#D9534F' : '') + '"></b></i>');
+      }
+      r.insertAdjacentHTML('beforeend', '<td class="b2b-pc">' + pc + '</td>');
+    });
+    const tot = ncol + 1, feitas = new Set();
+    SECOES.forEach(([ks, nome]) => {
+      const r = ks.map(k => porK[k]).find(Boolean); if(!r || feitas.has(r)) return; feitas.add(r);
+      r.insertAdjacentHTML('beforebegin', '<tr class="b2b-sec"><td colspan="' + tot + '">' + nome + '</td></tr>');
+    });
+  }
+  vw.fn = function(){ const x = orig.apply(this, arguments); try{ decorar(); }catch(e){ console.error('dre visual', e); } return x; };
+  vw._visual = true;
 })();
 </script>
 
