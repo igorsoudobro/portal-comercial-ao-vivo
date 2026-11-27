@@ -21275,6 +21275,7 @@ const TT_AJ_NOME = {LOGISTICS_REIMBURSEMENT: 'reembolso de logística', NET_EARN
    Anuncios (GMV Max) ficam fora: so pelo extrato/API. Quando a API chegar, trocar pelos valores reais. */
 /* 11/11 (Igor: "Tiktok Shop: estimativa"): anuncios GMV Max = R$ 3.123 de 01/10 a 11/11 no extrato ÷ R$ 46.662 de faturamento liquido = 6,7% */
 const TT_TAXA = {repasse: 0.135, com: 0.067, sfp: 0.061, afil: 0.052, frete: 0.009, freteAmostra: 11.33, ads: 0.067};
+const TT_PISCOFINS = 0.0925;
 function ttDreCalc(ini, fim){
   const t = ttTot(ini, fim), V = ttPorSku(ini, fim, 'V'), A = ttPorSku(ini, fim, 'A');
   const imp = V.reduce((a, o) => a + o.imp, 0), cmv = V.reduce((a, o) => a + o.cmv, 0), cmvA = A.reduce((a, o) => a + o.cmv, 0);
@@ -21304,7 +21305,9 @@ function ttDreCalc(ini, fim){
   T.fatNota = t.lv - t.vd;
   T.fatLiq = T.fatNota + T.rep;
   T.imp = t.lv ? imp * (t.lv - t.vd) / t.lv : 0;          /* imposto DESTACADO nas notas (24/11/2026), liquido das devolucoes */
-  T.mb = T.fatLiq - T.imp - cmv;
+  /* 27/11/2026 (Igor): o reembolso do TikTok NAO tem ICMS, mas paga PIS/COFINS (9,25%, Lucro Real) */
+  T.impRep = T.rep * TT_PISCOFINS;
+  T.mb = T.fatLiq - T.imp - T.impRep - cmv;
   T.taxas = T.com + T.sfp + T.afil + T.item + T.fr;
   T.liq = T.mb - T.taxas;
   T.res = T.liq - cmvA - T.frA - T.ads + T.aj;
@@ -21316,7 +21319,8 @@ const TT_DRE = [
   ['− Devoluções', T => -T.vd], ['= Faturamento líquido (notas)', T => T.fatNota, 'tot'],
   ['+ Reembolso de descontos do TikTok (desconto que ele pagou e repassa à Dobro)', T => T.rep], ['= Receita líquida', T => T.fatLiq, 'tot'],
   ['Impostos e produto', null, 'sec'],
-  ['− Impostos (destacados nas notas: ICMS + FCP + DIFAL + PIS/COFINS)', T => -T.imp], ['− CMV (líquido do crédito de insumos)', T => -T.cmv],
+  ['− Impostos (destacados nas notas: ICMS + FCP + DIFAL + PIS/COFINS)', T => -T.imp],
+  ['− PIS/COFINS sobre o reembolso do TikTok (9,25%; sem ICMS)', T => -T.impRep], ['− CMV (líquido do crédito de insumos)', T => -T.cmv],
   ['= Margem bruta', T => T.mb, 'tot'], ['% margem bruta', T => T.fatLiq ? T.mb / T.fatLiq : null, 'pct'],
   ['Custos de vender no canal', null, 'sec'],
   ['− Comissão do TikTok', T => -T.com], ['− Taxa SFP', T => -T.sfp], ['− Comissão de afiliados (creators)', T => -T.afil], ['− Taxa por item vendido', T => -T.item], ['− Frete das vendas', T => -T.fr],
@@ -22108,7 +22112,7 @@ function mgCanal(c, ini, fim){
     o = {nota: T.fatLiq, reemb: null, fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.tar, fr: T.env, arm: T.armaz, out: T.outras, ads: T.adsTot, amo: null, antec: T.antec, ped: T.ped};
   } else if(c === 'tt'){
     const T = ttDreCalc(ini, fim);
-    o = {nota: T.fatNota != null ? T.fatNota : T.fatLiq - (T.rep || 0), reemb: T.rep || 0, fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com + T.sfp + T.afil + (T.item || 0), fr: T.fr, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv,
+    o = {nota: T.fatNota != null ? T.fatNota : T.fatLiq - (T.rep || 0), reemb: T.rep || 0, fat: T.fatLiq, imp: T.imp, impRep: T.impRep || 0, cmv: T.cmv, tax: T.com + T.sfp + T.afil + (T.item || 0), fr: T.fr, arm: null, out: T.aj ? -T.aj : null, ads: T.ads, amo: T.cmvA + T.frA, antec: null, ped: T.pv,
          real: !!T.real, pctLiq: T.pctLiq};   /* 24/11: API do TikTok */
   } else {
     const T = azDreCalc(ini, fim);
@@ -22116,7 +22120,7 @@ function mgCanal(c, ini, fim){
                : {nota: T.fatLiq, reemb: null, fat: T.fatLiq, imp: T.imp, cmv: T.cmv, tax: T.com, fr: MKG_FALTA, arm: MKG_FALTA, out: null, ads: MKG_FALTA, amo: null, antec: null, ped: T.pv};
   }
   const v = k => (typeof o[k] === 'number' ? o[k] : 0);
-  o.mb = v('fat') - v('imp') - v('cmv');
+  o.mb = v('fat') - v('imp') - v('impRep') - v('cmv');
   o.mc = o.mb - v('tax') - v('fr') - v('arm') - v('out');
   o.inv = v('ads') + v('amo');
   o.res = o.mc - o.inv;
@@ -22126,7 +22130,7 @@ function mgCanal(c, ini, fim){
 function mgCalc(ini, fim){
   const C = {}; MKG_CANAIS.forEach(x => C[x[0]] = mgCanal(x[0], ini, fim));
   const T = {};
-  ['nota', 'reemb', 'fat', 'imp', 'cmv', 'tax', 'fr', 'arm', 'out', 'ads', 'amo', 'antec', 'ped', 'mb', 'mc', 'inv', 'res', 'resF'].forEach(k =>
+  ['nota', 'reemb', 'fat', 'imp', 'impRep', 'cmv', 'tax', 'fr', 'arm', 'out', 'ads', 'amo', 'antec', 'ped', 'mb', 'mc', 'inv', 'res', 'resF'].forEach(k =>
     T[k] = MKG_CANAIS.reduce((a, x) => a + (typeof C[x[0]][k] === 'number' ? C[x[0]][k] : 0), 0));
   C.tot = T; return C;
 }
@@ -22141,7 +22145,7 @@ const MKG_LINHAS = [
   ['+ Reembolso de descontos do TikTok', mgV('reemb')],
   ['= Receita líquida', mgV('fat'), 'tot'],
   ['Impostos e produto', null, 'sec'],
-  ['− Impostos', mgV('imp', -1)], ['− CMV líquido', mgV('cmv', -1)],
+  ['− Impostos (destacados nas notas)', mgV('imp', -1)], ['− PIS/COFINS sobre o reembolso do TikTok (9,25%)', mgV('impRep', -1)], ['− CMV líquido', mgV('cmv', -1)],
   ['= Margem bruta', mgV('mb'), 'tot'], ['% margem bruta', mgPc('mb'), 'pct'],
   ['Custos de vender no canal', null, 'sec'],
   ['− Comissões e tarifas do canal', mgV('tax', -1)], ['− Frete das vendas', mgV('fr', -1)],
@@ -23578,8 +23582,9 @@ function mpConta(c, Pforcado){
   else o.tx = v('tx');
   o.vTx = o.rec * o.tx; o.vFr = o.rec * o.frPct + o.frUn; o.vAds = o.rec * o.ads;
   o.vImp = o.nota * o.imp;                     /* imposto sobre a nota */
+  o.vImpRep = o.vSub * 0.0925;                 /* reembolso do TikTok: sem ICMS, so PIS/COFINS 9,25% (27/11/2026) */
   o.cmv = o.cmvB * (1 - o.cred);
-  o.custos = o.vCom + o.vTx + o.vFr + o.arm + o.vAds + o.vImp + o.cmv;
+  o.custos = o.vCom + o.vTx + o.vFr + o.arm + o.vAds + o.vImp + o.vImpRep + o.cmv;
   o.contrib = o.rec - o.custos;
   o.mc = o.rec ? o.contrib / o.rec : null;
   return o;
@@ -23611,6 +23616,7 @@ function mpLinhas(k){
   if(geral || k === 'ml') L.push(['Armazenagem Full (R$/un)', 'arm', 'r']);
   L.push(['Anúncios (ads)', 'ads', 'p', o => o.vAds]);
   L.push(['Imposto sobre a nota (ICMS+FCP+DIFAL + PIS/COFINS)', 'imp', 'p', o => o.vImp]);
+  if(tt) L.push(['PIS/COFINS sobre o reembolso do TikTok (9,25%; sem ICMS)', null, 'r', o => o.vImpRep]);
   L.push(['sec', 'Produto'], ['CMV bruto', 'cmv', 'r'], ['Crédito de insumos', 'cred', 'p'], ['CMV líquido', null, 'r', o => o.cmv]);
   L.push(['sec', 'Resultado'], ['Custos totais', null, 'r', o => o.custos], ['Contribuição', null, 'r', o => o.contrib, 'tot'], ['Margem de contribuição', null, 'p', o => o.mc, 'tot']);
   return L;
