@@ -22950,8 +22950,51 @@ try{ relRegistrar(); }catch(e){ console.error('relatorios: registrar', e); }
      linha de detalhe sairam: os cartoes logo abaixo ja trazem o mes inteiro (com hoje).
      Fica a hora da ultima leitura e o aviso de atrasada. */
   try{
+    /* FORCAR ATUALIZACAO (28/11/2026, Igor: "toda vez que abro o pc depois do horario acontece isso").
+       So o Igor ve. Grava um pedido na fila (relatorios-portal: atualizar); a rotina de 1 min da maquina
+       solta a trava presa da faixa, refaz a base do ano + o arquivo do login e roda a faixa. Depois e so
+       recarregar a pagina. Usa o login da aba Gerar relatorios (mesmo da Premissas). */
+    window.FORCAR = window.FORCAR || {msg: '', cor: '', rodando: false};
+    window.forcarBotaoHtml = function(){
+      const eu = (typeof SESSION === 'object' && SESSION && SESSION.user === 'Igor Supino');
+      if(!eu) return '';
+      const F = window.FORCAR;
+      return '<div style="margin-top:6px;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap">' +
+        (F.msg ? '<span style="font-size:11px;color:' + (F.cor || 'var(--muted)') + '">' + F.msg + '</span>' : '') +
+        (F.recarregar ? '<button type="button" onclick="location.reload()" style="border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#1F9D6B;color:#fff">Recarregar a página</button>' : '') +
+        '<button type="button" id="btnForcarAtualizacao" onclick="forcarAtualizacao()"' + (F.rodando ? ' disabled' : '') +
+        ' style="border:1px solid var(--navy);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;background:#fff;color:var(--navy)">' +
+        (F.rodando ? 'Atualizando…' : '↻ Forçar atualização') + '</button></div>';
+    };
+    const forcarRepintar = () => { try{ const c = document.getElementById('cardFaixaHoje'); if(c && typeof faixaHtml === 'function' && window.FAIXA_ULT){ c.outerHTML = faixaHtml(window.FAIXA_ULT[0], window.FAIXA_ULT[1]); } }catch(e){} };
+    window.forcarAtualizacao = async function(){
+      const F = window.FORCAR;
+      if(typeof relChamar !== 'function'){ F.msg = 'tela de relatórios indisponível'; F.cor = '#C0392B'; forcarRepintar(); return; }
+      if(!(typeof relToken === 'function' && relToken())){
+        F.msg = 'entre primeiro pela aba Gerar relatórios (mesma senha da Premissas)'; F.cor = '#C0392B'; forcarRepintar(); return;
+      }
+      F.rodando = true; F.recarregar = false; F.msg = 'pedido enviado — o PC refaz a base e a faixa (3 a 8 min)'; F.cor = 'var(--muted)'; forcarRepintar();
+      try{
+        const r = await relChamar({acao: 'atualizar'});
+        const id = r.id, t0 = Date.now();
+        const passo = async () => {
+          try{
+            const s = await relChamar({acao: 'atualizar_status'});
+            const u = s.ultimo || {};
+            if(u.id === id && u.status === 'pronto'){ F.rodando = false; F.recarregar = true; F.msg = '✓ ' + (u.detalhe || 'atualizado'); F.cor = '#1F9D6B'; forcarRepintar(); return; }
+            if(u.id === id && u.status === 'erro'){ F.rodando = false; F.msg = 'não atualizou: ' + (u.detalhe || 'erro'); F.cor = '#C0392B'; forcarRepintar(); return; }
+            const min = Math.round((Date.now() - t0) / 60000);
+            F.msg = (u.status === 'gerando' ? 'atualizando no PC' : 'na fila — o PC precisa estar ligado') + ' · ' + min + ' min'; forcarRepintar();
+            if(Date.now() - t0 > 25 * 60000){ F.rodando = false; F.msg = 'o PC não respondeu em 25 min — ele está ligado?'; F.cor = '#C0392B'; forcarRepintar(); return; }
+          }catch(e){ F.msg = 'conferindo… (' + e.message + ')'; forcarRepintar(); }
+          setTimeout(passo, 20000);
+        };
+        setTimeout(passo, 15000);
+      }catch(e){ F.rodando = false; F.msg = 'não consegui pedir: ' + e.message; F.cor = '#C0392B'; forcarRepintar(); }
+    };
     if(typeof faixaHtml === 'function'){
       faixaHtml = function(d, corte){
+        window.FAIXA_ULT = [d, corte];
         const h = (corte && corte.hoje) || {};
         const ger = d && d.gerado_em ? new Date(d.gerado_em) : null;
         const idade = ger ? Math.max(0, Math.round((Date.now() - ger.getTime()) / 60000)) : null;
@@ -22970,7 +23013,7 @@ try{ relRegistrar(); }catch(e){ console.error('relatorios: registrar', e); }
           '<div style="margin-left:auto;text-align:right;font-size:11px;color:' + (velha ? '#C0392B' : 'var(--muted)') + '">' +
           (velha ? '<b>atrasada</b> — ' : '') + 'atualizado às ' + hora + (idade !== null ? ' (há ' + idade + ' min)' : '') +
           '<br><span style="opacity:.8">' + ((corte && corte.quem) ? corte.quem + ' · ' : 'comercial PJ, sem o site · ') +
-          'notas emitidas hoje, direto do OMIE</span></div></div>';
+          'notas emitidas hoje, direto do OMIE</span>' + forcarBotaoHtml() + '</div></div>';
       };
     }
   }catch(e){ console.error('faixa (so hoje):', e); }
